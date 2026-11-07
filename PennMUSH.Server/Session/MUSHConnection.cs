@@ -66,10 +66,41 @@ public class MUSHConnection
 
     public async Task SendLineAsync(string text, CancellationToken ct = default)
     {
-        await SendRawAsync(text + "\r\n", ct);
+        // JSON envelopes are recognized by the client only when the text still
+        // starts with '{' and ends with '}'. Leave those on the wire unchanged.
+        if (!Capabilities.SupportsHtml || IsProtocolText(text))
+        {
+            await DeliverTextAsync(text + "\r\n", ct);
+            return;
+        }
+
+        string html = "<div>" + ApplyHtmlBreaks(text) + "</div>";
+        if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
+        {
+            // A div is a block, so the next line starts on its own. Keep a wire
+            // newline for clients that still split records on \r\n, including a
+            // websocket that has not finished MUjs negotiation.
+            html += "\r\n";
+        }
+
+        await DeliverTextAsync(html, ct);
     }
 
     public async Task SendRawAsync(string text, CancellationToken ct = default)
+    {
+        if (Capabilities.SupportsHtml && !IsProtocolText(text))
+        {
+            text = ApplyHtmlBreaks(text);
+            if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
+            {
+                text += "\r\n";
+            }
+        }
+
+        await DeliverTextAsync(text, ct);
+    }
+
+    private async Task DeliverTextAsync(string text, CancellationToken ct)
     {
         if (ProtocolMode == ClientProtocolMode.MujsWebSocket)
         {
@@ -90,6 +121,19 @@ public class MUSHConnection
         }
         byte[] bytes = Encoding.UTF8.GetBytes(formatted);
         await SendRawAsync(bytes, ct);
+    }
+
+    private static string ApplyHtmlBreaks(string text)
+    {
+        return text.Replace("\r", "").Replace("\n", "<br/>");
+    }
+
+    private static bool IsProtocolText(string text)
+    {
+        string trimmed = text.Trim();
+        return trimmed.StartsWith('{')
+            && trimmed.EndsWith('}')
+            && trimmed.Contains("\"type\"", StringComparison.Ordinal);
     }
 
     public async Task SendRawAsync(byte[] bytes, CancellationToken ct = default)

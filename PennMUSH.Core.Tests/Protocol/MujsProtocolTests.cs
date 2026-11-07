@@ -292,4 +292,93 @@ public class MujsProtocolTests
         Assert.False(text.StartsWith('{'));
         Assert.Contains("[Client Window: hud", text);
     }
+
+    [Fact]
+    public async Task HtmlMujsLine_WrapsBreaksInADivWithoutATrailingBreak()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+        conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+
+        await conn.SendLineAsync("Alpha\r\nBeta\nGamma");
+
+        var payload = ProtocolSerializer.DeserializePayload<TerminalOutputPayload>(sent[0]);
+        Assert.NotNull(payload);
+        Assert.Equal("<div>Alpha<br/>Beta<br/>Gamma</div>", payload.Html);
+    }
+
+    [Fact]
+    public async Task HtmlStreamLine_EndsWithAWireNewline()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+
+        await conn.SendLineAsync("Alpha\nBeta");
+
+        Assert.Equal("<div>Alpha<br/>Beta</div>\r\n", sent[0]);
+    }
+
+    [Fact]
+    public async Task PlainLine_KeepsTheWireNewline()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+
+        await conn.SendLineAsync("Alpha\nBeta");
+
+        Assert.Equal("Alpha\nBeta\r\n", sent[0]);
+    }
+
+    [Fact]
+    public async Task HtmlMujsLine_LeavesProtocolJsonUnwrapped()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+        conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+
+        string json = "{\"type\":\"space.telemetry\",\"payload\":{\"speed\":1}}";
+        await conn.SendLineAsync(json);
+
+        var payload = ProtocolSerializer.DeserializePayload<TerminalOutputPayload>(sent[0]);
+        Assert.NotNull(payload);
+        Assert.Equal(json + "\r\n", payload.Html);
+    }
+
+    [Fact]
+    public async Task HtmlMujsRawText_TurnsNewlinesIntoBreaks()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+        conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+
+        await conn.SendRawAsync("Line one\r\nLine two\n");
+
+        var payload = ProtocolSerializer.DeserializePayload<TerminalOutputPayload>(sent[0]);
+        Assert.NotNull(payload);
+        Assert.Equal("Line one<br/>Line two<br/>", payload.Html);
+    }
 }
