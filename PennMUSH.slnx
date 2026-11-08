@@ -3,4 +3,5 @@
   <Project Path="PennMUSH.Core/PennMUSH.Core.csproj" />
   <Project Path="PennMUSH.Extensions/PennMUSH.Extensions.csproj" />
   <Project Path="PennMUSH.Server/PennMUSH.Server.csproj" />
+  <Project Path="PennMUSH.Space/PennMUSH.Space.csproj" />
 </Solution>

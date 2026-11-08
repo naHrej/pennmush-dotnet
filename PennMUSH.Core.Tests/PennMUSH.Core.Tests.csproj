@@ -22,6 +22,7 @@
     <ProjectReference Include="..\PennMUSH.Core\PennMUSH.Core.csproj" />
     <ProjectReference Include="..\PennMUSH.Extensions\PennMUSH.Extensions.csproj" />
     <ProjectReference Include="..\PennMUSH.Server\PennMUSH.Server.csproj" />
+    <ProjectReference Include="..\PennMUSH.Space\PennMUSH.Space.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -24,6 +24,7 @@ using PennMUSH.Core.Types;
 using PennMUSH.Server.Commands;
 using PennMUSH.Server.Extensions;
 using PennMUSH.Server.Session;
+using PennMUSH.Space;
 
 public class MUSHServer
 {
@@ -47,6 +48,7 @@ public class MUSHServer
     public ExpressionEvaluator Evaluator { get; }
     public CommandDispatcher Dispatcher { get; }
     public ExtensionManager Extensions { get; }
+    public SpaceManager Space { get; } = new();
 
     public IReadOnlyCollection<MUSHConnection> Connections => _connections.Values.ToList();
 
@@ -671,6 +673,25 @@ public class MUSHServer
         SendToRoom(roomRef, message, excludePlayerId);
     }
 
+    /// <summary>
+    /// Sends each connected player's current sensor contacts. A ship is published
+    /// to each player manning one of that ship's consoles.
+    /// </summary>
+    public async Task PublishSensorContactsAsync()
+    {
+        if (Space.Objects.Count == 0)
+            return;
+
+        Space.UpdateContacts();
+        foreach (var conn in Connections)
+        {
+            if (!conn.PlayerId.IsValid)
+                continue;
+
+            foreach (var ship in Space.ShipsMannedBy(conn.PlayerId.Value))
+                await conn.SendEnvelopeAsync("space.telemetry", SensorTelemetryMessage.For(ship));
+        }
+    }
     private async Task QueueTickLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -686,6 +707,8 @@ public class MUSHServer
                         DispatchNotification(note);
                     }
                 }
+
+                await PublishSensorContactsAsync();
             }
             catch
             {
