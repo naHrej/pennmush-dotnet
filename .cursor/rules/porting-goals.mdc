@@ -1,0 +1,33 @@
+﻿---
+description: Port PennMUSH and Aspace into pennmush-dotnet and mujs-space. Do not edit the original C trees or the text MUjs client.
+alwaysApply: true
+---
+
+# Where this work goes
+
+This workspace ports two C codebases onto a C# server and a graphical client. Read the originals for behavior. Implement that behavior only in the repos below.
+
+## Goals, in order
+
+1. **PennMUSH.** Every feature of original C/C++ PennMUSH exists in `pennmush-dotnet` in a form that runs softcode written for original PennMUSH.
+2. **Aspace.** Every feature of original C/C++ Aspace exists in `pennmush-dotnet` in a reimplemented form: the same gameplay results, a clearer API, and a graphical presentation instead of Aspace's text interface.
+3. **MUjs space client.** `mujs-space` shows the game world visually. It is the UI for those Aspace features. It does not replace the server rules.
+
+## Write here
+
+- Server behavior, commands, and APIs: `pennmush-dotnet`
+- Space visuals and client controls: `mujs-space`
+
+## Do not write here
+
+- Original PennMUSH (`c:\sources\erick\source\PennMUSH`)
+- Original Aspace (`c:\sources\erick\source\pennmush-aspace`, including its `csharp` tree, and `c:\sources\erick\source\PennMUSH\aspace-original`)
+- The text MUjs client (`c:\sources\erick\source\MUjs`). That client is not the space UI.
+
+```text
+# BAD
+Add sensor resolution inside pennmush-aspace/csharp because a C# file is already there.
+
+# GOOD
+Read the formula in aspace's space_iterate.c, implement it in pennmush-dotnet, and surface it in mujs-space.
+```

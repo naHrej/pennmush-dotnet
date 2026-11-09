@@ -1,0 +1,40 @@
+---
+description: pennmush-dotnet and mujs-space reach main only through a feature branch and a pull request. Never commit to main.
+alwaysApply: true
+---
+
+# Feature branches only
+
+`main` is closed on `pennmush-dotnet` and `mujs-space`. Do not commit, amend, or push to `main`.
+
+## Starting a feature
+
+1. A new feature starts from current `main`. Fetch and pull `main` first, then create the branch from that updated `main`.
+2. Do not start a feature from another feature branch, and do not carry unrelated uncommitted work onto it.
+3. Name the branch for the change, for example `feat/sensor-resolution`.
+
+## While the pull request is open
+
+Keep committing on that same branch until its pull request is merged or abandoned. Follow-up work for that change updates the open pull request. Start a new branch only for a different change, again from freshly pulled `main`.
+
+## Commits, push, and the pull request
+
+- Every commit has a message that says why the change was made. Do not make an empty commit or a commit with no message.
+- Commit, push, and open the pull request when asked to publish the work. Push the feature branch with `-u`. Never push `main`.
+- Open the pull request into `main`. Do not merge it.
+- Whenever a pull request is created, put its full URL in the reply.
+
+```text
+# BAD
+git checkout main
+git commit -m "sensors"
+git push origin main
+
+# GOOD
+git checkout main
+git pull origin main
+git checkout -b feat/sensor-resolution
+git commit -m "feat(space): report contact resolution and heading"
+git push -u origin HEAD
+gh pr create
+```
