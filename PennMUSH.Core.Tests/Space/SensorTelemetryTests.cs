@@ -37,8 +37,10 @@ public class SensorTelemetryTests
             ship.IsActive = true;
             ship.Name = "Horizon";
             ship.Position = new CartesianCoordinates(0, 0, 0);
-            ship.AddConsole(20, "helm");
-            ship.AddConsole(21, "tactical");
+            const int bridge = 30;
+            ship.AddRoom(bridge);
+            ship.AddConsole(20, bridge, "helm");
+            ship.AddConsole(21, bridge, "tactical");
 
             var target = server.Space.CreateObject(5);
             target.IsActive = true;
@@ -52,7 +54,11 @@ public class SensorTelemetryTests
             await server.PublishSensorContactsAsync();
             Assert.DoesNotContain(helmLines, line => line.Contains("space.telemetry"));
 
-            Assert.True(server.Space.ManConsole(20, helm.PlayerId.Value));
+            Assert.False(server.Space.ManConsole(20, helm.PlayerId.Value, playerRoomId: 8));
+            Assert.True(server.Space.ManConsole(20, helm.PlayerId.Value, bridge));
+            Assert.False(server.Space.ManConsole(21, helm.PlayerId.Value, bridge));
+            Assert.True(server.Space.SelectMode(20, helm.PlayerId.Value, "helm"));
+            Assert.Equal(ship.Id, server.Space.FindConsole(20)!.Ship.Id);
             await server.PublishSensorContactsAsync();
 
             var message = helmLines.Last(line => line.Contains("space.telemetry"));

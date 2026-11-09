@@ -12,6 +12,7 @@ public sealed class SpaceObject
     public double Speed { get; set; }
     public SensorState Sensors { get; } = new();
     public Dictionary<int, SpaceContact> Contacts { get; } = new();
+    public HashSet<int> Rooms { get; } = new();
     public List<ShipConsole> Consoles { get; } = new();
 
     public SpaceObject(int id)
@@ -19,12 +20,16 @@ public sealed class SpaceObject
         Id = id;
     }
 
-    public ShipConsole AddConsole(int consoleId, string station)
+    public void AddRoom(int roomId) => Rooms.Add(roomId);
+
+    public ShipConsole AddConsole(int consoleId, int roomId, params string[] modes)
     {
+        if (!Rooms.Contains(roomId))
+            throw new InvalidOperationException($"Room {roomId} is not aboard ship {Id}.");
         if (Consoles.Any(console => console.Id == consoleId))
             throw new InvalidOperationException($"Console {consoleId} is already on this ship.");
 
-        var console = new ShipConsole(consoleId, station);
+        var console = new ShipConsole(this, consoleId, roomId, modes);
         Consoles.Add(console);
         return console;
     }

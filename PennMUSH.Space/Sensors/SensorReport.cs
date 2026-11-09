@@ -2,8 +2,8 @@ namespace PennMUSH.Space.Sensors;
 
 /// <summary>
 /// What one ship is allowed to know about a contact at the current resolution.
-/// Course and speed are available as soon as the contact exists and is moving.
-/// Mass, class, and name arrive only after the score clears aspace's thresholds.
+/// Course is reported for a moving contact, and at classification even when it is stopped.
+/// Mass and class arrive at classification. The ship's own name arrives at identification.
 /// </summary>
 public sealed class SensorReport
 {

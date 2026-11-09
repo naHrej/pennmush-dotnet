@@ -5,13 +5,14 @@ using PennMUSH.Space;
 /// <summary>
 /// Aspace sensor scoring from space_iterate.c: signature, resolution, grid visibility,
 /// and the contact level that both detects a body and limits its sensor report.
+/// A contact stays listed whenever that level clears detection, including past 100 parsecs.
 /// </summary>
 public static class SensorScan
 {
     public const double DetectionThreshold = 0.01;
     public const double ClassThreshold = 0.25;
     public const double IdentityThreshold = 0.50;
-    public const double AxisLimit = SpaceConstants.PARSEC * 100.0;
+    public const double MovingSpeed = 0.05;
     private const double SrsDistanceScale = 10101.010101;
 
     public static double GridVisibility(CartesianCoordinates position, bool dockedOrLanded)
@@ -40,8 +41,6 @@ public static class SensorScan
         var dx = target.Position.X - observer.Position.X;
         var dy = target.Position.Y - observer.Position.Y;
         var dz = target.Position.Z - observer.Position.Z;
-        if (Math.Abs(dx) > AxisLimit || Math.Abs(dy) > AxisLimit || Math.Abs(dz) > AxisLimit)
-            return false;
 
         var resolution = ContactResolution(observer, target, dx, dy, dz);
         if (resolution < DetectionThreshold)
@@ -118,9 +117,11 @@ public static class SensorScan
 
     private static SensorReport BuildReport(SpaceObject observer, SpaceObject target, double resolution, double range)
     {
-        var moving = target.Speed != 0.0;
-        var identified = resolution > IdentityThreshold && !target.Sensors.CloakActive;
-        var classified = resolution > ClassThreshold && !target.Sensors.CloakActive;
+        var moving = Math.Abs(target.Speed) > MovingSpeed;
+        var cloak = target.Sensors.CloakActive;
+        var identified = resolution > IdentityThreshold && !cloak;
+        var classified = resolution > ClassThreshold && !cloak;
+        var showHeading = classified || moving;
         return new SensorReport
         {
             Resolution = resolution,
@@ -131,16 +132,25 @@ public static class SensorScan
             Range = range,
             Speed = target.Speed,
             IsMoving = moving,
-            HeadingYaw = moving ? target.Course.Bearing : null,
-            HeadingPitch = moving ? target.Course.Elevation : null,
+            HeadingYaw = showHeading ? target.Course.Bearing : null,
+            HeadingPitch = showHeading ? target.Course.Elevation : null,
             ClassName = classified ? target.Sensors.ClassName : null,
             Displacement = classified ? target.Sensors.Displacement : null,
-            Name = identified ? target.Name : null,
+            Name = DisplayName(target, identified, classified),
             CargoCapacity = identified ? target.Sensors.CargoCapacity : null,
             DockingDoorsOpen = identified && target.Sensors.HasDockingBay ? target.Sensors.DockingDoorsOpen : null,
             LandingDoorsOpen = identified && target.Sensors.HasLandingPad ? target.Sensors.LandingDoorsOpen : null,
             CanScan = identified
         };
+    }
+
+    private static string DisplayName(SpaceObject target, bool identified, bool classified)
+    {
+        if (identified)
+            return target.Name;
+        if (classified && !string.IsNullOrWhiteSpace(target.Sensors.ClassName))
+            return $"{target.Sensors.ClassName} Class Contact";
+        return $"Contact #{target.Id}";
     }
 
     private static double EcmFactor(SensorState sensors, bool longRangeBand)

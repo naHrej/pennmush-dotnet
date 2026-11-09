@@ -42,12 +42,13 @@ public class SensorScanTests
         Assert.Equal(-10, report.HeadingPitch);
         Assert.Null(report.Displacement);
         Assert.Null(report.ClassName);
-        Assert.Null(report.Name);
+        Assert.Equal("Contact #2", report.Name);
+        Assert.Equal("Contact #2", observer.Contacts[2].Name);
         Assert.False(report.CanScan);
     }
 
     [Fact]
-    public void StoppedContact_OmitsHeadingUntilItIsMoving()
+    public void ClassifiedStoppedContact_ReportsFacing()
     {
         var manager = new SpaceManager();
         var observer = Ship(manager, 1, 0, 0, 0);
@@ -58,10 +59,77 @@ public class SensorScanTests
         manager.UpdateContacts();
 
         var report = observer.Contacts[2].Report!;
+        Assert.True(report.Resolution > SensorScan.ClassThreshold);
         Assert.Equal(0, report.Speed);
+        Assert.False(report.IsMoving);
+        Assert.Equal(180, report.HeadingYaw);
+        Assert.Equal(5, report.HeadingPitch);
+    }
+
+    [Fact]
+    public void SlowContactBelowClassification_OmitsHeading()
+    {
+        var manager = new SpaceManager();
+        var observer = Ship(manager, 1, 50 * SpaceConstants.PARSEC, 0, 0);
+        var target = Ship(manager, 2, 51 * SpaceConstants.PARSEC, 0, 0);
+        target.Course = new SphericalCoordinates(12, 3, 0);
+        target.Speed = SensorScan.MovingSpeed;
+
+        manager.UpdateContacts();
+
+        var report = observer.Contacts[2].Report!;
+        Assert.InRange(report.Resolution, SensorScan.DetectionThreshold, SensorScan.ClassThreshold);
         Assert.False(report.IsMoving);
         Assert.Null(report.HeadingYaw);
         Assert.Null(report.HeadingPitch);
+    }
+
+    [Fact]
+    public void ContactAboveMovingSpeed_ReportsHeadingBeforeClassification()
+    {
+        var manager = new SpaceManager();
+        var observer = Ship(manager, 1, 50 * SpaceConstants.PARSEC, 0, 0);
+        var target = Ship(manager, 2, 51 * SpaceConstants.PARSEC, 0, 0);
+        target.Course = new SphericalCoordinates(12, 3, 0);
+        target.Speed = SensorScan.MovingSpeed + 0.01;
+
+        manager.UpdateContacts();
+
+        var report = observer.Contacts[2].Report!;
+        Assert.True(report.Resolution <= SensorScan.ClassThreshold);
+        Assert.True(report.IsMoving);
+        Assert.Equal(12, report.HeadingYaw);
+        Assert.Equal(3, report.HeadingPitch);
+    }
+
+    [Fact]
+    public void ClassifiedContact_UsesTheClassUntilTheShipNameResolves()
+    {
+        SensorReport? classified = null;
+        for (var tech = 0.05; tech <= 2.0; tech += 0.05)
+        {
+            var manager = new SpaceManager();
+            var observer = Ship(manager, 1, 0, 0, 0);
+            observer.Sensors.SensorTech = tech;
+            var target = Ship(manager, 2, 10, 0, 0);
+            target.Name = "Secret";
+            target.Sensors.ClassName = "Courier";
+            manager.UpdateContacts();
+            if (!observer.Contacts.TryGetValue(2, out var contact) || contact.Report is null)
+                continue;
+            var report = contact.Report;
+            if (report.Resolution > SensorScan.ClassThreshold && report.Resolution <= SensorScan.IdentityThreshold)
+            {
+                classified = report;
+                break;
+            }
+        }
+
+        Assert.NotNull(classified);
+        Assert.Equal("Courier", classified.ClassName);
+        Assert.Equal("Courier Class Contact", classified.Name);
+        Assert.False(classified.CanScan);
+        Assert.Null(classified.CargoCapacity);
     }
 
     [Fact]
@@ -101,7 +169,8 @@ public class SensorScanTests
         manager.UpdateContacts();
 
         var report = observer.Contacts[2].Report!;
-        Assert.Null(report.Name);
+        Assert.Equal("Contact #2", report.Name);
+        Assert.Null(report.ClassName);
         Assert.Null(report.Displacement);
         Assert.False(report.CanScan);
     }
@@ -123,16 +192,18 @@ public class SensorScanTests
     }
 
     [Fact]
-    public void ContactBeyondOneAxisLimit_IsNotListed()
+    public void DistantContact_StaysListedWhenTheScoreStillClearsDetection()
     {
         var manager = new SpaceManager();
-        Ship(manager, 1, 0, 0, 0);
-        var observer = manager.Objects[1];
-        Ship(manager, 2, SpaceConstants.PARSEC * 101, 0, 0);
+        var observer = Ship(manager, 1, 0, 0, 0);
+        var faint = Ship(manager, 2, SpaceConstants.PARSEC * 101, 0, 0);
+        var bright = Ship(manager, 3, SpaceConstants.PARSEC * 101, 0, 0);
+        bright.Sensors.Displacement = 1e22;
 
         manager.UpdateContacts();
 
-        Assert.Empty(observer.Contacts);
+        Assert.False(observer.Contacts.ContainsKey(faint.Id));
+        Assert.True(observer.Contacts[bright.Id].Resolution >= SensorScan.DetectionThreshold);
     }
 
     private static double Score(bool ecm, bool eccm = false)

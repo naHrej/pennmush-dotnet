@@ -18,6 +18,16 @@ public sealed class SpaceManager
         return ship;
     }
 
+    public ShipConsole AddConsole(int shipId, int consoleId, int roomId, params string[] modes)
+    {
+        if (!_objects.TryGetValue(shipId, out var ship))
+            throw new InvalidOperationException($"Space object {shipId} does not exist.");
+        if (FindConsole(consoleId) != null)
+            throw new InvalidOperationException($"Console {consoleId} is already bound to a ship.");
+
+        return ship.AddConsole(consoleId, roomId, modes);
+    }
+
     public void UpdateContacts()
     {
         foreach (var obj in _objects.Values)
@@ -57,13 +67,30 @@ public sealed class SpaceManager
         return null;
     }
 
-    public bool ManConsole(int consoleId, int playerId)
+    public bool ManConsole(int consoleId, int playerId, int playerRoomId)
     {
         var console = FindConsole(consoleId);
-        if (console == null)
+        if (console == null || playerRoomId != console.RoomId)
+            return false;
+        if (console.OperatorId is int other && other != playerId)
+            return false;
+
+        var already = ConsoleMannedBy(playerId);
+        if (already != null && already.Id != console.Id)
             return false;
 
         console.OperatorId = playerId;
+        return true;
+    }
+
+    public bool SelectMode(int consoleId, int playerId, string mode)
+    {
+        var console = FindConsole(consoleId);
+        if (console == null || console.OperatorId != playerId || !console.OffersMode(mode))
+            return false;
+
+        console.ActiveMode = console.Modes.First(item =>
+            string.Equals(item, mode, StringComparison.OrdinalIgnoreCase));
         return true;
     }
 
@@ -74,12 +101,28 @@ public sealed class SpaceManager
             return false;
 
         console.OperatorId = null;
+        console.ActiveMode = null;
         return true;
     }
 
     public IEnumerable<SpaceObject> ShipsMannedBy(int playerId)
     {
-        return _objects.Values.Where(ship =>
-            ship.IsActive && ship.Consoles.Any(console => console.OperatorId == playerId));
+        var console = ConsoleMannedBy(playerId);
+        if (console == null || !console.Ship.IsActive)
+            return [];
+
+        return [console.Ship];
+    }
+
+    private ShipConsole? ConsoleMannedBy(int playerId)
+    {
+        foreach (var ship in _objects.Values)
+        {
+            var console = ship.Consoles.FirstOrDefault(item => item.OperatorId == playerId);
+            if (console != null)
+                return console;
+        }
+
+        return null;
     }
 }
