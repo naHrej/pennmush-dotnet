@@ -47,7 +47,7 @@ public class SetCommandHandler : ICommandHandler
                 return false;
             }
 
-            var err = target.SetAttribute(attrName, attrVal, context.Executor);
+            var err = target.SetAttribute(attrName, attrVal, context.Executor, wizardOverride: executorObj.IsWizard);
             if (err == AttributeErrorCode.Okay)
             {
                 context.Notify("Set.");

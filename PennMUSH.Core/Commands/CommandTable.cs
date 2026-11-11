@@ -114,6 +114,11 @@ public class CommandTable
         return _reservedAliases.Contains(alias.Trim().ToLowerInvariant());
     }
 
+    public IEnumerable<string> PrimaryNames =>
+        _exactCommands
+            .Where(pair => pair.Key.Equals(pair.Value.CanonicalName, StringComparison.OrdinalIgnoreCase))
+            .Select(pair => pair.Key);
+
     public CommandLookupResult Lookup(string input)
     {
         if (string.IsNullOrWhiteSpace(input))

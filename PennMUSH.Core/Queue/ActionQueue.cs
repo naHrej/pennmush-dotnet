@@ -65,6 +65,16 @@ public class ActionQueue
         }
     }
 
+    public int DrainSemaphore(string semaphore)
+    {
+        if (string.IsNullOrWhiteSpace(semaphore)) return 0;
+        string sem = semaphore.Trim();
+        lock (_lock)
+        {
+            return _entries.RemoveAll(e => !string.IsNullOrEmpty(e.Semaphore) && e.Semaphore.Equals(sem, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
     public int NotifySemaphore(string semaphore)
     {
         if (string.IsNullOrWhiteSpace(semaphore)) return 0;

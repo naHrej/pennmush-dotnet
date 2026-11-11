@@ -1,16 +1,14 @@
 # Unimplemented PennMUSH commands
 
-Original PennMUSH defines 167 player commands in `src/command.c`. 67 of those names are registered in `PennMUSH.Server/Engine/MUSHServer.cs`. 100 names have no registration and are listed below. `@poll` is included too: it is registered on the `doing` handler and only sets the `DOING` attribute, so the original poll command is still missing.
+Original PennMUSH defines 167 player commands in `src/command.c`. 89 of those names are registered in `PennMUSH.Server/Engine/MUSHServer.cs`. 78 names have no registration and are listed below. `@poll` is included too: it is registered on the `doing` handler and only sets the `DOING` attribute, so the original poll command is still missing.
 
-`@notify` is implemented. It wakes a `@wait` semaphore. `semipose` and `;` pose without a space. `@select` stops at the first match. `@skip` reverses `@if`. `@elock`, `@ulock`, `@eunlock`, and `@uunlock` set the enter and use locks. `@undestroy` and `@unrecycle` clear `GOING`. `@zone` sets zones. `@chzone` and `@chzoneall` are not registered. `@reboot` exists. `@restart` does not.
+`@notify` wakes one `@wait` semaphore, and `@drain` drops every waiter on that semaphore. `semipose` and `;` pose without a space. `@select` stops at the first match. `@skip` reverses `@if`. `@elock`, `@ulock`, `@eunlock`, and `@uunlock` set the enter and use locks. `@undestroy` and `@unrecycle` clear `GOING`. `@cpattr` copies an attribute, including its stored flags, and `@mvattr` copies it and then clears the source. `@edit` replaces text in one attribute. `@grep` prints an object's own attributes whose name or value contains the search text. `@atrlock` sets or clears the locked attribute flag, and a later `@set` leaves a locked attribute unchanged unless the setter is a wizard. `@atrchown` changes an attribute's creator. `@lset` changes the flags on an existing lock and leaves the key as it is. `@decompile` prints an object's flags and attributes as `@set` commands. `@moniker` stores or clears the `MONIKER` attribute as plain text. `@message` evaluates an attribute and sends it with pemit, remit, or oemit. `@prompt` sends a pemit with no trailing newline. `@lemit` emits to the player's location. `@find` lists objects the player controls. `@whereis` reports a player's location and, unless the seeker is a wizard, tells that player. `brief` examines an object without its contents or attribute list. `@dump` saves the database. `@uptime` reports when the process started. `@poor` sets every player's pennies. `@list` prints the command, flag, power, and function tables. `@entrances` lists objects whose home or exit destination is a place. `@firstexit` moves an exit to the front of a room's exit list. `@zone` sets zones. `@chzone` and `@chzoneall` are not registered. `@reboot` exists. `@restart` does not.
 
-Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@attrlock` for `@atrlock`, and `@attrchown` for `@atrchown`.
+`@edit`, `@atrlock`, and `@atrchown` are registered. Their original aliases `@gedit`, `@attrlock`, and `@attrchown` are not.
 
 ## Building and movement
 
 - `buy`
-
-- `brief`
 
 - `desert`
 
@@ -26,18 +24,9 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `with`
 
-
 - `@sweep`
 
-- `@entrances`
-
-- `@whereis`
-
 - `@scan`
-
-- `@find`
-
-- `@firstexit`
 
 - `@search`
 
@@ -45,31 +34,11 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@attribute`
 
-- `@atrlock`
-
-- `@atrchown`
-
-- `@cpattr`
-
-- `@mvattr`
-
-- `@edit`
-
 - `@chownall`
 
 - `@flag`
 
-- `@decompile`
-
 - `@verb`
-
-- `@moniker`
-
-- `@lset`
-
-
-
-
 
 ## Softcode
 
@@ -77,21 +46,13 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@break`
 
-
 - `@include`
 
 - `@retry`
 
-
-- `@drain`
-
-- `@message`
-
 - `@hook`
 
 - `@function`
-
-- `@grep`
 
 - `teach`
 
@@ -113,11 +74,7 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@nszemit`
 
-- `@lemit`
-
 - `@zemit`
-
-- `@prompt`
 
 ## Channels
 
@@ -161,8 +118,6 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@squota`
 
-- `@poor`
-
 - `@suggest`
 
 - `@poll`
@@ -173,11 +128,7 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@config`
 
-- `@list`
-
 - `@dbck`
-
-- `@dump`
 
 - `@readcache`
 
@@ -187,15 +138,11 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@slave`
 
-- `@uptime`
-
 - `@kick`
 
 - `@purge`
 
 - `@nuke`
-
-
 
 - `@ps`
 

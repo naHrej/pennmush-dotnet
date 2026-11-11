@@ -18,4 +18,5 @@ public record Notification(
     Dbref Target = default,
     Dbref Except = default,
     string? ProtocolType = null,
-    object? ProtocolPayload = null);
+    object? ProtocolPayload = null,
+    bool Prompt = false);
