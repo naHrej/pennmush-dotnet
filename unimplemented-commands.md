@@ -1,8 +1,8 @@
 # Unimplemented PennMUSH commands
 
-Original PennMUSH defines 167 player commands in `src/command.c`. 58 of those names are registered in `PennMUSH.Server/Engine/MUSHServer.cs`. 109 names have no registration and are listed below. `@poll` is included too: it is registered on the `doing` handler and only sets the `DOING` attribute, so the original poll command is still missing.
+Original PennMUSH defines 167 player commands in `src/command.c`. 67 of those names are registered in `PennMUSH.Server/Engine/MUSHServer.cs`. 100 names have no registration and are listed below. `@poll` is included too: it is registered on the `doing` handler and only sets the `DOING` attribute, so the original poll command is still missing.
 
-`@notify` is implemented. It wakes a `@wait` semaphore. `;` poses without a space, and the command name `semipose` is not registered. `@zone` sets zones. `@chzone` and `@chzoneall` are not registered. `@reboot` exists. `@restart` does not.
+`@notify` is implemented. It wakes a `@wait` semaphore. `semipose` and `;` pose without a space. `@select` stops at the first match. `@skip` reverses `@if`. `@elock`, `@ulock`, `@eunlock`, and `@uunlock` set the enter and use locks. `@undestroy` and `@unrecycle` clear `GOING`. `@zone` sets zones. `@chzone` and `@chzoneall` are not registered. `@reboot` exists. `@restart` does not.
 
 Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@attrlock` for `@atrlock`, and `@attrchown` for `@atrchown`.
 
@@ -26,7 +26,6 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `with`
 
-- `semipose`
 
 - `@sweep`
 
@@ -68,13 +67,9 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@lset`
 
-- `@elock`
 
-- `@eunlock`
 
-- `@ulock`
 
-- `@uunlock`
 
 ## Softcode
 
@@ -82,13 +77,11 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@break`
 
-- `@skip`
 
 - `@include`
 
 - `@retry`
 
-- `@select`
 
 - `@drain`
 
@@ -202,9 +195,7 @@ Default aliases of missing commands are also absent: `@gedit` for `@edit`, `@att
 
 - `@nuke`
 
-- `@undestroy`
 
-- `@unrecycle`
 
 - `@ps`
 

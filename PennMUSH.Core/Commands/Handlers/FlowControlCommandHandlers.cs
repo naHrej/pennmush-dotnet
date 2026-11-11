@@ -25,7 +25,8 @@ public class SwitchCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @switch <expression>=<pattern>,<action>[,<pattern>,<action>...][,<default>]");
+            string name = string.IsNullOrEmpty(context.CommandName) ? "@switch" : context.CommandName;
+            context.Notify($"Usage: {name} <expression>=<pattern>,<action>[,<pattern>,<action>...][,<default>]");
             return false;
         }
 
@@ -38,7 +39,8 @@ public class SwitchCommandHandler : ICommandHandler
 
         // Split right arg by commas (respecting braces if needed)
         var pairs = SplitArgs(context.RightArg);
-        bool firstOnly = context.Switches.Contains("first") || !context.Switches.Contains("all");
+        bool select = context.CommandName.Equals("@select", StringComparison.OrdinalIgnoreCase);
+        bool firstOnly = select || context.Switches.Contains("first") || !context.Switches.Contains("all");
         bool matched = false;
 
         for (int i = 0; i < pairs.Count; i += 2)
@@ -287,7 +289,10 @@ public class IfElseCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @ifelse <condition>=<true_action>[,<false_action>]");
+            bool skip = context.CommandName.Equals("@skip", StringComparison.OrdinalIgnoreCase);
+            string name = string.IsNullOrEmpty(context.CommandName) ? "@ifelse" : context.CommandName;
+            string branches = skip ? "<false_action>[,<true_action>]" : "<true_action>[,<false_action>]";
+            context.Notify($"Usage: {name} <condition>={branches}");
             return false;
         }
 
@@ -299,6 +304,8 @@ public class IfElseCommandHandler : ICommandHandler
         }
 
         bool isTrue = !string.IsNullOrWhiteSpace(cond) && cond.Trim() != "0" && !cond.Trim().StartsWith("#-");
+        if (context.CommandName.Equals("@skip", StringComparison.OrdinalIgnoreCase))
+            isTrue = !isTrue;
         var parts = context.RightArg.Split(new[] { ',' }, 2);
 
         string action = isTrue ? parts[0].Trim() : (parts.Length > 1 ? parts[1].Trim() : "");

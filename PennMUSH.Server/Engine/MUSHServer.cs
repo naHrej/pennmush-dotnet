@@ -152,7 +152,7 @@ public class MUSHServer
     private void RegisterCommands()
     {
         Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
-        Dispatcher.Register(new PoseCommandHandler(), "pose", ":", ";");
+        Dispatcher.Register(new PoseCommandHandler(), "pose", ":", ";", "semipose");
         Dispatcher.Register(new LookCommandHandler(Evaluator), "look", "l", "read");
         Dispatcher.Register(new GoCommandHandler(), "go", "goto", "move");
         Dispatcher.Register(new DigCommandHandler(), "@dig");
@@ -195,20 +195,21 @@ public class MUSHServer
         Dispatcher.Register(new ExamineCommandHandler(), "examine", "ex", "x");
 
         // Scripting & Flow Control
-        Dispatcher.Register(new SwitchCommandHandler(Dispatcher, Evaluator), "@switch", "@sw");
+        Dispatcher.Register(new SwitchCommandHandler(Dispatcher, Evaluator), "@switch", "@sw", "@select");
         Dispatcher.Register(new DolistCommandHandler(Dispatcher, Evaluator), "@dolist");
         Dispatcher.Register(new TriggerCommandHandler(Dispatcher, Evaluator), "@trigger", "@tr");
         Dispatcher.Register(new ForceCommandHandler(Dispatcher), "@force");
-        Dispatcher.Register(new IfElseCommandHandler(Dispatcher, Evaluator), "@ifelse", "@if");
+        Dispatcher.Register(new IfElseCommandHandler(Dispatcher, Evaluator), "@ifelse", "@if", "@skip");
         Dispatcher.Register(new CommentCommandHandler(), "@@");
 
         // Object Lifecycle & Admin
         Dispatcher.Register(new DestroyCommandHandler(), "@destroy", "@recycle");
+        Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(), "@clone");
         Dispatcher.Register(new ChownCommandHandler(), "@chown");
         Dispatcher.Register(new WipeCommandHandler(), "@wipe");
-        Dispatcher.Register(new LockCommandHandler(), "@lock");
-        Dispatcher.Register(new UnlockCommandHandler(), "@unlock");
+        Dispatcher.Register(new LockCommandHandler(), "@lock", "@elock", "@ulock");
+        Dispatcher.Register(new UnlockCommandHandler(), "@unlock", "@eunlock", "@uunlock");
         Dispatcher.Register(new StatsCommandHandler(), "@stats");
         Dispatcher.Register(new ScoreCommandHandler(), "score");
         Dispatcher.Register(new DoingCommandHandler(), "doing", "@poll");
