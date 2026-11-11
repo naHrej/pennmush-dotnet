@@ -23,7 +23,7 @@ public class ExtendedCommandTests
     {
         _db = new ObjectDatabase();
         _registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(_registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(_registry.Dispatch, _registry.Database);
         _registry.Evaluator = _evaluator;
 
         _player = _db.CreateObject("Wizard", ObjectType.Player, new Dbref(1));
@@ -36,6 +36,7 @@ public class ExtendedCommandTests
         _dispatcher = new CommandDispatcher();
         _dispatcher.Register(new SetCommandHandler());
         _dispatcher.Register(new ThinkCommandHandler(_evaluator));
+        _dispatcher.Register(new SayCommandHandler(_evaluator), "\"");
         _dispatcher.Register(new NameCommandHandler());
         _dispatcher.Register(new TeleportCommandHandler(), "@tel");
         _dispatcher.Register(new LookCommandHandler(_evaluator), "l");
@@ -60,6 +61,31 @@ public class ExtendedCommandTests
 
         Assert.Single(ctx.Notifications);
         Assert.Equal("40", ctx.Notifications[0]);
+    }
+
+    [Fact]
+    public void SayCommand_EvaluatesSoftcodeBeforeSpeaking()
+    {
+        var ctx = _dispatcher.Dispatch(_player.Id, "say The sum is [add(15, 25)].", _db);
+
+        Assert.Contains("You say, \"The sum is 40.\"", ctx.Notifications);
+    }
+
+    [Fact]
+    public void SayCommand_NoEvalSwitchKeepsSoftcodeLiteral()
+    {
+        var ctx = _dispatcher.Dispatch(_player.Id, "say/noeval The sum is [add(15, 25)].", _db);
+
+        Assert.Contains("You say, \"The sum is [add(15, 25)].\"", ctx.Notifications);
+    }
+
+    [Fact]
+    public void SayCommand_SubstitutesEnactorNameAndPronoun()
+    {
+        _player.SetAttribute("SEX", "female", _player.Id);
+        var ctx = _dispatcher.Dispatch(_player.Id, "say %N says %s is here.", _db);
+
+        Assert.Contains("You say, \"Wizard says she is here.\"", ctx.Notifications);
     }
 
     [Fact]

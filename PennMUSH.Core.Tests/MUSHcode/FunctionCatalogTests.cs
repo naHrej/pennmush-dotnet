@@ -26,7 +26,7 @@ public class FunctionCatalogTests
         _god.AddFlag("WIZARD");
 
         _registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(_registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(_registry.Dispatch, _registry.Database);
         _registry.Evaluator = _evaluator;
 
         _ctx = new EvaluationContext(_god.Id, _god.Id, _god.Id, _room.Id);

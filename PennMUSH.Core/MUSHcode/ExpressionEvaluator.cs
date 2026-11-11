@@ -3,6 +3,8 @@ namespace PennMUSH.Core.MUSHcode;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using PennMUSH.Core.Database;
+using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
 public delegate string FunctionDispatcher(string functionName, EvaluationContext context, string[] args);
@@ -10,10 +12,12 @@ public delegate string FunctionDispatcher(string functionName, EvaluationContext
 public class ExpressionEvaluator
 {
     private readonly FunctionDispatcher? _functionDispatcher;
+    private readonly ObjectDatabase? _database;
 
-    public ExpressionEvaluator(FunctionDispatcher? functionDispatcher = null)
+    public ExpressionEvaluator(FunctionDispatcher? functionDispatcher = null, ObjectDatabase? database = null)
     {
         _functionDispatcher = functionDispatcher;
+        _database = database;
     }
 
     public string Evaluate(string expression, EvaluationContext context)
@@ -156,6 +160,28 @@ public class ExpressionEvaluator
                         {
                             sb.Append((char)37);
                             i += 1;
+                        }
+                    }
+                    else if (TrySubstitute(next, context, out string substituted))
+                    {
+                        sb.Append(substituted);
+                        i += 2;
+                    }
+                    else if (next is 'v' or 'V' or 'w' or 'W' or 'x' or 'X')
+                    {
+                        if (i + 2 >= expression.Length)
+                        {
+                            sb.Append(c);
+                            i += 1;
+                        }
+                        else
+                        {
+                            string attrName = string.Concat(
+                                char.ToUpperInvariant(next),
+                                char.ToUpperInvariant(expression[i + 2]));
+                            string attrValue = ReadExecutorAttribute(context, attrName);
+                            sb.Append(ApplyLeadingCase(attrValue, char.IsUpper(next)));
+                            i += 3;
                         }
                     }
                     else
@@ -308,4 +334,122 @@ public class ExpressionEvaluator
         }
         return -1;
     }
+
+    private bool TrySubstitute(char code, EvaluationContext context, out string value)
+    {
+        bool capitalize = char.IsUpper(code);
+        switch (char.ToLowerInvariant(code))
+        {
+            case 'n':
+                value = ApplyLeadingCase(EnactorName(context), capitalize);
+                return true;
+            case 's':
+                value = ApplyLeadingCase(Pronoun(context, Subject), capitalize);
+                return true;
+            case 'o':
+                value = ApplyLeadingCase(Pronoun(context, Objective), capitalize);
+                return true;
+            case 'p':
+                value = ApplyLeadingCase(Pronoun(context, Possessive), capitalize);
+                return true;
+            case 'a':
+                value = ApplyLeadingCase(Pronoun(context, AbsolutePossessive), capitalize);
+                return true;
+            case ':':
+                value = EnactorObjectId(context);
+                return true;
+            case '+':
+                value = context.Arguments.Length.ToString();
+                return true;
+            case '?':
+                value = $"{context.InvocationCount} {context.RecursionDepth}";
+                return true;
+            default:
+                value = string.Empty;
+                return false;
+        }
+    }
+
+    private MUSHObject? FindObject(Dbref dbref)
+    {
+        if (_database == null || !dbref.IsValid)
+            return null;
+        return _database.GetObject(dbref);
+    }
+
+    private string EnactorName(EvaluationContext context)
+    {
+        return FindObject(context.Enactor)?.Name ?? "#-1";
+    }
+
+    private string EnactorObjectId(EvaluationContext context)
+    {
+        var obj = FindObject(context.Enactor);
+        return obj == null ? "#-1" : $"{obj.Id}:{obj.CreationTime.ToUnixTimeSeconds()}";
+    }
+
+    private string Pronoun(EvaluationContext context, Func<string, string> select)
+    {
+        var obj = FindObject(context.Enactor);
+        if (obj == null)
+            return "#-1";
+        string sex = obj.GetAttribute("SEX", _database)?.Value ?? string.Empty;
+        return select(sex);
+    }
+
+    private string ReadExecutorAttribute(EvaluationContext context, string name)
+    {
+        return FindObject(context.Executor)?.GetAttribute(name, _database)?.Value ?? string.Empty;
+    }
+
+    private static string Subject(string sex) => Gender(sex) switch
+    {
+        "male" => "he",
+        "female" => "she",
+        "plural" => "they",
+        _ => "it"
+    };
+
+    private static string Objective(string sex) => Gender(sex) switch
+    {
+        "male" => "him",
+        "female" => "her",
+        "plural" => "them",
+        _ => "it"
+    };
+
+    private static string Possessive(string sex) => Gender(sex) switch
+    {
+        "male" => "his",
+        "female" => "her",
+        "plural" => "their",
+        _ => "its"
+    };
+
+    private static string AbsolutePossessive(string sex) => Gender(sex) switch
+    {
+        "male" => "his",
+        "female" => "hers",
+        "plural" => "theirs",
+        _ => "its"
+    };
+
+    private static string Gender(string sex)
+    {
+        return sex.Trim().ToLowerInvariant() switch
+        {
+            "male" or "m" => "male",
+            "female" or "f" => "female",
+            "plural" or "p" => "plural",
+            _ => "neuter"
+        };
+    }
+
+    private static string ApplyLeadingCase(string value, bool capitalize)
+    {
+        if (!capitalize || string.IsNullOrEmpty(value))
+            return value;
+        return char.ToUpperInvariant(value[0]) + value[1..];
+    }
+
 }

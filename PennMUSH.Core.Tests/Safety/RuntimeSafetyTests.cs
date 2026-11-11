@@ -28,7 +28,7 @@ public class RuntimeSafetyTests
         _objB = _db.CreateObject("ObjectB", ObjectType.Thing, god.Id);
 
         _registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(_registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(_registry.Dispatch, _registry.Database);
         _registry.Evaluator = _evaluator;
     }
 

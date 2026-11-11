@@ -23,7 +23,7 @@ public class MultiParentAndZoneTests
     {
         _db = new ObjectDatabase();
         var registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(registry.Dispatch, registry.Database);
         registry.Evaluator = _evaluator;
 
         _roomZero = _db.CreateObject("Room Zero", ObjectType.Room, new Dbref(1));
