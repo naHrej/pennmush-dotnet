@@ -8,5 +8,6 @@ public enum AttributeErrorCode
     BadName = -3,
     TooMany = -4,
     Tree = -5,
-    NotFound = -6
+    NotFound = -6,
+    Locked = -7
 }

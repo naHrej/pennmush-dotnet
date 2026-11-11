@@ -83,7 +83,7 @@ public class MUSHObject
         Owner = owner;
     }
 
-    public AttributeErrorCode SetAttribute(string name, string value, Dbref setter, AttributeFlags flags = AttributeFlags.None)
+    public AttributeErrorCode SetAttribute(string name, string value, Dbref setter, AttributeFlags flags = AttributeFlags.None, bool wizardOverride = false)
     {
         if (!AttributeEntry.IsValidName(name))
             return AttributeErrorCode.BadName;
@@ -92,6 +92,8 @@ public class MUSHObject
         {
             if (existing.Flags.HasFlag(AttributeFlags.Safe))
                 return AttributeErrorCode.Safe;
+            if (existing.Flags.HasFlag(AttributeFlags.Locked) && !wizardOverride)
+                return AttributeErrorCode.Locked;
 
             existing.Value = value;
             existing.Creator = setter;
@@ -245,7 +247,7 @@ public class MUSHObject
 
     public bool InZone(Dbref zone) => _zones.Contains(zone);
 
-    public AttributeErrorCode ClearAttribute(string name)
+    public AttributeErrorCode ClearAttribute(string name, bool wizardOverride = false)
     {
         if (string.IsNullOrWhiteSpace(name))
             return AttributeErrorCode.BadName;
@@ -254,12 +256,32 @@ public class MUSHObject
         {
             if (existing.Flags.HasFlag(AttributeFlags.Safe))
                 return AttributeErrorCode.Safe;
+            if (existing.Flags.HasFlag(AttributeFlags.Locked) && !wizardOverride)
+                return AttributeErrorCode.Locked;
 
             _attributes.Remove(name);
             ModificationTime = DateTimeOffset.UtcNow;
             return AttributeErrorCode.Okay;
         }
 
+        return AttributeErrorCode.Okay;
+    }
+
+    public AttributeErrorCode SetAttributeFlags(string name, AttributeFlags flags)
+    {
+        if (string.IsNullOrWhiteSpace(name) || !_attributes.TryGetValue(name, out var existing))
+            return AttributeErrorCode.NotFound;
+        existing.Flags = flags;
+        ModificationTime = DateTimeOffset.UtcNow;
+        return AttributeErrorCode.Okay;
+    }
+
+    public AttributeErrorCode SetAttributeCreator(string name, Dbref creator)
+    {
+        if (string.IsNullOrWhiteSpace(name) || !_attributes.TryGetValue(name, out var existing))
+            return AttributeErrorCode.NotFound;
+        existing.Creator = creator;
+        ModificationTime = DateTimeOffset.UtcNow;
         return AttributeErrorCode.Okay;
     }
 

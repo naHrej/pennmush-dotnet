@@ -165,7 +165,7 @@ public class MUSHServer
         Dispatcher.Register(new NameCommandHandler(), "@name");
         Dispatcher.Register(new ParentCommandHandler(), "@parent");
         Dispatcher.Register(new ZoneCommandHandler(), "@zone");
-        Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify");
+        Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify", "@drain");
         Dispatcher.Register(new HaltCommandHandler(Queue), "@halt");
         Dispatcher.Register(new AllHaltCommandHandler(Queue), "@allhalt");
         Dispatcher.Register(new ThinkCommandHandler(Evaluator), "think", "th");
@@ -179,8 +179,8 @@ public class MUSHServer
         Dispatcher.Register(new MailCommandHandler(Mail), "@mail");
         Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
         Dispatcher.Register(new HelpCommandHandler(Help), "help", "?");
-        Dispatcher.Register(new EmitCommandHandler(), "@emit", "\\");
-        Dispatcher.Register(new PemitCommandHandler(), "@pemit");
+        Dispatcher.Register(new EmitCommandHandler(), "@emit", "\\", "@lemit");
+        Dispatcher.Register(new PemitCommandHandler(), "@pemit", "@prompt");
         Dispatcher.Register(new RemitCommandHandler(), "@remit");
         Dispatcher.Register(new OemitCommandHandler(), "@oemit");
         Dispatcher.Register(new WallCommandHandler(), "@wall", "@wizwall", "@rwall");
@@ -192,7 +192,7 @@ public class MUSHServer
         Dispatcher.Register(new EnterCommandHandler(), "enter");
         Dispatcher.Register(new LeaveCommandHandler(), "leave");
         Dispatcher.Register(new GiveCommandHandler(), "give");
-        Dispatcher.Register(new ExamineCommandHandler(), "examine", "ex", "x");
+        Dispatcher.Register(new ExamineCommandHandler(), "examine", "ex", "x", "brief");
 
         // Scripting & Flow Control
         Dispatcher.Register(new SwitchCommandHandler(Dispatcher, Evaluator), "@switch", "@sw", "@select");
@@ -204,6 +204,23 @@ public class MUSHServer
 
         // Object Lifecycle & Admin
         Dispatcher.Register(new DestroyCommandHandler(), "@destroy", "@recycle");
+        Dispatcher.Register(new CopyAttributeCommandHandler(), "@cpattr", "@mvattr");
+        Dispatcher.Register(new EditAttributeCommandHandler(), "@edit");
+        Dispatcher.Register(new GrepCommandHandler(), "@grep");
+        Dispatcher.Register(new AttributeLockCommandHandler(), "@atrlock");
+        Dispatcher.Register(new AttributeChownCommandHandler(), "@atrchown");
+        Dispatcher.Register(new LockFlagCommandHandler(), "@lset");
+        Dispatcher.Register(new DecompileCommandHandler(), "@decompile");
+        Dispatcher.Register(new MonikerCommandHandler(), "@moniker");
+        Dispatcher.Register(new MessageCommandHandler(Evaluator), "@message");
+        Dispatcher.Register(new FindCommandHandler(), "@find");
+        Dispatcher.Register(new WhereIsCommandHandler(), "@whereis");
+        Dispatcher.Register(new EntrancesCommandHandler(), "@entrances");
+        Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
+        Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
+        Dispatcher.Register(new PoorCommandHandler(), "@poor");
+        Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions), "@list");
+        Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(), "@clone");
         Dispatcher.Register(new ChownCommandHandler(), "@chown");
@@ -497,7 +514,7 @@ public class MUSHServer
             case NotificationScope.Target:
                 if (notification.Target.IsValid)
                 {
-                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload);
+                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload, notification.Prompt);
                 }
                 break;
 
@@ -525,7 +542,7 @@ public class MUSHServer
         }
     }
 
-    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null)
+    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null, bool prompt = false)
     {
         foreach (var c in _connections.Values)
         {
@@ -537,7 +554,7 @@ public class MUSHServer
                 }
                 else
                 {
-                    _ = c.SendLineAsync(message);
+                    _ = prompt ? c.SendRawAsync(message) : c.SendLineAsync(message);
                 }
             }
         }

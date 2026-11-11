@@ -1,8 +1,8 @@
 # Port order for the remaining commands
 
-`unimplemented-commands.md` names the player commands that still have no registration, plus `@poll`, which is registered on the `doing` handler and only sets `DOING`. This file is the order to port them in. A command belongs early when the data it reads, and the handler it most resembles, already exist. Each later tier adds one foundation and then the commands that need it.
+`unimplemented-commands.md` names the 78 player commands that still have no registration, plus `@poll`, which is registered on the `doing` handler and only sets `DOING`. This file is the order to port them in. A command belongs early when the data it reads, and the handler it most resembles, already exist. Each later tier adds one foundation and then the commands that need it.
 
-Tier 0 is done. `semipose`, `@select`, `@skip`, `@elock`, `@ulock`, `@eunlock`, `@uunlock`, `@undestroy`, and `@unrecycle` are registered. The next batch is tier 1, the commands that only read or write state an object already has.
+Tier 0 is done. `semipose`, `@select`, `@skip`, `@elock`, `@ulock`, `@eunlock`, `@uunlock`, `@undestroy`, and `@unrecycle` are registered. The commands that only read or write state an object already has are registered too: `@cpattr`, `@mvattr`, `@edit`, `@grep`, `@atrlock`, `@atrchown`, `@lset`, `@decompile`, `@moniker`, `@message`, `@prompt`, `@lemit`, `@find`, `@whereis`, `brief`, `@drain`, `@dump`, `@uptime`, `@poor`, `@list`, `@entrances`, and `@firstexit`. The next batch is tier 2.
 
 ## What already exists
 
@@ -18,7 +18,7 @@ These are the pieces a new command can call without a new subsystem:
 
 ## Tier 1 — read or write state the object already has
 
-No new table and no new field. Persistence for attribute edits comes from the existing attribute save. This is the next batch.
+Registered. No new table and no new field. Attribute edits are stored by the existing attribute save. `@set` refuses to change an attribute marked locked unless the setter is a wizard. `@prompt` writes the target line with no trailing newline.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ No new table and no new field. Persistence for attribute edits comes from the ex
 | 2 | `@mvattr` | `@cpattr`, then clear the source. |
 | 3 | `@edit` | Replace text inside one attribute. `/regexp` can wait until the plain replace works. |
 | 4 | `@grep` | Read attributes on one object and print matches. |
-| 5 | `@atrlock` | Set or clear `AttributeFlags.Locked` and report it. Enforcing the flag on later `@set` belongs with this command, because the flag is already stored and currently ignored. |
+| 5 | `@atrlock` | Set or clear `AttributeFlags.Locked` and report it. A later `@set` leaves the attribute unchanged unless the setter is a wizard. |
 | 6 | `@atrchown` | Change the attribute creator. The same operation as `@chown` on one attribute. |
 | 7 | `@lset` | Change flags on a lock `SetLock` already stores. The lock key stays as it is. |
 | 8 | `@decompile` | Print an object's flags and attributes back as commands. `examine` already gathers that data. |
@@ -65,7 +65,7 @@ Each block starts with the foundation. The commands under it come after that fou
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | The matching emit handler with nospoof forced. `@nsprompt` also needs `@prompt`. `@nslemit` also needs `@lemit`. |
+| 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | The matching emit handler with nospoof forced. `@prompt` and `@lemit` are registered. |
 | 27 | `@nszemit` | `@zemit`, below. |
 
 ### Zones get a player-facing change and a broadcast
@@ -238,7 +238,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | `buy` | Pay-lock checks and penny transfer. |
 | `@chownall` | Quota. |
 | `@nszemit` | `@zemit`. |
-| `@nsprompt`, `@nslemit` | `@prompt` and `@lemit`, then nospoof. |
+| `@nsprompt`, `@nslemit` | Nospoof. `@prompt` and `@lemit` are registered. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@clock` | Channel locks. It is not a time command. |

@@ -227,6 +227,8 @@ public class ExamineCommandHandler : ICommandHandler
             sb.AppendLine($"Powers: {string.Join(" ", target.Powers)}");
         sb.AppendLine($"Location: {target.Location}  Home: {target.Home}");
 
+        if (!context.CommandName.Equals("brief", StringComparison.OrdinalIgnoreCase))
+        {
         // Contents
         var contents = db.GetContents(target.Id).ToList();
         if (contents.Count > 0)
@@ -266,6 +268,8 @@ public class ExamineCommandHandler : ICommandHandler
             {
                 sb.AppendLine($"  {l.Type}: {l.Key}");
             }
+        }
+
         }
 
         context.Notify(sb.ToString().TrimEnd());

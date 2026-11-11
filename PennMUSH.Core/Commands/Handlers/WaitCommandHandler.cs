@@ -18,6 +18,20 @@ public class WaitCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
+        if (context.CommandName.Equals("@drain", StringComparison.OrdinalIgnoreCase))
+        {
+            string sem = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
+            if (string.IsNullOrWhiteSpace(sem))
+            {
+                context.Notify("Drain what semaphore?");
+                return false;
+            }
+
+            int count = _queue.DrainSemaphore(sem);
+            context.Notify($"Drained {count} process(es) on semaphore '{sem}'.");
+            return true;
+        }
+
         if (context.CommandName.Equals("@notify", StringComparison.OrdinalIgnoreCase))
         {
             string sem = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();

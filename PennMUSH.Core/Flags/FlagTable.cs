@@ -118,6 +118,9 @@ public static class FlagTable
         PowersByName[def.Name] = def;
     }
 
+    public static IReadOnlyList<FlagDefinition> Definitions => AllFlags;
+    public static IEnumerable<string> PowerNames => PowersByName.Keys;
+
     public static FlagDefinition? FindFlag(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;

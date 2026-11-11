@@ -24,9 +24,9 @@ public class CommandContext
         Notifications.Add(message);
     }
 
-    public void NotifyTarget(Dbref target, string message)
+    public void NotifyTarget(Dbref target, string message, bool prompt = false)
     {
-        TargetedNotifications.Add(new Notification(NotificationScope.Target, message, target));
+        TargetedNotifications.Add(new Notification(NotificationScope.Target, message, target, Prompt: prompt));
         if (target == Executor)
         {
             Notifications.Add(message);

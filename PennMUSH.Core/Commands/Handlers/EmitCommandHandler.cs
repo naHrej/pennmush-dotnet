@@ -54,7 +54,8 @@ public class PemitCommandHandler : ICommandHandler
         }
         else
         {
-            context.NotifyTarget(target.Id, context.RightArg);
+            bool prompt = context.CommandName.Equals("@prompt", StringComparison.OrdinalIgnoreCase);
+            context.NotifyTarget(target.Id, context.RightArg, prompt);
         }
 
         if (!context.Switches.Contains("silent"))

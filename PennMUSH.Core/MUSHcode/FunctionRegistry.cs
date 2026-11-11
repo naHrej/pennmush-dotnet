@@ -44,6 +44,7 @@ public class FunctionRegistry
     }
 
     public bool HasFunction(string name) => _functions.ContainsKey(name);
+    public IEnumerable<string> Names => _functions.Keys;
 
     public string Dispatch(string functionName, EvaluationContext context, string[] args)
     {
