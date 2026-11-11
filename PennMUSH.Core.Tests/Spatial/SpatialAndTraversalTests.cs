@@ -24,7 +24,7 @@ public class SpatialAndTraversalTests
     {
         _db = new ObjectDatabase();
         var registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(registry.Dispatch, registry.Database);
         registry.Evaluator = _evaluator;
 
         _lookHandler = new LookCommandHandler(_evaluator);

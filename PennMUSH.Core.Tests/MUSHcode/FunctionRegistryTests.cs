@@ -19,7 +19,7 @@ public class FunctionRegistryTests
     {
         _database = new ObjectDatabase();
         _registry = new FunctionRegistry(_database);
-        _evaluator = new ExpressionEvaluator(_registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(_registry.Dispatch, _registry.Database);
         _registry.Evaluator = _evaluator;
 
         var owner = _database.CreateObject("Wizard", ObjectType.Player, new Dbref(1));

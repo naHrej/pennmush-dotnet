@@ -2,6 +2,8 @@ namespace PennMUSH.Core.Tests.MUSHcode;
 
 using System;
 using Xunit;
+using PennMUSH.Core.Database;
+using PennMUSH.Core.Entities;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 
@@ -131,5 +133,91 @@ public class ExpressionEvaluatorTests
         };
         var invocationResult = _evaluator.Evaluate("test", busyCtx);
         Assert.Equal("#-1 FUNCTION INVOCATION LIMIT EXCEEDED", invocationResult);
+    }
+}
+
+public class EnactorPercentSubstitutionTests
+{
+    [Fact]
+    public void Evaluate_EnactorNameAndPronouns_FollowSexAttribute()
+    {
+        var db = new ObjectDatabase();
+        var ada = db.CreateObject("ada", ObjectType.Player, new Dbref(1));
+        ada.SetAttribute("SEX", "female", ada.Id);
+        ada.SetAttribute("VA", "bright star", ada.Id);
+        var ctx = new EvaluationContext(executor: ada.Id, enactor: ada.Id);
+        var evaluator = new ExpressionEvaluator(database: db);
+
+        Assert.Equal("ada", evaluator.Evaluate("%n", ctx));
+        Assert.Equal("Ada", evaluator.Evaluate("%N", ctx));
+        Assert.Equal("she", evaluator.Evaluate("%s", ctx));
+        Assert.Equal("She", evaluator.Evaluate("%S", ctx));
+        Assert.Equal("her", evaluator.Evaluate("%o", ctx));
+        Assert.Equal("her", evaluator.Evaluate("%p", ctx));
+        Assert.Equal("hers", evaluator.Evaluate("%a", ctx));
+        Assert.Equal("Hers", evaluator.Evaluate("%A", new EvaluationContext(ada.Id, ada.Id)));
+    }
+
+    [Fact]
+    public void Evaluate_MaleAndPluralPronouns()
+    {
+        var db = new ObjectDatabase();
+        var owen = db.CreateObject("owen", ObjectType.Player, new Dbref(1));
+        owen.SetAttribute("SEX", "male", owen.Id);
+        var crew = db.CreateObject("crew", ObjectType.Thing, owen.Id);
+        crew.SetAttribute("SEX", "plural", crew.Id);
+        var evaluator = new ExpressionEvaluator(database: db);
+
+        Assert.Equal("him", evaluator.Evaluate("%o", new EvaluationContext(owen.Id, owen.Id)));
+        Assert.Equal("they", evaluator.Evaluate("%s", new EvaluationContext(crew.Id, crew.Id)));
+        Assert.Equal("theirs", evaluator.Evaluate("%a", new EvaluationContext(crew.Id, crew.Id)));
+    }
+
+    [Fact]
+    public void Evaluate_ObjectIdArgumentCountAndBudget()
+    {
+        var db = new ObjectDatabase();
+        var ada = db.CreateObject("ada", ObjectType.Player, new Dbref(1));
+        var ctx = new EvaluationContext(
+            executor: ada.Id,
+            enactor: ada.Id,
+            args: new[] { "one", "two" });
+        var evaluator = new ExpressionEvaluator(database: db);
+
+        Assert.Equal($"{ada.Id}:{ada.CreationTime.ToUnixTimeSeconds()}", evaluator.Evaluate("%:", ctx));
+        Assert.Equal("2", evaluator.Evaluate("%+", ctx));
+        var budget = new EvaluationContext(executor: ada.Id, enactor: ada.Id);
+        Assert.Equal("1 0", evaluator.Evaluate("%?", budget));
+    }
+
+    [Fact]
+    public void Evaluate_AttributePercentCodes_ReadExecutorAttributes()
+    {
+        var db = new ObjectDatabase();
+        var ada = db.CreateObject("ada", ObjectType.Player, new Dbref(1));
+        var room = db.CreateObject("Hall", ObjectType.Room, ada.Id);
+        ada.SetAttribute("VA", "bright star", ada.Id);
+        ada.SetAttribute("WB", "quiet", ada.Id);
+        room.SetAttribute("XA", "hall light", room.Id);
+        var ctx = new EvaluationContext(executor: ada.Id, enactor: room.Id);
+        var evaluator = new ExpressionEvaluator(database: db);
+
+        Assert.Equal("bright star", evaluator.Evaluate("%va", ctx));
+        Assert.Equal("Bright star", evaluator.Evaluate("%VA", ctx));
+        Assert.Equal("quiet", evaluator.Evaluate("%wb", ctx));
+        Assert.Equal(string.Empty, evaluator.Evaluate("%vz", ctx));
+        Assert.Equal("hall light", evaluator.Evaluate("%xa", new EvaluationContext(room.Id, ada.Id)));
+    }
+
+    [Fact]
+    public void Evaluate_MissingEnactor_ReturnsNoMatchMarker()
+    {
+        var db = new ObjectDatabase();
+        var evaluator = new ExpressionEvaluator(database: db);
+        var ctx = new EvaluationContext(executor: new Dbref(4), enactor: new Dbref(9));
+
+        Assert.Equal("#-1", evaluator.Evaluate("%n", ctx));
+        Assert.Equal("#-1", evaluator.Evaluate("%s", ctx));
+        Assert.Equal("#-1", evaluator.Evaluate("%:", ctx));
     }
 }

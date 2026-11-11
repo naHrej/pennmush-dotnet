@@ -39,7 +39,7 @@ public class CronSchedulerTests
         _scheduler = new CronScheduler();
 
         _registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(_registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(_registry.Dispatch, _registry.Database);
         _registry.Evaluator = _evaluator;
         _registry.Scheduler = _scheduler;
         CronFunctions.Initialize(_scheduler);

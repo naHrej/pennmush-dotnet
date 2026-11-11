@@ -89,7 +89,7 @@ public class MUSHServer
         Functions.EditorSessions = EditorSessions;
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
-        Evaluator = new ExpressionEvaluator(Functions.Dispatch);
+        Evaluator = new ExpressionEvaluator(Functions.Dispatch, Functions.Database);
         Functions.Evaluator = Evaluator;
 
         AsyncFunctions.Initialize(Queue);
@@ -151,7 +151,7 @@ public class MUSHServer
 
     private void RegisterCommands()
     {
-        Dispatcher.Register(new SayCommandHandler(), "say", "\"", "'");
+        Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
         Dispatcher.Register(new PoseCommandHandler(), "pose", ":", ";");
         Dispatcher.Register(new LookCommandHandler(Evaluator), "look", "l", "read");
         Dispatcher.Register(new GoCommandHandler(), "go", "goto", "move");

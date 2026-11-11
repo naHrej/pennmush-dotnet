@@ -31,7 +31,7 @@ public class ActionQueueAndAsyncTests
         AsyncFunctions.Initialize(_queue);
 
         var registry = new FunctionRegistry(_db);
-        _evaluator = new ExpressionEvaluator(registry.Dispatch);
+        _evaluator = new ExpressionEvaluator(registry.Dispatch, registry.Database);
         registry.Evaluator = _evaluator;
         AsyncFunctions.Register(registry, _queue);
 

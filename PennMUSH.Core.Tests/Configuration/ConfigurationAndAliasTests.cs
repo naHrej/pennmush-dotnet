@@ -157,7 +157,7 @@ public class ConfigurationAndAliasTests
     {
         var db = new ObjectDatabase();
         var registry = new FunctionRegistry(db);
-        var evaluator = new ExpressionEvaluator(registry.Dispatch);
+        var evaluator = new ExpressionEvaluator(registry.Dispatch, registry.Database);
         registry.Evaluator = evaluator;
 
         // Add alias parse -> iter, mod -> modulo

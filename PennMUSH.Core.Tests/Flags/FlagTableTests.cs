@@ -170,7 +170,7 @@ public class FlagTableTests
     public void MUSHcode_FlagAndPowerFunctions_EvaluateProperly()
     {
         var registry = new FunctionRegistry(_db);
-        var evaluator = new ExpressionEvaluator(registry.Dispatch);
+        var evaluator = new ExpressionEvaluator(registry.Dispatch, registry.Database);
         var ctx = new EvaluationContext(_god.Id, _god.Id);
 
         _thing.AddFlag("SAFE");
