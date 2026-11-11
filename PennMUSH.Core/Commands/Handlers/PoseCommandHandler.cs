@@ -17,7 +17,9 @@ public class PoseCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         string name = execObj != null ? execObj.Name : context.Executor.ToString();
 
-        bool noSpace = context.CommandName == ";" || context.Switches.Contains("nospace");
+        bool noSpace = context.CommandName.Equals(";", StringComparison.Ordinal)
+            || context.CommandName.Equals("semipose", StringComparison.OrdinalIgnoreCase)
+            || context.Switches.Contains("nospace");
         string message = noSpace ? $"{name}{context.Arguments}" : $"{name} {context.Arguments}";
 
         if (execObj != null && execObj.Location.IsValid)

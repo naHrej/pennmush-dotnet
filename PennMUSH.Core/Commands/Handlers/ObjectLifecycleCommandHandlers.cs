@@ -59,6 +59,66 @@ public class DestroyCommandHandler : ICommandHandler
     }
 }
 
+public class UndestroyCommandHandler : ICommandHandler
+{
+    public string Name => "@undestroy";
+
+    public bool Execute(CommandContext context, ObjectDatabase db)
+    {
+        if (string.IsNullOrWhiteSpace(context.Arguments))
+        {
+            context.Notify("Undestroy what?");
+            return false;
+        }
+
+        var actor = db.GetObject(context.Executor);
+        var target = ResolveTarget(context.Arguments.Trim(), context.Executor, db);
+        if (target == null)
+        {
+            context.Notify("I can't find that object.");
+            return false;
+        }
+
+        if (actor == null || (!actor.IsWizard && target.Owner != context.Executor))
+        {
+            context.Notify("Alas, your efforts of mercy are in vain.");
+            return false;
+        }
+
+        if (!target.RemoveFlag("GOING"))
+        {
+            context.Notify("That can't be undestroyed.");
+            return false;
+        }
+
+        string spared = $"{target.Name} ({target.Id}) has been spared from destruction.";
+        var owner = db.GetObject(target.Owner);
+        if (owner != null && owner.Id != context.Executor)
+        {
+            context.NotifyTarget(owner.Id, $"Your {spared}");
+            context.Notify($"{owner.Name}'s {spared}");
+        }
+        else
+        {
+            context.Notify($"Your {spared}");
+        }
+
+        return true;
+    }
+
+    private static MUSHObject? ResolveTarget(string nameOrRef, Dbref executor, ObjectDatabase db)
+    {
+        if (nameOrRef.Equals("here", StringComparison.OrdinalIgnoreCase))
+        {
+            var exec = db.GetObject(executor);
+            return exec != null && exec.Location.IsValid ? db.GetObject(exec.Location) : null;
+        }
+        if (nameOrRef.StartsWith('#') && int.TryParse(nameOrRef.Substring(1), out int id))
+            return db.GetObject(new Dbref(id));
+        return db.FindInContents(executor, nameOrRef) ?? db.FindObject(nameOrRef);
+    }
+}
+
 public class CloneCommandHandler : ICommandHandler
 {
     public string Name => "@clone";
@@ -219,7 +279,7 @@ public class LockCommandHandler : ICommandHandler
             return false;
         }
 
-        string lockType = context.Switches.FirstOrDefault() ?? "Default";
+        string lockType = LockCommands.LockCommandType(context);
         var lockNode = LockParser.Parse(context.RightArg.Trim());
 
         target.SetLock(lockType, lockNode, context.Executor);
@@ -247,7 +307,7 @@ public class UnlockCommandHandler : ICommandHandler
             return false;
         }
 
-        string lockType = context.Switches.FirstOrDefault() ?? "Default";
+        string lockType = LockCommands.LockCommandType(context);
         if (target.ClearLock(lockType))
         {
             context.Notify($"Unlocked ({lockType}) on {target.Name}.");
@@ -332,5 +392,19 @@ public class VersionCommandHandler : ICommandHandler
         context.Notify("Modern virtual world engine with C3 DAG inheritance, async softcode, and cron scheduler.");
         context.Notify("Feature-parity reimplementation of PennMUSH 1.8+.");
         return true;
+    }
+}
+
+internal static class LockCommands
+{
+    public static string LockCommandType(CommandContext context)
+    {
+        if (context.CommandName.Equals("@elock", StringComparison.OrdinalIgnoreCase)
+            || context.CommandName.Equals("@eunlock", StringComparison.OrdinalIgnoreCase))
+            return LockType.Enter;
+        if (context.CommandName.Equals("@ulock", StringComparison.OrdinalIgnoreCase)
+            || context.CommandName.Equals("@uunlock", StringComparison.OrdinalIgnoreCase))
+            return LockType.Use;
+        return context.Switches.FirstOrDefault() ?? "Default";
     }
 }
