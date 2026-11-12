@@ -165,6 +165,13 @@ public class MUSHServer
         Dispatcher.Register(new NameCommandHandler(), "@name");
         Dispatcher.Register(new ParentCommandHandler(), "@parent");
         Dispatcher.Register(new ZoneCommandHandler(), "@zone");
+        Dispatcher.Register(new ChzoneCommandHandler(), "@chzone");
+        Dispatcher.Register(new ChzoneAllCommandHandler(), "@chzoneall");
+        Dispatcher.Register(new ZemitCommandHandler(), "@zemit", "@nszemit");
+        Dispatcher.Register(new ScanCommandHandler(Config.MasterRoom.Value), "@scan");
+        Dispatcher.Register(new SweepCommandHandler(), "@sweep");
+        Dispatcher.Register(new WithCommandHandler(Dispatcher, Evaluator, Config.MasterRoom.Value), "with");
+        Dispatcher.Register(new SearchCommandHandler(), "@search");
         Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify", "@drain");
         Dispatcher.Register(new HaltCommandHandler(Queue), "@halt");
         Dispatcher.Register(new AllHaltCommandHandler(Queue), "@allhalt");
@@ -293,6 +300,7 @@ public class MUSHServer
         _connections.TryRemove(conn.Id, out _);
         if (conn.PlayerId.IsValid)
         {
+            Database.SetConnected(conn.PlayerId, false);
             var player = Database.GetObject(conn.PlayerId);
             if (player != null && player.Location.IsValid)
             {
@@ -399,6 +407,7 @@ public class MUSHServer
                 }
 
                 conn.PlayerId = player.Id;
+                Database.SetConnected(player.Id, true);
                 await conn.SendLineAsync($"Welcome back to {Config.MudName}, {player.Name}!", ct);
 
                 // Send MOTD
@@ -463,6 +472,7 @@ public class MUSHServer
             Storage.Save(Database);
 
             conn.PlayerId = newPlayer.Id;
+            Database.SetConnected(newPlayer.Id, true);
             await conn.SendLineAsync($"Character {name} created! Welcome to {Config.MudName}.", ct);
 
             // Send New User greeting

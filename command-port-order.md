@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@chzone`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@purge`.
 
 ## What already exists
 
@@ -97,10 +97,10 @@ Each block starts with the foundation. The commands under it come after that fou
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 28 | `@chzone` | Set one object's zone through that helper, after the chzone lock. |
-| 🔴 29 | `@chzoneall` | `@chzone` for each object a player owns. |
-| ⚪ 30 | `@zemit` | Emit to objects that share a zone. |
-| 🔴 31 | `@nszemit` | `@zemit` with nospoof forced. |
+| 🔵 28 | `@chzone` | Control the object, and control the zone or pass its chzone lock. A non-player loses wizard, royalty, trust, and powers unless a wizard uses `/preserve`. No chzone failure attributes. A zone with no zone lock is locked to its owner. |
+| 🟢 29 | `@chzoneall` | `@chzone` for each object a player owns. Wizards only. |
+| 🟢 30 | `@zemit` | Emit to every room in the zone. You must control the zone. |
+| 🟢 31 | `@nszemit` | `@zemit` with the speaker prefix forced. |
 
 ### Listeners and nearby commands
 
@@ -108,10 +108,10 @@ Each block starts with the foundation. The commands under it come after that fou
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 32 | `@scan` | Report those listeners. Switches only choose which set is scanned. |
-| ⚪ 33 | `@sweep` | Report listeners, puppets, and connected players in the room, inventory, or exits. |
-| ⚪ 34 | `with` | Run the command against one nearby object's listeners. `/room` uses the zone and the master room. |
-| ⚪ 35 | `@search` | The same database walk as `@entrances`, plus the right-hand criteria. |
+| 🔵 32 | `@scan` | Lists the $-commands that match the text, in the room, its contents, what you carry, yourself, the zone, or the master room. Speech still does not run zone or master-room commands. |
+| 🔵 33 | `@sweep` | Lists listeners, puppets, and connected players in the room, inventory, or exits. Hearing is players and puppets, and a player is connected after login. |
+| 🔵 34 | `with` | Runs the first matching $-command on a nearby object, one you control, or your zone object. `with/room` runs every match in a room, including your zone room and the master room. `/noeval` is ignored. |
+| 🔵 35 | `@search` | Walks the database and keeps objects by owner, type, name, zone, parent, flags, and powers. No eval, lock, command, or listen search. |
 
 ### Destroy finishes what `@destroy` starts
 
@@ -260,7 +260,6 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | `follow`, `unfollow`, `dismiss`, `desert` | The follower list and the movement hook. |
 | `buy` | Pay-lock checks and penny transfer. |
 | `@chownall` | Quota. |
-| `@nszemit` | `@zemit`. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@clock` | Channel locks. It is not a time command. |
