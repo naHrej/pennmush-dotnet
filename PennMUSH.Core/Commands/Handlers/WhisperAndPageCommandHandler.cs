@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -77,6 +78,12 @@ public class PageCommandHandler : ICommandHandler
         if (target == null)
         {
             context.Notify($"I cannot find player '{targetName}'.");
+            return false;
+        }
+
+        if (!target.EvalLock(LockType.Page, context.Executor, db))
+        {
+            context.Notify("Permission denied.");
             return false;
         }
 

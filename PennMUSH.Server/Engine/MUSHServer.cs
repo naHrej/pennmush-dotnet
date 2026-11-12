@@ -192,6 +192,9 @@ public class MUSHServer
         Dispatcher.Register(new EnterCommandHandler(), "enter");
         Dispatcher.Register(new LeaveCommandHandler(), "leave");
         Dispatcher.Register(new GiveCommandHandler(), "give");
+        Dispatcher.Register(new UseCommandHandler(Queue, Evaluator), "use");
+        Dispatcher.Register(new EmptyCommandHandler(), "empty");
+        Dispatcher.Register(new TeachCommandHandler(Queue), "teach");
         Dispatcher.Register(new ExamineCommandHandler(), "examine", "ex", "x", "brief");
 
         // Scripting & Flow Control

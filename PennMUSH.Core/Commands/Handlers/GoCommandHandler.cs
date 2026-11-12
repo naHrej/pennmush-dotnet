@@ -61,26 +61,39 @@ public class GoCommandHandler : ICommandHandler
             return false;
         }
 
-        // Check lock if present
-        var lockAttr = exitObj.GetAttribute("LOCK");
-        if (lockAttr != null && !string.IsNullOrWhiteSpace(lockAttr.Value))
+        var here = db.GetObject(execObj.Location);
+        if (here != null && !here.EvalLock(LockType.Leave, context.Executor, db))
         {
-            var lockNode = LockParser.Parse(lockAttr.Value);
-            bool passed = lockNode.Evaluate(context.Executor, exitObj.Id, db);
-            if (!passed)
+            context.Notify("You can't go that way.");
+            return false;
+        }
+
+        // A stored basic lock is the exit key. The LOCK attribute remains for keys
+        // that were written before locks were stored on the object.
+        bool locked = false;
+        if (exitObj.GetLock(LockType.Basic) != null)
+        {
+            locked = !exitObj.EvalLock(LockType.Basic, context.Executor, db);
+        }
+        else
+        {
+            var lockAttr = exitObj.GetAttribute("LOCK");
+            if (lockAttr != null && !string.IsNullOrWhiteSpace(lockAttr.Value))
             {
-                var lockCtx = new EvaluationContext(context.Executor, context.Enactor, location: execObj.Location);
-                var failAttr = exitObj.GetAttribute("FAIL");
-                if (failAttr != null && !string.IsNullOrWhiteSpace(failAttr.Value))
-                {
-                    context.Notify(_evaluator != null ? _evaluator.Evaluate(failAttr.Value, lockCtx) : failAttr.Value);
-                }
-                else
-                {
-                    context.Notify("You can't go that way.");
-                }
-                return false;
+                var lockNode = LockParser.Parse(lockAttr.Value);
+                locked = !lockNode.Evaluate(context.Executor, exitObj.Id, db);
             }
+        }
+
+        if (locked)
+        {
+            var lockCtx = new EvaluationContext(context.Executor, context.Enactor, location: execObj.Location);
+            var failAttr = exitObj.GetAttribute("FAIL");
+            if (failAttr != null && !string.IsNullOrWhiteSpace(failAttr.Value))
+                context.Notify(_evaluator != null ? _evaluator.Evaluate(failAttr.Value, lockCtx) : failAttr.Value);
+            else
+                context.Notify("You can't go that way.");
+            return false;
         }
 
         // Traversal success hooks
