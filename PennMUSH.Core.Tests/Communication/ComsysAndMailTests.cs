@@ -104,7 +104,7 @@ public class ComsysAndMailTests
 
         // Wizard emits
         var ctx1 = _dispatcher.Dispatch(_wizard.Id, "@cemit News=Server restart in 10 minutes.", _db);
-        Assert.Contains("[News] Server restart in 10 minutes.", ctx1.Notifications);
+        Assert.Contains("[News] [God:] Server restart in 10 minutes.", ctx1.Notifications);
 
         // Mortal alice cannot cemit
         var ctx2 = _dispatcher.Dispatch(_alice.Id, "@cemit News=Hacked!", _db);

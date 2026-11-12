@@ -3,6 +3,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Entities;
 
 public class CemitCommandHandler : ICommandHandler
 {
@@ -43,9 +44,8 @@ public class CemitCommandHandler : ICommandHandler
         }
 
         bool noisy = context.Switches.Contains("noisy");
-        string emitText = noisy ? $"[{ch.Name}] {executor.Name}: {message}" : $"[{ch.Name}] {message}";
-
-        var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, message, isEmit: !noisy, isNoisy: noisy);
+        string body = SpoofPrefix.Apply(executor, context.CommandName, message);
+        var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, body, isEmit: !noisy, isNoisy: noisy);
         if (result != null)
         {
             context.Notify(result.FormattedMessage);

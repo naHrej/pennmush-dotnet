@@ -139,7 +139,7 @@ public class ObjectReadWriteCommandTests
 
         var prompt = result.TargetedNotifications.Single(n => n.Scope == NotificationScope.Target);
         Assert.True(prompt.Prompt);
-        Assert.Equal("Ready?", prompt.Message);
+        Assert.Equal("[Owner:] Ready?", prompt.Message);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class ObjectReadWriteCommandTests
 
         var result = _dispatcher.Dispatch(_owner, "@lemit The lamps flicker.", _db);
 
-        Assert.Equal("The lamps flicker.", result.Notifications.Single());
+        Assert.Equal("[Owner:] The lamps flicker.", result.Notifications.Single());
         Assert.Equal(NotificationScope.Room, result.TargetedNotifications.Single().Scope);
     }
 

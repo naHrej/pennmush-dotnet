@@ -5,6 +5,17 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
+internal static class SpoofPrefix
+{
+    public static string Apply(MUSHObject speaker, string commandName, string message)
+    {
+        bool forced = commandName.StartsWith("@ns", StringComparison.OrdinalIgnoreCase);
+        if (!forced && speaker.HasPower("Can_spoof"))
+            return message;
+        return $"[{speaker.Name}:] {message}";
+    }
+}
+
 public class EmitCommandHandler : ICommandHandler
 {
     public string Name => "@emit";
@@ -24,7 +35,7 @@ public class EmitCommandHandler : ICommandHandler
             return false;
         }
 
-        context.NotifyRoom(execObj.Location, context.Arguments);
+        context.NotifyRoom(execObj.Location, SpoofPrefix.Apply(execObj, context.CommandName, context.Arguments));
         return true;
     }
 }
@@ -48,14 +59,19 @@ public class PemitCommandHandler : ICommandHandler
             return false;
         }
 
+        var speaker = db.GetObject(context.Executor);
+        string message = speaker == null
+            ? context.RightArg
+            : SpoofPrefix.Apply(speaker, context.CommandName, context.RightArg);
+        bool prompt = context.CommandName.Contains("prompt", StringComparison.OrdinalIgnoreCase);
+
         if (target.Type == ObjectType.Room)
         {
-            context.NotifyRoom(target.Id, context.RightArg);
+            context.NotifyRoom(target.Id, message);
         }
         else
         {
-            bool prompt = context.CommandName.Equals("@prompt", StringComparison.OrdinalIgnoreCase);
-            context.NotifyTarget(target.Id, context.RightArg, prompt);
+            context.NotifyTarget(target.Id, message, prompt);
         }
 
         if (!context.Switches.Contains("silent"))
@@ -105,7 +121,11 @@ public class RemitCommandHandler : ICommandHandler
             return false;
         }
 
-        context.NotifyRoom(room.Id, context.RightArg);
+        var speaker = db.GetObject(context.Executor);
+        string message = speaker == null
+            ? context.RightArg
+            : SpoofPrefix.Apply(speaker, context.CommandName, context.RightArg);
+        context.NotifyRoom(room.Id, message);
         context.Notify($"Message sent to {room.Name}.");
         return true;
     }
@@ -152,7 +172,7 @@ public class OemitCommandHandler : ICommandHandler
             return false;
         }
 
-        context.NotifyExcept(execObj.Location, targetRef, context.RightArg);
+        context.NotifyExcept(execObj.Location, targetRef, SpoofPrefix.Apply(execObj, context.CommandName, context.RightArg));
         return true;
     }
 }
