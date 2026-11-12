@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The next white block is the nospoof emits.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@chzone`.
 
 ## What already exists
 
@@ -84,11 +84,11 @@ Each block starts with the foundation. The commands under it come after that fou
 
 ### Nospoof on the emit path
 
-`@emit` and the other room and player emits send the text unchanged. Nospoof means those emits gain a speaker prefix when the player lacks the spoof power. `Can_spoof` is already a power name and is not checked.
+`@emit`, `@oemit`, `@remit`, `@pemit`, `@lemit`, `@prompt`, and `@cemit` add `[Name:] ` when the speaker lacks `Can_spoof`. The `@ns` commands add that prefix even when the speaker has the power. A listener's `NOSPOOF` flag does not change the text.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | The matching emit handler with nospoof forced. `@prompt` and `@lemit` are registered. |
+| 🔵 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | The matching emit with the speaker prefix forced. The listener's `NOSPOOF` flag is not consulted, and the prefix has no dbref. |
 | 🔴 27 | `@nszemit` | `@zemit`, below. |
 
 ### Zones get a player-facing change and a broadcast
@@ -261,7 +261,6 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | `buy` | Pay-lock checks and penny transfer. |
 | `@chownall` | Quota. |
 | `@nszemit` | `@zemit`. |
-| `@nsprompt`, `@nslemit` | Nospoof. `@prompt` and `@lemit` are registered. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@clock` | Channel locks. It is not a time command. |
