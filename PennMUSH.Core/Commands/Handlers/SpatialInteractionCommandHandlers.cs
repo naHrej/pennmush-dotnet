@@ -3,6 +3,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System;
 using System.Text;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -83,6 +84,12 @@ public class EnterCommandHandler : ICommandHandler
             return false;
         }
 
+        if (!target.EvalLock(LockType.Enter, context.Executor, db))
+        {
+            context.Notify("Permission denied.");
+            return false;
+        }
+
         Dbref oldLoc = execObj.Location;
         db.MoveObject(context.Executor, target.Id);
 
@@ -110,6 +117,12 @@ public class LeaveCommandHandler : ICommandHandler
         if (container == null || !container.Location.IsValid || container.Type == ObjectType.Room)
         {
             context.Notify("You can't leave this.");
+            return false;
+        }
+
+        if (!container.EvalLock(LockType.Leave, context.Executor, db))
+        {
+            context.Notify("You can't leave.");
             return false;
         }
 
@@ -187,6 +200,12 @@ public class GiveCommandHandler : ICommandHandler
         if (thing == null)
         {
             context.Notify("You don't have that to give.");
+            return false;
+        }
+
+        if (!thing.EvalLock(LockType.Give, context.Executor, db))
+        {
+            context.Notify("You can't give that away.");
             return false;
         }
 

@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -33,6 +34,12 @@ public class GetCommandHandler : ICommandHandler
         }
 
         if (targetObj.Type != ObjectType.Thing)
+        {
+            context.Notify("You can't pick that up.");
+            return false;
+        }
+
+        if (!targetObj.EvalLock(LockType.Basic, context.Executor, db))
         {
             context.Notify("You can't pick that up.");
             return false;

@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -29,6 +30,19 @@ public class DropCommandHandler : ICommandHandler
         if (targetObj == null)
         {
             context.Notify("You don't have that.");
+            return false;
+        }
+
+        if (!targetObj.EvalLock(LockType.Drop, context.Executor, db))
+        {
+            context.Notify("You can't seem to get rid of that.");
+            return false;
+        }
+
+        var here = db.GetObject(execObj.Location);
+        if (here != null && here.Type == ObjectType.Room && !here.EvalLock(LockType.Drop, context.Executor, db))
+        {
+            context.Notify("You can't seem to drop things here.");
             return false;
         }
 
