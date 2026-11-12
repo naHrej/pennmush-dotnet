@@ -11,4 +11,6 @@ public static class LockType
     public const string Give = "Give";
     public const string Teleport = "Teleport";
     public const string Speech = "Speech";
+    public const string Chzone = "Chzone";
+    public const string Zone = "Zone";
 }

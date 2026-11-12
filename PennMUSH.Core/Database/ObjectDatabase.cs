@@ -7,11 +7,26 @@ using PennMUSH.Core.Types;
 public class ObjectDatabase
 {
     private readonly List<MUSHObject?> _objects = new();
+    private readonly HashSet<Dbref> _connected = new();
 
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
 
-    public void Clear() => _objects.Clear();
+    public void Clear()
+    {
+        _objects.Clear();
+        _connected.Clear();
+    }
+
+    public void SetConnected(Dbref id, bool connected)
+    {
+        if (connected)
+            _connected.Add(id);
+        else
+            _connected.Remove(id);
+    }
+
+    public bool IsConnected(Dbref id) => _connected.Contains(id);
 
     public IEnumerable<MUSHObject> GetAllObjects() => _objects.Where(o => o != null)!;
 
