@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@purge`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@ps`.
 
 ## What already exists
 
@@ -23,7 +23,7 @@ These are the pieces a new command can call without a new subsystem:
 - Objects: attributes (`SetAttribute`, `GetAttribute`, `ClearAttribute`, parent inheritance, a creator dbref, and attribute flags that are stored), `@chown`, `@name`, `@parent`, `@wipe`, `@clone`, `examine`.
 - Locks: `@lock`, `@unlock`, `@elock`, `@ulock`, `@eunlock`, and `@uunlock`. `LockType` names Basic, Enter, Use, Page, Leave, Drop, Give, Teleport, and Speech. `EvalLock` can test a key. Movement, enter, leave, get, drop, give, and page call it. Lock names match regardless of case, so `@lock/enter` is found by the enter check. The named enter and use commands still store `Enter` and `Use`.
 - Flow and queue: `@if` / `@ifelse`, `@skip` (the test reversed), `@switch` (first match unless `/all`), `@select` (always the first match), `@dolist`, `@trigger` (one evaluated result, dispatched once), `@wait`, `@notify` (wakes one waiter), `@halt`, `@allhalt`.
-- World data: zones as a set of dbrefs, pennies, contents and exits as chains linked by `Next`, `GOING` set by `@destroy` and cleared by `@undestroy` / `@unrecycle`. `ObjectDatabase.DestroyObject` exists and is not called. SQLite saves objects, attributes, flags, powers, parents, zones, pennies, and cron after a command whose name starts with `@`.
+- World data: zones as a set of dbrefs, pennies, contents and exits as chains linked by `Next`, `GOING` set by `@destroy` and cleared by `@undestroy` / `@unrecycle`. `@purge` and `@nuke` call `ObjectDatabase.DestroyObject` on objects marked `GOING`. SQLite saves objects, attributes, flags, powers, parents, zones, pennies, and cron after a command whose name starts with `@`.
 - Connections: login `WHO`, an in-memory password dictionary, `DOING`. Passwords are not saved, and the God character has no password entry.
 - Channels, mail, help files, and the connect texts (`motd`, wizard motd) exist in memory or on disk. Channel membership and mail are not saved.
 
@@ -115,12 +115,12 @@ Each block starts with the foundation. The commands under it come after that fou
 
 ### Destroy finishes what `@destroy` starts
 
-`@destroy` sets `GOING` and leaves the object in the database. `@undestroy` clears that flag. Freeing the object is still separate.
+`@destroy` sets `GOING`. `@purge` frees every such object, and `@nuke` frees one object that is already `GOING`.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 36 | `@purge` | Call `DestroyObject` on objects already marked `GOING`. |
-| ⚪ 37 | `@nuke` | `@destroy` that frees an object immediately when it is already `GOING`. |
+| 🔵 36 | `@purge` | Wizards free every `GOING` object except #0, #1, and #2. One purge destroys them. There is no `GOING_TWICE` clock, `@adestroy`, possession sweep, queue drain, or quota refund. |
+| 🔵 37 | `@nuke` | `@destroy` that frees an object already marked `GOING`. `@nuke` and `@destroy/override` can mark a `SAFE` object. A connected player can still be destroyed. |
 
 `@dbck` stays in tier 4. A consistency pass is misleading while locks, mail, channels, and passwords are still unsaved.
 

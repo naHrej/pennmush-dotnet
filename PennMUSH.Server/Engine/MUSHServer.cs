@@ -213,7 +213,8 @@ public class MUSHServer
         Dispatcher.Register(new CommentCommandHandler(), "@@");
 
         // Object Lifecycle & Admin
-        Dispatcher.Register(new DestroyCommandHandler(), "@destroy", "@recycle");
+        Dispatcher.Register(new DestroyCommandHandler(), "@destroy", "@recycle", "@nuke");
+        Dispatcher.Register(new PurgeCommandHandler(), "@purge");
         Dispatcher.Register(new CopyAttributeCommandHandler(), "@cpattr", "@mvattr");
         Dispatcher.Register(new EditAttributeCommandHandler(), "@edit");
         Dispatcher.Register(new GrepCommandHandler(), "@grep");
