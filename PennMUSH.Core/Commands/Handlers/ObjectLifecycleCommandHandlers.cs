@@ -41,9 +41,44 @@ public class DestroyCommandHandler : ICommandHandler
             return false;
         }
 
+        bool overrideSafe = string.Equals(context.CommandName, "@nuke", StringComparison.OrdinalIgnoreCase)
+            || context.Switches.Contains("override");
+        if (target.HasFlag("SAFE") && !overrideSafe)
+        {
+            context.Notify("That object is set SAFE.");
+            return false;
+        }
+
+        if (target.HasFlag("GOING"))
+        {
+            string name = target.Name;
+            var id = target.Id;
+            Free(db, target);
+            context.Notify($"{name} ({id}) has been destroyed.");
+            return true;
+        }
+
         target.AddFlag("GOING");
         context.Notify($"The wrecking ball comes for {target.Name} ({target.Id}).");
         return true;
+    }
+
+    internal static void Free(ObjectDatabase db, MUSHObject target)
+    {
+        if (target.Type == ObjectType.Garbage)
+            return;
+        if (target.Type == ObjectType.Exit)
+        {
+            if (target.Exits.IsValid)
+                db.RemoveExit(target.Exits, target.Id);
+        }
+        else if (target.Location.IsValid)
+        {
+            db.MoveObject(target.Id, Dbref.Nothing);
+        }
+
+        target.RemoveFlag("GOING");
+        db.DestroyObject(target.Id);
     }
 
     private static MUSHObject? ResolveTarget(string nameOrRef, Dbref executor, ObjectDatabase db)
@@ -56,6 +91,33 @@ public class DestroyCommandHandler : ICommandHandler
         if (nameOrRef.StartsWith('#') && int.TryParse(nameOrRef.Substring(1), out int id))
             return db.GetObject(new Dbref(id));
         return db.FindInContents(executor, nameOrRef) ?? db.FindObject(nameOrRef);
+    }
+}
+
+public class PurgeCommandHandler : ICommandHandler
+{
+    public string Name => "@purge";
+
+    public bool Execute(CommandContext context, ObjectDatabase db)
+    {
+        var actor = db.GetObject(context.Executor);
+        if (actor == null || !actor.IsWizard)
+        {
+            context.Notify("Permission denied.");
+            return false;
+        }
+
+        int count = 0;
+        foreach (var obj in db.GetAllObjects().ToList())
+        {
+            if (obj.Id.Value <= 2 || obj.Type == ObjectType.Garbage || !obj.HasFlag("GOING"))
+                continue;
+            DestroyCommandHandler.Free(db, obj);
+            count++;
+        }
+
+        context.Notify(count == 0 ? "Nothing to purge." : $"Purged {count} object{(count == 1 ? "" : "s")}.");
+        return true;
     }
 }
 
@@ -85,7 +147,7 @@ public class UndestroyCommandHandler : ICommandHandler
             return false;
         }
 
-        if (!target.RemoveFlag("GOING"))
+        if (target.Type == ObjectType.Garbage || !target.RemoveFlag("GOING"))
         {
             context.Notify("That can't be undestroyed.");
             return false;
