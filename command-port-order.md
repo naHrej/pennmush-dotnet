@@ -1,6 +1,6 @@
 # Port order for the remaining commands
 
-`unimplemented-commands.md` names the 75 player commands that still have no registration, plus `@poll`, which is registered on the `doing` handler and only sets `DOING`. This file is the order to port them in. A command belongs early when the data it reads, and the handler it most resembles, already exist. Each later tier adds one foundation and then the commands that need it.
+`unimplemented-commands.md` names the player commands that still have no registration. This file is the order to port them in. A command belongs early when the data it reads, and the handler it most resembles, already exist. Each later tier adds one foundation and then the commands that need it.
 
 The dot beside each order number is the status of that row.
 
@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `who`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `addcom`.
 
 ## What already exists
 
@@ -139,11 +139,11 @@ Login already builds a `WHO` line. The in-game command is that list plus `DOING`
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 40 | `who` | The connection list, with `DOING`. |
-| ⚪ 41 | `session` | `who`, plus host and idle when the connection records them. |
-| 🔴 42 | `@hide` | A hidden bit on the connection that `who` and `session` skip. |
-| ⚪ 43 | `@boot` | Drop one connection. The `Boot` power is already named. |
-| 🟡 44 | `@poll` | Send one line to every connection and keep a reply slot per connection. This replaces the current `@poll` registration on `doing`. `doing` stays the `DOING` command. |
+| 🔵 40 | `who` | Lists each connection. A mortal sees the name, time on, idle time, and the raw `DOING` text. A wizard, royalty, or someone with `See_All` also sees the location, command count, descriptor, and host, including hidden and not-yet-logged-in connections. The poll is the first line of that list, and the last column heading of the mortal list. `DOING` is not evaluated. |
+| 🔵 41 | `session` | The privileged list, with bytes sent and received instead of the host. Pending output is always 0. A mortal gets the `who` list. |
+| 🔵 42 | `@hide` | Hides one descriptor or every connection of a player. Royalty, a wizard, or the Hide power can hide their own. Only a wizard can hide someone else. No idle autohide. |
+| 🔵 43 | `@boot` | Drops another player's connections. Royalty, a wizard, or the Boot power can boot someone else. `@boot/me` drops your idle connections and keeps the active one. `@boot/port` drops one descriptor. God cannot be booted. No boot log. |
+| 🔵 44 | `@poll` | Sets the heading on `who`. A wizard or the Poll power can change it. `doing` still sets the `DOING` attribute. |
 
 ### Channel names that map onto `@channel`
 
@@ -207,7 +207,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | --- | --- | --- |
 | 🔴 64 | `@password` | Check the old password, write a new hash. |
 | 🔴 65 | `@newpassword` | Wizard write of that hash. |
-| 🔴 66 | `@pcreate` | The existing player-creation path, plus a password. |
+| 🔵 66 | `@pcreate` | Creates the player and stores the password in the login dictionary. The password is not saved, so a restart stops checking it. No quota charge. `pcreate()` returns the dbref and sends the same messages. A dbref argument reuses a garbage object and is wizard-only. |
 
 ### Commands and functions as editable tables
 

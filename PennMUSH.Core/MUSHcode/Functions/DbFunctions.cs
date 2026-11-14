@@ -7,6 +7,7 @@ using PennMUSH.Core.Flags;
 using PennMUSH.Core.Types;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Queue;
 
 public static class DbFunctions
@@ -56,6 +57,29 @@ public static class DbFunctions
         registry.Register("ATTRCNT", (ctx, args) => NattrFunc(registry, ctx, args));
         registry.Register("OBJID", (ctx, args) => ObjIdFunc(registry, ctx, args));
         registry.Register("TESTLOCK", (ctx, args) => TestLockFunc(registry, ctx, args));
+        registry.Register("PCREATE", (ctx, args) => Pcreate(registry, ctx, args));
+    }
+
+    private static string Pcreate(FunctionRegistry registry, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || registry.Database == null)
+            return "#-1";
+        var actor = registry.Database.GetObject(ctx.Executor);
+        if (actor == null)
+            return "#-1";
+        var created = PlayerCreator.Create(
+            registry.Database,
+            actor,
+            args[0],
+            args[1],
+            args.Length > 2 ? args[2] : null,
+            registry.Passwords,
+            registry.DefaultHome,
+            registry.PlayerStart,
+            registry.StartingMoney,
+            message => registry.NotificationDispatcher?.Invoke(
+                new Notification(NotificationScope.Self, message, ctx.Executor)));
+        return created.IsValid ? created.ToString() : "#-1";
     }
 
     public static Dbref ParseDbref(string s, EvaluationContext? ctx = null)
