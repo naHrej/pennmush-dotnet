@@ -29,42 +29,45 @@ public class HelpStore
             return;
 
         var lines = File.ReadAllLines(filePath);
-        var currentTopics = new List<string>();
-        var currentBody = new List<string>();
+        var names = new List<string>();
+        var body = new List<string>();
+        bool inHeader = false;
+        bool started = false;
 
-        void FlushCurrent()
+        void Flush()
         {
-            if (currentTopics.Count > 0 && currentBody.Count > 0)
+            if (names.Count > 0 && body.Count > 0)
             {
-                string text = string.Join("\r\n", currentBody).TrimEnd();
-                foreach (var t in currentTopics)
-                {
-                    _topics[t] = text;
-                }
+                string text = string.Join("\r\n", body).TrimEnd();
+                foreach (var name in names)
+                    AddTopic(name, text);
             }
-            currentTopics.Clear();
-            currentBody.Clear();
+
+            names.Clear();
+            body.Clear();
         }
 
         foreach (var rawLine in lines)
         {
             if (rawLine.StartsWith('&'))
             {
-                FlushCurrent();
-                string header = rawLine.Substring(1).Trim();
-                var topics = header.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var topic in topics)
-                {
-                    currentTopics.Add(topic);
-                }
+                started = true;
+                if (!inHeader && names.Count > 0)
+                    Flush();
+
+                inHeader = true;
+                string name = TopicName(rawLine.Substring(1));
+                if (name.Length > 0)
+                    names.Add(name);
             }
-            else
+            else if (started)
             {
-                currentBody.Add(rawLine);
+                inHeader = false;
+                body.Add(rawLine);
             }
         }
 
-        FlushCurrent();
+        Flush();
     }
 
     public string? Lookup(string topic)
@@ -76,13 +79,11 @@ public class HelpStore
 
         string trimmed = topic.Trim();
 
-        // 1. Exact match
         if (_topics.TryGetValue(trimmed, out var text))
         {
             return text;
         }
 
-        // 2. Prefix match
         var prefixMatches = _topics.Keys.Where(k => k.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase)).ToList();
         if (prefixMatches.Count == 1)
         {
@@ -94,5 +95,32 @@ public class HelpStore
         }
 
         return null;
+    }
+
+    private void AddTopic(string name, string text)
+    {
+        if (!_topics.TryGetValue(name, out var existing))
+        {
+            _topics[name] = text;
+            return;
+        }
+
+        if (string.Equals(existing, text, StringComparison.Ordinal))
+            return;
+
+        string alternate = name + " " + name;
+        if (!_topics.ContainsKey(alternate))
+        {
+            _topics[alternate] = text;
+            return;
+        }
+
+        _topics[name] = existing.TrimEnd() + "\r\n\r\n" + text;
+    }
+
+    private static string TopicName(string header)
+    {
+        var parts = header.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(" ", parts);
     }
 }
