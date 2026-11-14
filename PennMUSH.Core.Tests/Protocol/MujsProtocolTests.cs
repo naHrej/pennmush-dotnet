@@ -329,6 +329,22 @@ public class MujsProtocolTests
     }
 
     [Fact]
+    public async Task HtmlLine_KeepsRunsOfSpacesOutsideTags()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+
+        await conn.SendLineAsync("<b>Hi</b> A B  C");
+
+        Assert.Equal("<div><b>Hi</b> A B&nbsp;&nbsp;C</div>\r\n", sent[0]);
+    }
+
+    [Fact]
     public async Task PlainLine_KeepsTheWireNewline()
     {
         var sent = new List<string>();

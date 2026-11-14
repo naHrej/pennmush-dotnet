@@ -3,6 +3,7 @@ namespace PennMUSH.Core.MUSHcode;
 using System;
 using System.Collections.Generic;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Types;
 
 public delegate string MUSHFunction(EvaluationContext context, string[] args);
 
@@ -16,6 +17,10 @@ public class FunctionRegistry
     public PennMUSH.Core.Protocol.EditorSessionManager? EditorSessions { get; set; }
     public PennMUSH.Core.Scheduling.CronScheduler? Scheduler { get; set; }
     public PennMUSH.Core.Queue.ActionQueue? Queue { get; set; }
+    public IPlayerPasswords? Passwords { get; set; }
+    public Dbref PlayerStart { get; set; } = new(0);
+    public Dbref DefaultHome { get; set; } = new(0);
+    public int StartingMoney { get; set; } = 100;
 
     public FunctionRegistry(ObjectDatabase? database = null)
     {

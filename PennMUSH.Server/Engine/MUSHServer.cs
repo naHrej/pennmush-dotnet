@@ -28,6 +28,7 @@ using PennMUSH.Server.Session;
 public class MUSHServer
 {
     private readonly ConcurrentDictionary<string, MUSHConnection> _connections = new();
+    private readonly ConnectionDirectory _sessions;
     private readonly ConcurrentDictionary<Dbref, string> _playerPasswords = new();
     private readonly CancellationTokenSource _cts = new();
 
@@ -52,6 +53,7 @@ public class MUSHServer
 
     public MUSHServer(string dbPath = "mush.db", string? configPath = null)
     {
+        _sessions = new ConnectionDirectory(_connections, UnregisterConnection);
         string? resolvedConfig = ResolveConfigPath(configPath);
         if (resolvedConfig != null && File.Exists(resolvedConfig))
         {
@@ -89,6 +91,10 @@ public class MUSHServer
         Functions.EditorSessions = EditorSessions;
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
+        Functions.Passwords = new CallbackPasswords((id, password) => _playerPasswords[id] = password);
+        Functions.PlayerStart = Config.PlayerStart;
+        Functions.DefaultHome = Config.DefaultHome;
+        Functions.StartingMoney = Config.StartingMoney;
         Evaluator = new ExpressionEvaluator(Functions.Dispatch, Functions.Database);
         Functions.Evaluator = Evaluator;
 
@@ -253,7 +259,12 @@ public class MUSHServer
         Dispatcher.Register(new UnlockCommandHandler(), "@unlock", "@eunlock", "@uunlock");
         Dispatcher.Register(new StatsCommandHandler(), "@stats");
         Dispatcher.Register(new ScoreCommandHandler(), "score");
-        Dispatcher.Register(new DoingCommandHandler(), "doing", "@poll");
+        Dispatcher.Register(new DoingCommandHandler(), "doing", "@doing");
+        Dispatcher.Register(new WhoCommandHandler(_sessions), "who", "session");
+        Dispatcher.Register(new HideCommandHandler(_sessions), "@hide");
+        Dispatcher.Register(new BootCommandHandler(_sessions), "@boot");
+        Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
+        Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
         Dispatcher.Register(new VersionCommandHandler(), "@version");
         Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
@@ -311,7 +322,9 @@ public class MUSHServer
 
     public void UnregisterConnection(MUSHConnection conn)
     {
-        _connections.TryRemove(conn.Id, out _);
+        if (!_connections.TryRemove(conn.Id, out _))
+            return;
+        conn.Close();
         if (conn.PlayerId.IsValid)
         {
             Database.SetConnected(conn.PlayerId, false);
@@ -327,6 +340,8 @@ public class MUSHServer
     {
         string trimmed = input.Trim();
         if (string.IsNullOrEmpty(trimmed)) return;
+
+        conn.NoteInput(trimmed.Length);
 
         // Check for JSON protocol envelope (e.g. from MUjs)
         if (trimmed.StartsWith('{') && ProtocolSerializer.TryParseType(trimmed, out var protoType, out var protoId))
@@ -357,23 +372,25 @@ public class MUSHServer
             return;
         }
 
-        if (trimmed.Equals("WHO", StringComparison.OrdinalIgnoreCase))
+        // Dispatch in-game command. Login WHO stays on the login path.
+        _sessions.SourceDescriptor = conn.Descriptor;
+        try
         {
-            await ShowWhoAsync(conn, ct);
-            return;
-        }
+            var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
+            foreach (var note in context.TargetedNotifications)
+            {
+                DispatchNotification(note);
+            }
 
-        // Dispatch in-game command
-        var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
-        foreach (var note in context.TargetedNotifications)
-        {
-            DispatchNotification(note);
+            if (context.CommandName.StartsWith('@'))
+            {
+                Storage.Save(Database, Cron);
+            }
         }
-
-        // Auto-save periodically or after object state changes
-        if (context.CommandName.StartsWith('@'))
+        finally
         {
-            Storage.Save(Database, Cron);
+            _sessions.SourceDescriptor = null;
+            _sessions.FlushDisconnects();
         }
     }
 
@@ -509,7 +526,7 @@ public class MUSHServer
 
     private async Task ShowWhoAsync(MUSHConnection conn, CancellationToken ct)
     {
-        var active = _connections.Values.Where(c => c.PlayerId.IsValid).ToList();
+        var active = _connections.Values.Where(c => c.PlayerId.IsValid && !c.Hidden).ToList();
         await conn.SendLineAsync("Player Name          Location   Connected", ct);
         await conn.SendLineAsync("----------------------------------------------------------------", ct);
         foreach (var c in active)
@@ -731,6 +748,7 @@ public class MUSHServer
                         DispatchNotification(note);
                     }
                 }
+                _sessions.FlushDisconnects();
             }
             catch
             {

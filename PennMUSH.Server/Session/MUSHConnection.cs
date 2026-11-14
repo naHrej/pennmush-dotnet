@@ -28,22 +28,33 @@ public class MUSHConnection
     public HashSet<string> ClientCapabilities { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsConnected => _onSendLine != null || (_tcpClient != null && _tcpClient.Connected) || (_webSocket != null && _webSocket.State == WebSocketState.Open);
+    private static int NextDescriptor;
+    public int Descriptor { get; } = System.Threading.Interlocked.Increment(ref NextDescriptor);
+    public string Host { get; set; } = "";
+    public bool Hidden { get; set; }
     public DateTimeOffset ConnectedAt { get; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset LastActivity { get; private set; }
+    public int Commands { get; private set; }
+    public long BytesSent { get; private set; }
+    public long BytesReceived { get; private set; }
 
     public MUSHConnection(Func<string, Task>? onSendLine)
     {
+        LastActivity = ConnectedAt;
         _onSendLine = onSendLine;
         Negotiator = new TelnetNegotiator(Capabilities);
     }
 
     public MUSHConnection(TcpClient tcpClient)
     {
+        LastActivity = ConnectedAt;
         _tcpClient = tcpClient;
         Negotiator = new TelnetNegotiator(Capabilities);
     }
 
     public MUSHConnection(WebSocket webSocket)
     {
+        LastActivity = ConnectedAt;
         _webSocket = webSocket;
         Capabilities.SupportsHtml = true;
         Capabilities.SupportsPueblo = true;
@@ -56,6 +67,7 @@ public class MUSHConnection
         string json = ProtocolSerializer.Serialize(type, payload, id);
         if (_onSendLine != null)
         {
+            BytesSent += Encoding.UTF8.GetByteCount(json);
             await _onSendLine(json);
             return;
         }
@@ -116,6 +128,7 @@ public class MUSHConnection
         string formatted = OutputFormatter.FormatOutput(text, Capabilities);
         if (_onSendLine != null)
         {
+            BytesSent += Encoding.UTF8.GetByteCount(formatted);
             await _onSendLine(formatted);
             return;
         }
@@ -125,7 +138,60 @@ public class MUSHConnection
 
     private static string ApplyHtmlBreaks(string text)
     {
-        return text.Replace("\r", "").Replace("\n", "<br/>");
+        string broken = text.Replace("\r", "").Replace("\n", "<br/>");
+        return PreserveSpaces(broken);
+    }
+
+    private static string PreserveSpaces(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        bool inTag = false;
+        int spaces = 0;
+        void FlushSpaces()
+        {
+            if (spaces >= 2)
+            {
+                for (int i = 0; i < spaces; i++)
+                    sb.Append("&nbsp;");
+            }
+            else if (spaces == 1)
+            {
+                sb.Append(' ');
+            }
+            spaces = 0;
+        }
+
+        foreach (char ch in text)
+        {
+            if (ch == '<')
+            {
+                FlushSpaces();
+                inTag = true;
+                sb.Append(ch);
+            }
+            else if (ch == '>')
+            {
+                inTag = false;
+                sb.Append(ch);
+            }
+            else if (!inTag && ch == ' ')
+            {
+                spaces++;
+            }
+            else if (!inTag && ch == '\t')
+            {
+                FlushSpaces();
+                for (int i = 0; i < 8; i++)
+                    sb.Append("&nbsp;");
+            }
+            else
+            {
+                FlushSpaces();
+                sb.Append(ch);
+            }
+        }
+        FlushSpaces();
+        return sb.ToString();
     }
 
     private static bool IsProtocolText(string text)
@@ -141,6 +207,7 @@ public class MUSHConnection
         await _sendLock.WaitAsync(ct);
         try
         {
+            BytesSent += bytes.Length;
             if (_tcpClient != null && _tcpClient.Connected)
             {
                 var stream = _tcpClient.GetStream();
@@ -160,6 +227,14 @@ public class MUSHConnection
         {
             _sendLock.Release();
         }
+    }
+
+    public void NoteInput(int bytes)
+    {
+        LastActivity = DateTimeOffset.UtcNow;
+        if (bytes > 0)
+            BytesReceived += bytes;
+        Commands++;
     }
 
     public void Close()

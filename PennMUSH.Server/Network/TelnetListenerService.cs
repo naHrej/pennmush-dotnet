@@ -54,6 +54,8 @@ public class TelnetListenerService : BackgroundService
     private async Task HandleClientAsync(TcpClient tcpClient, CancellationToken stoppingToken)
     {
         var conn = new MUSHConnection(tcpClient);
+        if (tcpClient.Client.RemoteEndPoint is IPEndPoint remote)
+            conn.Host = remote.Address.ToString();
         _host.RegisterConnection(conn);
         _logger.LogInformation("New Telnet connection from {Endpoint} [Session {Id}]", tcpClient.Client.RemoteEndPoint, conn.Id);
 
