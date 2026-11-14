@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `@ps`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `@poll` (44) is yellow: it is registered on `doing` and only sets `DOING`. The white rows have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `who`.
 
 ## What already exists
 
@@ -128,8 +128,8 @@ Each block starts with the foundation. The commands under it come after that fou
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 38 | `@ps` | List `ActionQueue` entries. |
-| ⚪ 39 | `@kick` | Run the next N queued commands on the wizard's demand. |
+| 🔵 38 | `@ps` | Lists your queue. `/all` lists every entry for a wizard, `/summary` and `/count` shorten the report, and a pid shows one entry. No load average and no `/debug` environment. |
+| 🔵 39 | `@kick` | A wizard runs the next N queued commands immediately, including waits whose time has not come. Commands waiting on a semaphore stay queued. |
 
 `@assert`, `@break`, `@retry`, and `@verb` need an action list that can stop or restart. `@trigger` today runs a single dispatched command.
 

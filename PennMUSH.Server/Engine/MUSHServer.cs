@@ -175,6 +175,8 @@ public class MUSHServer
         Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify", "@drain");
         Dispatcher.Register(new HaltCommandHandler(Queue), "@halt");
         Dispatcher.Register(new AllHaltCommandHandler(Queue), "@allhalt");
+        Dispatcher.Register(new PsCommandHandler(Queue), "@ps");
+        Dispatcher.Register(new KickCommandHandler(Queue, Dispatcher), "@kick");
         Dispatcher.Register(new ThinkCommandHandler(Evaluator), "think", "th");
         Dispatcher.Register(new TeleportCommandHandler(), "@teleport", "@tel");
         Dispatcher.Register(new GetCommandHandler(), "get", "take", "g");
