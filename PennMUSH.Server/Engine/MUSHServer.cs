@@ -149,6 +149,17 @@ public class MUSHServer
         return null;
     }
 
+    private bool PlayerReceivesHtml(Dbref player)
+    {
+        foreach (var conn in _connections.Values)
+        {
+            if (conn.PlayerId == player && conn.Capabilities.SupportsHtml)
+                return true;
+        }
+
+        return false;
+    }
+
     private void RegisterCommands()
     {
         Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
@@ -187,7 +198,7 @@ public class MUSHServer
         Dispatcher.Register(new CemitCommandHandler(Channels), "@cemit", "@nscemit");
         Dispatcher.Register(new MailCommandHandler(Mail), "@mail");
         Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
-        Dispatcher.Register(new HelpCommandHandler(Help), "help", "?");
+        Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml), "help", "?");
         Dispatcher.Register(new EmitCommandHandler(), "@emit", "\\", "@lemit", "@nsemit", "@nslemit");
         Dispatcher.Register(new PemitCommandHandler(), "@pemit", "@prompt", "@nspemit", "@nsprompt");
         Dispatcher.Register(new RemitCommandHandler(), "@remit", "@nsremit");
