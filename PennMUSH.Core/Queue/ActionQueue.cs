@@ -125,4 +125,31 @@ public class ActionQueue
 
         return results;
     }
+
+    public IReadOnlyList<QueueEntry> Snapshot()
+    {
+        lock (_lock)
+            return _entries.ToList();
+    }
+
+    public List<CommandContext> Kick(int count, CommandDispatcher dispatcher, ObjectDatabase db)
+    {
+        List<QueueEntry> chosen;
+        lock (_lock)
+        {
+            chosen = _entries
+                .Where(entry => string.IsNullOrEmpty(entry.Semaphore))
+                .OrderBy(entry => entry.ScheduledTime)
+                .ThenBy(entry => entry.Pid)
+                .Take(Math.Max(0, count))
+                .ToList();
+            foreach (var entry in chosen)
+                _entries.Remove(entry);
+        }
+
+        var results = new List<CommandContext>();
+        foreach (var entry in chosen)
+            results.Add(dispatcher.Dispatch(entry.Executor, entry.Command, db));
+        return results;
+    }
 }
