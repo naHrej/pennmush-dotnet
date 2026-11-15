@@ -256,6 +256,9 @@ public class MUSHServer
         Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
         Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
         Dispatcher.Register(new PoorCommandHandler(), "@poor");
+        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota), "@quota");
+        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota), "@squota");
+        Dispatcher.Register(new AllQuotaCommandHandler(Config.StartingQuota), "@allquota");
         Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
         Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
         Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");

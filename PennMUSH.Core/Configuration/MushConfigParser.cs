@@ -244,6 +244,14 @@ public static class MushConfigParser
                 if (int.TryParse(value, out int paycheck)) config.Paycheck = paycheck;
                 break;
 
+            case "use_quota":
+                config.UseQuota = ParseBool(value, true);
+                break;
+
+            case "starting_quota":
+                if (int.TryParse(value, out int startingQuota)) config.StartingQuota = startingQuota;
+                break;
+
             default:
                 config.RawDirectives[directive] = value;
                 break;
