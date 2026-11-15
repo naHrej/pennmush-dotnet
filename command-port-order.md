@@ -161,7 +161,7 @@ Login already builds a `WHO` line. The in-game command is that list plus `DOING`
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 48 | `@motd`, `@listmotd`, `@wizmotd`, `@rejectmotd` | The connect and wizard text files already sent at login. |
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@motd`, `@listmotd`, `@wizmotd`, `@rejectmotd` | One handler stores the connect, wizard, down, and full announcements. They are shown after the connect files and cleared on restart. |
 | ⚪ 49 | `@suggest` | The same file read and write, for the suggestion file. |
 | ⚪ 50 | `@readcache` | Reload help files and those connect texts. |
 

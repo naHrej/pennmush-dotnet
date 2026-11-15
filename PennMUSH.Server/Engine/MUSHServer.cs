@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
+using PennMUSH.Core.Communication;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Communication.Mail;
 using PennMUSH.Core.Configuration;
@@ -40,6 +41,7 @@ public class MUSHServer
     public ActionQueue Queue { get; }
     public CronScheduler Cron { get; }
     public ChannelRegistry Channels { get; }
+    public MotdBoard Motd { get; } = new();
     public MailStore Mail { get; }
     public HelpStore Help { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
@@ -249,7 +251,8 @@ public class MUSHServer
         Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
         Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
         Dispatcher.Register(new PoorCommandHandler(), "@poor");
-        Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions), "@list");
+        Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
+        Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
         Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(), "@clone");
@@ -456,11 +459,13 @@ public class MUSHServer
                 // Send MOTD
                 await SendScreenAsync(conn, Config.MotdFile, ct);
 
-                // If Wizard or God, send Wizard MOTD
-                if (player.IsWizard || player.IsGod)
+                // Wizard and royalty see the wizard connect file
+                if (player.IsRoyalty)
                 {
                     await SendScreenAsync(conn, Config.WizmotdFile, ct);
                 }
+
+                await SendAnnouncedMotdAsync(conn, player, ct);
 
                 // Auto-join Public channel
                 var pubCh = Channels.GetChannel("Public");
@@ -507,6 +512,7 @@ public class MUSHServer
 
                 // Send New User greeting
                 await SendScreenAsync(conn, Config.NewuserFile, ct);
+                await SendAnnouncedMotdAsync(conn, newPlayer, ct);
 
                 var pubCh = Channels.GetChannel("Public");
                 pubCh?.AddMember(newPlayer.Id);
@@ -519,6 +525,14 @@ public class MUSHServer
             default:
                 await conn.SendLineAsync("Valid login commands: connect <name> <password>, create <name> <password>, WHO, QUIT", ct);
                 break;
+        }
+    }
+
+    private async Task SendAnnouncedMotdAsync(MUSHConnection conn, MUSHObject player, CancellationToken ct)
+    {
+        foreach (string line in Motd.ConnectLines(player.IsRoyalty))
+        {
+            await conn.SendLineAsync(line, ct);
         }
     }
 
