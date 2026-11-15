@@ -414,37 +414,39 @@ public class MUSHServer
         string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         string cmd = parts[0].ToUpperInvariant();
 
-        if (cmd == "QUIT")
+        switch (cmd)
         {
-            if (!await SendScreenAsync(conn, Config.QuitFile, ct))
+            case "QUIT":
+                if (!await SendScreenAsync(conn, Config.QuitFile, ct))
+                {
+                    await conn.SendLineAsync("Goodbye!", ct);
+                }
+                conn.Close();
+                break;
+
+            case "WHO":
+                await ShowWhoAsync(conn, ct);
+                break;
+
+            case "CONNECT" or "CONN" or "CO" when parts.Length >= 2:
             {
-                await conn.SendLineAsync("Goodbye!", ct);
-            }
-            conn.Close();
-            return;
-        }
+                string name = parts[1];
+                string password = parts.Length > 2 ? parts[2] : "";
 
-        if (cmd == "WHO")
-        {
-            await ShowWhoAsync(conn, ct);
-            return;
-        }
+                var player = Database.GetAllObjects().FirstOrDefault(o =>
+                    o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
 
-        if (cmd == "CONNECT" && parts.Length >= 2)
-        {
-            string name = parts[1];
-            string password = parts.Length > 2 ? parts[2] : "";
+                if (player == null)
+                {
+                    await conn.SendLineAsync("Either that player does not exist, or has a different password.", ct);
+                    break;
+                }
 
-            var player = Database.GetAllObjects().FirstOrDefault(o =>
-                o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
-
-            if (player != null)
-            {
                 // Verify password (default "one" for God, or empty for development)
                 if (_playerPasswords.TryGetValue(player.Id, out var pass) && pass != password)
                 {
                     await conn.SendLineAsync("Incorrect password.", ct);
-                    return;
+                    break;
                 }
 
                 conn.PlayerId = player.Id;
@@ -473,52 +475,51 @@ public class MUSHServer
 
                 Dispatcher.Dispatch(player.Id, "look", Database);
                 BroadcastToRoom(player.Location, $"{player.Name} has connected.", player.Id);
-                return;
+                break;
             }
 
-            await conn.SendLineAsync("Either that player does not exist, or has a different password.", ct);
-            return;
-        }
-
-        if (cmd == "CREATE" && parts.Length >= 3)
-        {
-            string name = parts[1];
-            string password = parts[2];
-
-            bool exists = Database.GetAllObjects().Any(o =>
-                o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
-
-            if (exists)
+            case "CREATE" or "CR" when parts.Length >= 3:
             {
-                await conn.SendLineAsync("That name is already in use.", ct);
-                return;
+                string name = parts[1];
+                string password = parts[2];
+
+                bool exists = Database.GetAllObjects().Any(o =>
+                    o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
+
+                if (exists)
+                {
+                    await conn.SendLineAsync("That name is already in use.", ct);
+                    break;
+                }
+
+                var newPlayer = Database.CreateObject(name, ObjectType.Player, Dbref.Nothing);
+                newPlayer.Owner = newPlayer.Id;
+                newPlayer.Home = Config.DefaultHome;
+                newPlayer.Pennies = Config.StartingMoney;
+                _playerPasswords[newPlayer.Id] = password;
+                Database.MoveObject(newPlayer.Id, Config.PlayerStart);
+
+                Storage.Save(Database);
+
+                conn.PlayerId = newPlayer.Id;
+                Database.SetConnected(newPlayer.Id, true);
+                await conn.SendLineAsync($"Character {name} created! Welcome to {Config.MudName}.", ct);
+
+                // Send New User greeting
+                await SendScreenAsync(conn, Config.NewuserFile, ct);
+
+                var pubCh = Channels.GetChannel("Public");
+                pubCh?.AddMember(newPlayer.Id);
+
+                Dispatcher.Dispatch(newPlayer.Id, "look", Database);
+                BroadcastToRoom(newPlayer.Location, $"{newPlayer.Name} has connected.", newPlayer.Id);
+                break;
             }
 
-            var newPlayer = Database.CreateObject(name, ObjectType.Player, Dbref.Nothing);
-            newPlayer.Owner = newPlayer.Id;
-            newPlayer.Home = Config.DefaultHome;
-            newPlayer.Pennies = Config.StartingMoney;
-            _playerPasswords[newPlayer.Id] = password;
-            Database.MoveObject(newPlayer.Id, Config.PlayerStart);
-
-            Storage.Save(Database);
-
-            conn.PlayerId = newPlayer.Id;
-            Database.SetConnected(newPlayer.Id, true);
-            await conn.SendLineAsync($"Character {name} created! Welcome to {Config.MudName}.", ct);
-
-            // Send New User greeting
-            await SendScreenAsync(conn, Config.NewuserFile, ct);
-
-            var pubCh = Channels.GetChannel("Public");
-            pubCh?.AddMember(newPlayer.Id);
-
-            Dispatcher.Dispatch(newPlayer.Id, "look", Database);
-            BroadcastToRoom(newPlayer.Location, $"{newPlayer.Name} has connected.", newPlayer.Id);
-            return;
+            default:
+                await conn.SendLineAsync("Valid login commands: connect <name> <password>, create <name> <password>, WHO, QUIT", ct);
+                break;
         }
-
-        await conn.SendLineAsync("Valid login commands: connect <name> <password>, create <name> <password>, WHO, QUIT", ct);
     }
 
     private async Task ShowWhoAsync(MUSHConnection conn, CancellationToken ct)
