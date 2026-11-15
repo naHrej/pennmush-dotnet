@@ -54,7 +54,16 @@ public class HomeCommandHandler : ICommandHandler
 
 public class EnterCommandHandler : ICommandHandler
 {
+    private readonly CommandDispatcher? _dispatcher;
+    private readonly Func<Dbref, bool>? _connected;
+
     public string Name => "enter";
+
+    public EnterCommandHandler(CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
+    {
+        _dispatcher = dispatcher;
+        _connected = connected;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -96,13 +105,23 @@ public class EnterCommandHandler : ICommandHandler
         context.Notify($"You enter {target.Name}.");
         context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} enters {target.Name}.");
         context.NotifyExcept(target.Id, context.Executor, $"{execObj.Name} has entered.");
+        FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, $"enter #{target.Id.Value}");
         return true;
     }
 }
 
 public class LeaveCommandHandler : ICommandHandler
 {
+    private readonly CommandDispatcher? _dispatcher;
+    private readonly Func<Dbref, bool>? _connected;
+
     public string Name => "leave";
+
+    public LeaveCommandHandler(CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
+    {
+        _dispatcher = dispatcher;
+        _connected = connected;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -133,6 +152,7 @@ public class LeaveCommandHandler : ICommandHandler
         context.Notify($"You leave {container.Name}.");
         context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} leaves {container.Name}.");
         context.NotifyExcept(dest, context.Executor, $"{execObj.Name} has arrived from {container.Name}.");
+        FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, "leave");
         return true;
     }
 }

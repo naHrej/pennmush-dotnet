@@ -173,7 +173,8 @@ public class MUSHServer
         Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
         Dispatcher.Register(new PoseCommandHandler(), "pose", ":", ";", "semipose");
         Dispatcher.Register(new LookCommandHandler(Evaluator), "look", "l", "read");
-        Dispatcher.Register(new GoCommandHandler(), "go", "goto", "move");
+        Func<Dbref, bool> online = id => _connections.Values.Any(conn => conn.PlayerId == id);
+        Dispatcher.Register(new GoCommandHandler(dispatcher: Dispatcher, connected: online), "go", "goto", "move");
         Dispatcher.Register(new DigCommandHandler(), "@dig");
         Dispatcher.Register(new OpenCommandHandler(), "@open");
         Dispatcher.Register(new LinkCommandHandler(), "@link");
@@ -217,8 +218,12 @@ public class MUSHServer
 
         // Spatial & Interaction
         Dispatcher.Register(new HomeCommandHandler(new LookCommandHandler(Evaluator)), "home");
-        Dispatcher.Register(new EnterCommandHandler(), "enter");
-        Dispatcher.Register(new LeaveCommandHandler(), "leave");
+        Dispatcher.Register(new EnterCommandHandler(Dispatcher, online), "enter");
+        Dispatcher.Register(new LeaveCommandHandler(Dispatcher, online), "leave");
+        Dispatcher.Register(new FollowCommandHandler(online), "follow");
+        Dispatcher.Register(new UnfollowCommandHandler(), "unfollow");
+        Dispatcher.Register(new DismissCommandHandler(), "dismiss");
+        Dispatcher.Register(new DesertCommandHandler(), "desert");
         Dispatcher.Register(new GiveCommandHandler(), "give");
         Dispatcher.Register(new UseCommandHandler(Queue, Evaluator), "use");
         Dispatcher.Register(new EmptyCommandHandler(), "empty");

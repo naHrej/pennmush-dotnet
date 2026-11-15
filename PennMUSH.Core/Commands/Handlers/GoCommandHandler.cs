@@ -11,13 +11,17 @@ public class GoCommandHandler : ICommandHandler
 {
     private readonly LookCommandHandler? _lookHandler;
     private readonly ExpressionEvaluator? _evaluator;
+    private readonly CommandDispatcher? _dispatcher;
+    private readonly Func<Dbref, bool>? _connected;
 
     public string Name => "go";
 
-    public GoCommandHandler(LookCommandHandler? lookHandler = null, ExpressionEvaluator? evaluator = null)
+    public GoCommandHandler(LookCommandHandler? lookHandler = null, ExpressionEvaluator? evaluator = null, CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
     {
         _lookHandler = lookHandler;
         _evaluator = evaluator;
+        _dispatcher = dispatcher;
+        _connected = connected;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -141,6 +145,7 @@ public class GoCommandHandler : ICommandHandler
             context.Notify(destObj.Name);
         }
 
+        FollowerMovement.Bring(context, db, _dispatcher, _connected, srcRef, $"go #{exitObj.Id.Value}");
         return true;
     }
 }
