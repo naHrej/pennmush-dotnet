@@ -3,6 +3,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System.Globalization;
 using System.Text;
 using PennMUSH.Core.Attributes;
+using PennMUSH.Core.Communication;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Flags;
@@ -804,18 +805,33 @@ public class ListCommandHandler : ICommandHandler
 {
     private readonly CommandDispatcher _dispatcher;
     private readonly FunctionRegistry? _functions;
+    private readonly MotdBoard? _motd;
 
     public string Name => "@list";
 
-    public ListCommandHandler(CommandDispatcher dispatcher, FunctionRegistry? functions = null)
+    public ListCommandHandler(CommandDispatcher dispatcher, FunctionRegistry? functions = null, MotdBoard? motd = null)
     {
         _dispatcher = dispatcher;
         _functions = functions;
+        _motd = motd;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         string which = context.Arguments.Trim().ToLowerInvariant();
+        if (context.Switches.Contains("motd") || which == "motd")
+        {
+            var actor = db.GetObject(context.Executor);
+            if (_motd == null || actor == null)
+            {
+                context.Notify("Usage: @list commands|flags|powers|functions");
+                return false;
+            }
+
+            MotdCommandHandler.Report(context, _motd, actor.IsRoyalty);
+            return true;
+        }
+
         IEnumerable<string>? names = which switch
         {
             "commands" => _dispatcher.Table.PrimaryNames,
