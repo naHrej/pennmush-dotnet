@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. The next white block is `addcom`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. The next white block is `addcom`.
 
 ## What already exists
 
@@ -186,10 +186,12 @@ A quota number on the player, saved with the object.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 55 | `@quota` | Show the count and the limit. `/set` writes one player's limit. |
-| 🔴 56 | `@squota` | `@quota/set`. |
-| 🔴 57 | `@allquota` | `@quota` for every player. |
-| 🔴 58 | `@chownall` | `@chown` across one player's things, rooms, and exits, then adjust both players' quotas. |
+| 🔵 55 | `@quota` | Show the count and the limit. `/set` writes one player's limit. |
+| 🔵 56 | `@squota` | `@quota/set`. |
+| 🔵 57 | `@allquota` | `@quota` for every player. God only. |
+| ⚪ 58 | `@chownall` | `@chown` across one player's things, rooms, and exits, then adjust both players' quotas. |
+
+`RQUOTA` stores the objects still available. The line from `@quota` adds the owned count to that remainder. Wizard, royalty, and God are unlimited, and their limit cannot be set. `NO_QUOTA` and `QUOTAS` are not flag-table entries. Creating, cloning, destroying, and `@chown` leave the stored remainder unchanged. `@allquota` prints each remaining quota, and only God can run it.
 
 ### Action lists
 
@@ -260,7 +262,6 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | --- | --- |
 | `@assert`, `@break`, `@retry`, `@verb` | `@include` and the action-list frame. |
 | `buy` | Pay-lock checks and penny transfer. |
-| `@chownall` | Quota. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@clock` | Channel locks. It is not a time command. |
