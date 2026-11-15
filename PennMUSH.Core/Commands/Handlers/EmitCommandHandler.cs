@@ -9,8 +9,8 @@ internal static class SpoofPrefix
 {
     public static string Apply(MUSHObject speaker, string commandName, string message)
     {
-        bool forced = commandName.StartsWith("@ns", StringComparison.OrdinalIgnoreCase);
-        if (!forced && speaker.HasPower("Can_spoof"))
+        bool nospoofCommand = commandName.StartsWith("@ns", StringComparison.OrdinalIgnoreCase);
+        if (speaker.HasPower("Can_spoof") || (nospoofCommand && speaker.IsWizard))
             return message;
         return $"[{speaker.Name}:] {message}";
     }
