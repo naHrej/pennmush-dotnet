@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. The next white block is `addcom`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. The next white block is `addcom`.
 
 ## What already exists
 
@@ -169,14 +169,16 @@ Rows 1–22 are in the server. Four of them are blue because the original comman
 
 ### Followers
 
-A follower list on the object, updated from `go`, `@teleport`, `enter`, and `leave`.
+A follower list on the object. `go`, `enter`, and `leave` bring along followers who are in the same place. `@teleport` does not.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 51 | `follow` | Add a follower, or list them when no name is given. |
-| 🔴 52 | `unfollow` | Leave one leader, or everyone when no name is given. |
-| 🔴 53 | `dismiss` | Remove people following you. |
-| 🔴 54 | `desert` | Clear both directions. |
+| 🔵 51 | `follow` | Add a follower, or list both directions when no name is given. A follow lock can refuse. |
+| 🔵 52 | `unfollow` | Leave one leader, or everyone when no name is given. |
+| 🔵 53 | `dismiss` | Remove people following you. |
+| 🔵 54 | `desert` | Clear both directions. |
+
+`FOLLOWERS` and `FOLLOWING` store the dbrefs. `FOLLOW`, `OFOLLOW`, `UNFOLLOW`, and `OUNFOLLOW` are sent as stored text. Their action attributes are not queued. A player is visible to `follow`, and is brought along, only while that player is connected. A thing is brought along whenever it is in the same place.
 
 ### Quota
 
@@ -257,7 +259,6 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | Command | Wait for |
 | --- | --- |
 | `@assert`, `@break`, `@retry`, `@verb` | `@include` and the action-list frame. |
-| `follow`, `unfollow`, `dismiss`, `desert` | The follower list and the movement hook. |
 | `buy` | Pay-lock checks and penny transfer. |
 | `@chownall` | Quota. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
