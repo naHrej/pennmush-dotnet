@@ -1,4 +1,5 @@
-Welcome to PennMUSH!
---------------------------------------------------------------------------
-Yell at your god to personalize this file
+(motd.txt)
+  Welcome to PennMUSH!
+  --------------------------------------------------------------------------
+  Yell at your god to personalize this file
 

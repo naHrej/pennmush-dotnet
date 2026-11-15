@@ -31,6 +31,8 @@ public class MUSHConnection
     private static int NextDescriptor;
     public int Descriptor { get; } = System.Threading.Interlocked.Increment(ref NextDescriptor);
     public string Host { get; set; } = "";
+    public string? PublicBaseUrl { get; set; }
+    public bool IsWebSocket => _webSocket != null;
     public bool Hidden { get; set; }
     public DateTimeOffset ConnectedAt { get; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastActivity { get; private set; }
@@ -110,6 +112,23 @@ public class MUSHConnection
         }
 
         await DeliverTextAsync(text, ct);
+    }
+
+    public async Task SendMarkupAsync(string markup, CancellationToken ct = default)
+    {
+        if (!Capabilities.SupportsHtml || IsProtocolText(markup))
+        {
+            await SendRawAsync(markup, ct);
+            return;
+        }
+
+        // One record. A line-oriented client would split a stylesheet or an
+        // HTML screen on raw newlines, so newlines become spaces instead of <br/>.
+        string compact = markup.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\n', ' ');
+        if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
+            compact += "\r\n";
+
+        await DeliverTextAsync(compact, ct);
     }
 
     private async Task DeliverTextAsync(string text, CancellationToken ct)

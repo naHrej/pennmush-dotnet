@@ -1,3 +1,4 @@
+(newuser.txt)
 -------------------------------------------------------------------------
 Congratulations on your newly created character. PennMUSH welcomes you.
 For more information about this game, type 'news' or 'help' to get help.

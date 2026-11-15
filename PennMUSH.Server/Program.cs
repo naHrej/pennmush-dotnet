@@ -53,6 +53,20 @@ app.MapPost("/reboot", (MUSHServerHost host) =>
     return Results.Ok(new { status = "Reboot completed", preservedConnections = host.Connections.Count });
 });
 
+app.MapGet("/html/stylesheet.css", async (HttpContext context, MUSHServerHost host) =>
+{
+    string? css = ScreenStylesheet.Load(host.Server.GameDirectory);
+    if (css == null)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.Headers["Access-Control-Allow-Origin"] = "*";
+    context.Response.ContentType = "text/css; charset=utf-8";
+    await context.Response.WriteAsync(css);
+});
+
 // WebSocket Gateway Endpoints (/ws and /game for backward compatibility)
 var handleWebSocket = async (HttpContext context, MUSHServerHost host) =>
 {
@@ -61,11 +75,8 @@ var handleWebSocket = async (HttpContext context, MUSHServerHost host) =>
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var conn = new MUSHConnection(webSocket);
         conn.Host = context.Connection.RemoteIpAddress?.ToString() ?? "";
+        conn.PublicBaseUrl = $"{context.Request.Scheme}://{context.Request.Host}";
         host.RegisterConnection(conn);
-
-        // Send initial welcome
-        await conn.SendLineAsync("<div class=\"system-msg\">Connected to PennMUSH WebSocket Gateway.</div>");
-        await conn.SendLineAsync("<div>Use <b>connect &lt;name&gt; &lt;password&gt;</b> or <b>create &lt;name&gt; &lt;password&gt;</b>.</div>");
 
         var buffer = new byte[4096];
         try

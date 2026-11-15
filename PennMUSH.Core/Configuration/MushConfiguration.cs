@@ -2,6 +2,8 @@ namespace PennMUSH.Core.Configuration;
 
 using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Text.RegularExpressions;
 using PennMUSH.Core.Types;
 
 public class MushConfiguration
@@ -60,6 +62,25 @@ public class MushConfiguration
 
     // Raw directives for unmodeled config directives
     public Dictionary<string, string> RawDirectives { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Every mush.cnf directive and the text written after it. Screen files
+    // substitute {{directive}} from this table.
+    public Dictionary<string, string> Directives { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Regex ScreenTokens = new(@"\{\{\s*([A-Za-z0-9_]+)\s*\}\}", RegexOptions.Compiled);
+
+    public string ExpandScreenText(string text, bool html)
+    {
+        if (string.IsNullOrEmpty(text) || text.IndexOf("{{", StringComparison.Ordinal) < 0)
+            return text;
+
+        return ScreenTokens.Replace(text, match =>
+        {
+            if (!Directives.TryGetValue(match.Groups[1].Value, out string? value))
+                return match.Value;
+            return html ? WebUtility.HtmlEncode(value) : value;
+        });
+    }
 }
 
 public record RestrictionRule(string Restriction, string? ErrorMessage = null);

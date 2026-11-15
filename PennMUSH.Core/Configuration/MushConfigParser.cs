@@ -55,6 +55,8 @@ public static class MushConfigParser
 
     private static void ProcessDirective(string directive, string value, string baseDir, MushConfiguration config, HashSet<string> visited)
     {
+        config.Directives[directive] = value;
+
         switch (directive)
         {
             case "include":

@@ -1,3 +1,4 @@
+(register.txt)
 This message is shown when a user tries to create a player or register
 a player from a site that doesn't allow creation or registration,
 respectively, or if creation/registration is disabled entirely.
