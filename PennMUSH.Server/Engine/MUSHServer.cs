@@ -276,6 +276,7 @@ public class MUSHServer
         Dispatcher.Register(new BootCommandHandler(_sessions), "@boot");
         Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
         Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
+        Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
         Dispatcher.Register(new VersionCommandHandler(), "@version");
         Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");

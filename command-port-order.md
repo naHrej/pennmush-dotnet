@@ -13,7 +13,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. The next white block is `addcom`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@function` is in the server, with the limits named on that row. The next white block is `addcom`.
 
 ## What already exists
 
@@ -217,7 +217,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 67 | `@function` | Add, alias, restrict, enable, disable, and delete a global soft function. |
+| 🔵 67 | `@function` | Adds, lists, reports, updates, aliases, restricts, enables, disables, and deletes a global soft function. Calling it runs the named attribute. The table is not saved. `/clone` and `/restore` do not copy or restore a builtin. `/preserve` and `/builtin` are ignored. A builtin cannot be deleted. A call enforces Nobody, Wizard, God, Admin, NoGagged, and NoFixed. Other restriction names appear on the report and leave the call unchanged. NoGuest is stored, and the flag table has no GUEST flag. A builtin report leaves out the argument count. |
 | ⚪ 68 | `@disable`, `@enable` | An enabled bit on a command. |
 | 🔴 69 | `@command` | Add, alias, delete, and restrict a command. |
 | 🔴 70 | `@hook` | Before, after, ignore, override, and extend slots around dispatch. |
