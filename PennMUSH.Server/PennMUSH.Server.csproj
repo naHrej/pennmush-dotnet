@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="dotless.Core" Version="1.6.7" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PennMUSH.Core\PennMUSH.Core.csproj" />
     <ProjectReference Include="..\PennMUSH.Extensions\PennMUSH.Extensions.csproj" />
   </ItemGroup>

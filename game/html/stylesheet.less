@@ -1,0 +1,62 @@
+// WebSocket screen stylesheet. Telnet clients keep the files in game/txt.
+// The server compiles this to CSS, sends it with the connect screen, and
+// serves it at /html/stylesheet.css.
+//
+// A command is <code>, and each placeholder inside it is <var>. The
+// stylesheet draws the angle brackets, so the screen can say:
+//   <code>create <var>name</var> <var>password</var></code>
+
+@screen-fg: #7eb6ff;
+@screen-dim: #8ea0b5;
+@screen-accent: #e6c07b;
+@screen-param: #8ea0b5;
+@screen-rule: #3d4f63;
+
+.system-msg {
+  color: @screen-accent;
+  margin: 0.4em 0;
+}
+
+.game-screen {
+  color: @screen-fg;
+  margin: 0.6em 0 1em;
+  line-height: 1.45;
+
+  .screen-label {
+    color: @screen-dim;
+    letter-spacing: 0.04em;
+  }
+
+  .screen-rule {
+    border: 0;
+    border-top: 1px solid @screen-rule;
+    margin: 0.6em 0;
+  }
+
+  p {
+    margin: 0.35em 0;
+  }
+
+  code {
+    color: @screen-accent;
+    font-family: inherit;
+    font-size: inherit;
+
+    var {
+      color: @screen-param;
+      font-family: inherit;
+      font-size: inherit;
+      font-style: normal;
+
+      &::before {
+        content: "<";
+        color: @screen-dim;
+      }
+
+      &::after {
+        content: ">";
+        color: @screen-dim;
+      }
+    }
+  }
+}

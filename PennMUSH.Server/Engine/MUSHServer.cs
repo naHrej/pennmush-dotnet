@@ -137,11 +137,11 @@ public class MUSHServer
 
         var candidates = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "game", "mush.cnf"),
-            Path.Combine(AppContext.BaseDirectory, "mush.cnf"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "game", "mush.cnf")),
             Path.Combine(Directory.GetCurrentDirectory(), "game", "mush.cnf"),
             Path.Combine(Directory.GetCurrentDirectory(), "mush.cnf"),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "game", "mush.cnf"))
+            Path.Combine(AppContext.BaseDirectory, "game", "mush.cnf"),
+            Path.Combine(AppContext.BaseDirectory, "mush.cnf")
         };
 
         foreach (var path in candidates)
@@ -307,17 +307,37 @@ public class MUSHServer
             return;
         }
 
-        // Display connect screen
-        string connectPath = Path.Combine(GameDirectory, Config.ConnectFile);
-        if (File.Exists(connectPath))
+        _ = SendConnectScreenAsync(conn);
+    }
+
+    private async Task SendConnectScreenAsync(MUSHConnection conn)
+    {
+        if (conn.IsWebSocket)
         {
-            _ = conn.SendRawAsync(File.ReadAllText(connectPath));
+            string? css = ScreenStylesheet.Load(GameDirectory);
+            if (!string.IsNullOrEmpty(css))
+                await conn.SendMarkupAsync("<style id=\"pennmush-screen\">" + css + "</style>");
         }
+
+        if (!await SendScreenAsync(conn, Config.ConnectFile))
+        {
+            await conn.SendLineAsync($"=== Welcome to {Config.MudName} ===");
+            await conn.SendLineAsync("Valid commands: connect <name> <password>, create <name> <password>, WHO, QUIT");
+        }
+    }
+
+    private async Task<bool> SendScreenAsync(MUSHConnection conn, string configuredPath, CancellationToken ct = default)
+    {
+        string? path = GameScreenFiles.Resolve(GameDirectory, configuredPath, conn.IsWebSocket);
+        if (path == null)
+            return false;
+
+        string text = Config.ExpandScreenText(File.ReadAllText(path), conn.IsWebSocket);
+        if (conn.IsWebSocket && GameScreenFiles.IsHtml(path))
+            await conn.SendMarkupAsync(text, ct);
         else
-        {
-            _ = conn.SendLineAsync($"=== Welcome to {Config.MudName} ===");
-            _ = conn.SendLineAsync("Valid commands: connect <name> <password>, create <name> <password>, WHO, QUIT");
-        }
+            await conn.SendRawAsync(text, ct);
+        return true;
     }
 
     public void UnregisterConnection(MUSHConnection conn)
@@ -359,12 +379,7 @@ public class MUSHServer
 
         if (trimmed.Equals("QUIT", StringComparison.OrdinalIgnoreCase))
         {
-            string quitPath = Path.Combine(GameDirectory, Config.QuitFile);
-            if (File.Exists(quitPath))
-            {
-                await conn.SendRawAsync(File.ReadAllText(quitPath), ct);
-            }
-            else
+            if (!await SendScreenAsync(conn, Config.QuitFile, ct))
             {
                 await conn.SendLineAsync("Goodbye!", ct);
             }
@@ -401,12 +416,7 @@ public class MUSHServer
 
         if (cmd == "QUIT")
         {
-            string quitPath = Path.Combine(GameDirectory, Config.QuitFile);
-            if (File.Exists(quitPath))
-            {
-                await conn.SendRawAsync(File.ReadAllText(quitPath), ct);
-            }
-            else
+            if (!await SendScreenAsync(conn, Config.QuitFile, ct))
             {
                 await conn.SendLineAsync("Goodbye!", ct);
             }
@@ -442,20 +452,12 @@ public class MUSHServer
                 await conn.SendLineAsync($"Welcome back to {Config.MudName}, {player.Name}!", ct);
 
                 // Send MOTD
-                string motdPath = Path.Combine(GameDirectory, Config.MotdFile);
-                if (File.Exists(motdPath))
-                {
-                    await conn.SendRawAsync(File.ReadAllText(motdPath), ct);
-                }
+                await SendScreenAsync(conn, Config.MotdFile, ct);
 
                 // If Wizard or God, send Wizard MOTD
                 if (player.IsWizard || player.IsGod)
                 {
-                    string wizmotdPath = Path.Combine(GameDirectory, Config.WizmotdFile);
-                    if (File.Exists(wizmotdPath))
-                    {
-                        await conn.SendRawAsync(File.ReadAllText(wizmotdPath), ct);
-                    }
+                    await SendScreenAsync(conn, Config.WizmotdFile, ct);
                 }
 
                 // Auto-join Public channel
@@ -469,7 +471,6 @@ public class MUSHServer
                     await conn.SendLineAsync($"You have {stats.UnreadCount} unread mail message(s). Type '@mail' to read.", ct);
                 }
 
-                // Show room
                 Dispatcher.Dispatch(player.Id, "look", Database);
                 BroadcastToRoom(player.Location, $"{player.Name} has connected.", player.Id);
                 return;
@@ -507,11 +508,7 @@ public class MUSHServer
             await conn.SendLineAsync($"Character {name} created! Welcome to {Config.MudName}.", ct);
 
             // Send New User greeting
-            string newuserPath = Path.Combine(GameDirectory, Config.NewuserFile);
-            if (File.Exists(newuserPath))
-            {
-                await conn.SendRawAsync(File.ReadAllText(newuserPath), ct);
-            }
+            await SendScreenAsync(conn, Config.NewuserFile, ct);
 
             var pubCh = Channels.GetChannel("Public");
             pubCh?.AddMember(newPlayer.Id);
@@ -638,6 +635,17 @@ public class MUSHServer
                     );
 
                     await conn.SendEnvelopeAsync("server.hello", serverHello, id, ct);
+                    if (!string.IsNullOrEmpty(conn.PublicBaseUrl) && ScreenStylesheet.Load(GameDirectory) != null)
+                    {
+                        await conn.SendEnvelopeAsync(
+                            "style.load",
+                            new StyleLoadPayload(
+                                "pennmush-screen",
+                                conn.PublicBaseUrl.TrimEnd('/') + "/html/stylesheet.css",
+                                "global"),
+                            null,
+                            ct);
+                    }
                 }
                 break;
 
