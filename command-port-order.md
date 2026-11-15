@@ -84,11 +84,11 @@ Each block starts with the foundation. The commands under it come after that fou
 
 ### Nospoof on the emit path
 
-`@emit`, `@oemit`, `@remit`, `@pemit`, `@lemit`, `@prompt`, and `@cemit` add `[Name:] ` when the speaker lacks `Can_spoof`. The `@ns` commands add that prefix even when the speaker has the power. A listener's `NOSPOOF` flag does not change the text.
+`@emit`, `@oemit`, `@remit`, `@pemit`, `@lemit`, `@prompt`, and `@cemit` add `[Name:] ` when the speaker lacks `Can_spoof`. A wizard, or a speaker with that power, leaves the prefix off an `@ns` command. A listener's `NOSPOOF` flag does not change the text.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| 🔵 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | The matching emit with the speaker prefix forced. The listener's `NOSPOOF` flag is not consulted, and the prefix has no dbref. |
+| 🔵 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | A wizard or someone with `Can_spoof` omits the prefix. Anyone else gets the same prefix as the matching emit. The listener's `NOSPOOF` flag is not consulted, and the prefix has no dbref. |
 | 🔴 27 | `@nszemit` | `@zemit`, below. |
 
 ### Zones get a player-facing change and a broadcast
@@ -100,7 +100,7 @@ Each block starts with the foundation. The commands under it come after that fou
 | 🔵 28 | `@chzone` | Control the object, and control the zone or pass its chzone lock. A non-player loses wizard, royalty, trust, and powers unless a wizard uses `/preserve`. No chzone failure attributes. A zone with no zone lock is locked to its owner. |
 | 🟢 29 | `@chzoneall` | `@chzone` for each object a player owns. Wizards only. |
 | 🟢 30 | `@zemit` | Emit to every room in the zone. You must control the zone. |
-| 🟢 31 | `@nszemit` | `@zemit` with the speaker prefix forced. |
+| 🟢 31 | `@nszemit` | `@zemit` that omits the prefix for a wizard or someone with `Can_spoof`. |
 
 ### Listeners and nearby commands
 

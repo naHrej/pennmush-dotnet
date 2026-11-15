@@ -33,18 +33,29 @@ public class NospoofEmitTests
     {
         var plain = _dispatcher.Dispatch(_owner, "@emit Hello", _db);
         var local = _dispatcher.Dispatch(_owner, "@lemit Hello", _db);
+        var mortalNs = _dispatcher.Dispatch(_owner, "@nsemit Hello", _db);
 
         Assert.Equal("[Owner:] Hello", plain.Notifications.Single());
         Assert.Equal("[Owner:] Hello", local.Notifications.Single());
+        Assert.Equal("[Owner:] Hello", mortalNs.Notifications.Single());
 
+        _db.GetObject(_owner)!.AddFlag("WIZARD");
+        var wizardEmit = _dispatcher.Dispatch(_owner, "@emit Hello", _db);
+        var wizardNs = _dispatcher.Dispatch(_owner, "@nsemit Hello", _db);
+        var wizardLocal = _dispatcher.Dispatch(_owner, "@nslemit Hello", _db);
+        Assert.Equal("[Owner:] Hello", wizardEmit.Notifications.Single());
+        Assert.Equal("Hello", wizardNs.Notifications.Single());
+        Assert.Equal("Hello", wizardLocal.Notifications.Single());
+
+        _db.GetObject(_owner)!.RemoveFlag("WIZARD");
         _db.GetObject(_owner)!.AddPower("Can_spoof");
         var allowed = _dispatcher.Dispatch(_owner, "@emit Hello", _db);
         var forced = _dispatcher.Dispatch(_owner, "@nsemit Hello", _db);
         var forcedLocal = _dispatcher.Dispatch(_owner, "@nslemit Hello", _db);
 
         Assert.Equal("Hello", allowed.Notifications.Single());
-        Assert.Equal("[Owner:] Hello", forced.Notifications.Single());
-        Assert.Equal("[Owner:] Hello", forcedLocal.Notifications.Single());
+        Assert.Equal("Hello", forced.Notifications.Single());
+        Assert.Equal("Hello", forcedLocal.Notifications.Single());
     }
 
     [Fact]
@@ -63,7 +74,7 @@ public class NospoofEmitTests
 
         var forced = _dispatcher.Dispatch(_owner, $"@nsprompt #{_owner.Value}=Ready?", _db);
         var forcedNote = forced.TargetedNotifications.Single(n => n.Scope == NotificationScope.Target);
-        Assert.Equal("[Owner:] Ready?", forcedNote.Message);
+        Assert.Equal("Ready?", forcedNote.Message);
         Assert.True(forcedNote.Prompt);
     }
 
@@ -81,9 +92,9 @@ public class NospoofEmitTests
 
         _db.GetObject(_owner)!.AddPower("Can_spoof");
         var forced = _dispatcher.Dispatch(_owner, "@nsoemit Friend=secret", _db);
-        Assert.Contains("[Owner:] secret", forced.Notifications);
+        Assert.Contains("secret", forced.Notifications);
         var forcedRemote = _dispatcher.Dispatch(_owner, $"@nsremit #{_room.Value}=remote", _db);
-        Assert.Contains("[Owner:] remote", forcedRemote.Notifications);
+        Assert.Contains("remote", forcedRemote.Notifications);
     }
 
     [Fact]
@@ -97,6 +108,6 @@ public class NospoofEmitTests
         var allowed = _dispatcher.Dispatch(_owner, "@cemit News=Hello", _db);
         var forced = _dispatcher.Dispatch(_owner, "@nscemit News=Hello", _db);
         Assert.Contains("[News] Hello", allowed.Notifications);
-        Assert.Contains("[News] [Owner:] Hello", forced.Notifications);
+        Assert.Contains("[News] Hello", forced.Notifications);
     }
 }
