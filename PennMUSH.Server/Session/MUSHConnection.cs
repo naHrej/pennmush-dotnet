@@ -78,7 +78,7 @@ public class MUSHConnection
         await SendRawAsync(bytes, ct);
     }
 
-    public async Task SendLineAsync(string text, CancellationToken ct = default)
+    public async Task SendLineAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
     {
         // JSON envelopes are recognized by the client only when the text still
         // starts with '{' and ends with '}'. Leave those on the wire unchanged.
@@ -87,6 +87,9 @@ public class MUSHConnection
             await DeliverTextAsync(text + "\r\n", ct);
             return;
         }
+
+        if (escapeHtml)
+            text = System.Net.WebUtility.HtmlEncode(text);
 
         string html = "<div>" + ApplyHtmlBreaks(text) + "</div>";
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)

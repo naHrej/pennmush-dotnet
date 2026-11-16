@@ -47,8 +47,7 @@ public class CemitCommandHandler : ICommandHandler
         }
 
         bool noisy = context.Switches.Contains("noisy");
-        string body = SpoofPrefix.Apply(executor, context.CommandName, message);
-        var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, body, isEmit: !noisy, isNoisy: noisy);
+        var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, message, isEmit: !noisy, isNoisy: noisy);
         if (result != null)
         {
             FormatAttributes.DeliverChannel(
@@ -63,7 +62,7 @@ public class CemitCommandHandler : ICommandHandler
                 "",
                 "|",
                 noisy ? "noisy" : "silent",
-                true);
+                !SpoofPrefix.Omits(executor, context.CommandName));
             return true;
         }
 

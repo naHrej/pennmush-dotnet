@@ -279,9 +279,10 @@ public class ZemitCommandHandler : ICommandHandler
             return false;
         }
 
-        string message = SpoofPrefix.Apply(actor, context.CommandName, context.RightArg);
+        string message = context.RightArg;
+        bool spoofable = !SpoofPrefix.Omits(actor, context.CommandName);
         foreach (var room in rooms)
-            context.NotifyRoom(room.Id, message);
+            context.NotifyRoom(room.Id, message, actor.Id, spoofable);
 
         bool noisy = context.Switches.Contains("noisy");
         bool silent = context.Switches.Contains("silent");

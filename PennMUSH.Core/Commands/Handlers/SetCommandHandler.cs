@@ -47,6 +47,19 @@ public class SetCommandHandler : ICommandHandler
                 return false;
             }
 
+            if (attrName.Contains('`'))
+            {
+                var written = AttributeWriter.Apply(executorObj, target, attrName, string.IsNullOrEmpty(attrVal) ? null : attrVal);
+                if (written.Ok)
+                {
+                    context.Notify("Set.");
+                    return true;
+                }
+
+                context.Notify(written.Message);
+                return false;
+            }
+
             var err = target.SetAttribute(attrName, attrVal, context.Executor, wizardOverride: executorObj.IsWizard);
             if (err == AttributeErrorCode.Okay)
             {

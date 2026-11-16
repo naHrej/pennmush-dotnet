@@ -79,6 +79,12 @@ public class CommandDispatcher
             return context;
         }
 
+        if (lookup.Status == CommandLookupStatus.NotFound &&
+            AttributeSetCommandHandler.TryExecute(context, db))
+        {
+            return context;
+        }
+
         // Status is NotFound or Reserved: try non-command fallbacks
         // 1. Check implicit exit matching in executor's location
         if (execObj != null && execObj.Location.IsValid)

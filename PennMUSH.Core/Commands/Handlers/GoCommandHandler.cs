@@ -132,18 +132,11 @@ public class GoCommandHandler : ICommandHandler
             context.Notify(_evaluator != null ? _evaluator.Evaluate(dropAttr.Value, moveCtx) : dropAttr.Value);
         }
 
-        // Auto-look in destination
+        // Arrival look. A typed look and this automatic look share one room description.
         if (_lookHandler != null)
-        {
-            var lookCtx = new CommandContext { Executor = context.Executor, Enactor = context.Enactor };
-            _lookHandler.Execute(lookCtx, db);
-            foreach (var note in lookCtx.Notifications)
-                context.Notify(note);
-        }
+            _lookHandler.ShowHere(context, db, context.Executor, LookKind.Automatic);
         else
-        {
             context.Notify(destObj.Name);
-        }
 
         FollowerMovement.Bring(context, db, _dispatcher, _connected, srcRef, $"go #{exitObj.Id.Value}");
         return true;

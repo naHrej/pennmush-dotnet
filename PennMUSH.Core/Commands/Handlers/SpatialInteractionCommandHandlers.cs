@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System;
 using System.Text;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
@@ -40,13 +41,7 @@ public class HomeCommandHandler : ICommandHandler
         context.Notify("There's no place like home...");
         context.NotifyExcept(homeRef, context.Executor, $"{execObj.Name} arrives from home.");
 
-        if (_lookHandler != null)
-        {
-            var lookCtx = new CommandContext { Executor = context.Executor, Enactor = context.Enactor };
-            _lookHandler.Execute(lookCtx, db);
-            foreach (var note in lookCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
-            foreach (var note in lookCtx.Notifications) context.Notifications.Add(note);
-        }
+        _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
 
         return true;
     }
@@ -54,13 +49,15 @@ public class HomeCommandHandler : ICommandHandler
 
 public class EnterCommandHandler : ICommandHandler
 {
+    private readonly LookCommandHandler? _lookHandler;
     private readonly CommandDispatcher? _dispatcher;
     private readonly Func<Dbref, bool>? _connected;
 
     public string Name => "enter";
 
-    public EnterCommandHandler(CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
+    public EnterCommandHandler(LookCommandHandler? lookHandler = null, CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
     {
+        _lookHandler = lookHandler;
         _dispatcher = dispatcher;
         _connected = connected;
     }
@@ -105,6 +102,7 @@ public class EnterCommandHandler : ICommandHandler
         context.Notify($"You enter {target.Name}.");
         context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} enters {target.Name}.");
         context.NotifyExcept(target.Id, context.Executor, $"{execObj.Name} has entered.");
+        _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, $"enter #{target.Id.Value}");
         return true;
     }
@@ -112,13 +110,15 @@ public class EnterCommandHandler : ICommandHandler
 
 public class LeaveCommandHandler : ICommandHandler
 {
+    private readonly LookCommandHandler? _lookHandler;
     private readonly CommandDispatcher? _dispatcher;
     private readonly Func<Dbref, bool>? _connected;
 
     public string Name => "leave";
 
-    public LeaveCommandHandler(CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
+    public LeaveCommandHandler(LookCommandHandler? lookHandler = null, CommandDispatcher? dispatcher = null, Func<Dbref, bool>? connected = null)
     {
+        _lookHandler = lookHandler;
         _dispatcher = dispatcher;
         _connected = connected;
     }
@@ -152,6 +152,7 @@ public class LeaveCommandHandler : ICommandHandler
         context.Notify($"You leave {container.Name}.");
         context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} leaves {container.Name}.");
         context.NotifyExcept(dest, context.Executor, $"{execObj.Name} has arrived from {container.Name}.");
+        _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, "leave");
         return true;
     }
@@ -264,6 +265,7 @@ public class ExamineCommandHandler : ICommandHandler
         sb.AppendLine($"Flags: {string.Join(" ", target.Flags)}");
         if (target.Powers.Count > 0)
             sb.AppendLine($"Powers: {string.Join(" ", target.Powers)}");
+        sb.AppendLine($"Warnings checked: {WarningBits.Unparse(target.Warnings)}");
         sb.AppendLine($"Location: {target.Location}  Home: {target.Home}");
 
         if (!context.CommandName.Equals("brief", StringComparison.OrdinalIgnoreCase))
@@ -311,7 +313,7 @@ public class ExamineCommandHandler : ICommandHandler
 
         }
 
-        context.Notify(sb.ToString().TrimEnd());
+        context.Notify(sb.ToString().TrimEnd(), escapeHtml: true);
         return true;
     }
 }

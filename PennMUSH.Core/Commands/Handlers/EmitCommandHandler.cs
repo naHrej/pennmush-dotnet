@@ -3,22 +3,52 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
+using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 
-internal static class SpoofPrefix
+public static class SpoofPrefix
 {
-    public static string Apply(MUSHObject speaker, string commandName, string message)
+    public static bool Omits(MUSHObject speaker, string commandName)
     {
         bool nospoofCommand = commandName.StartsWith("@ns", StringComparison.OrdinalIgnoreCase);
-        if (speaker.HasPower("Can_spoof") || (nospoofCommand && speaker.IsWizard))
+        return nospoofCommand && (speaker.IsWizard || speaker.HasPower("Can_spoof"));
+    }
+
+    public static string ForListener(ObjectDatabase db, MUSHObject speaker, MUSHObject listener, string message)
+    {
+        bool nospoof = Flagged(db, listener, "NOSPOOF");
+        bool paranoid = Flagged(db, listener, "PARANOID");
+        if (!nospoof)
             return message;
-        return $"[{speaker.Name}:] {message}";
+        if (listener.Id == speaker.Id && !paranoid)
+            return message;
+        string tag = paranoid
+            ? $"[{speaker.Name}(#{speaker.Id.Value})] "
+            : $"[{speaker.Name}:] ";
+        return tag + message;
+    }
+
+    private static bool Flagged(ObjectDatabase db, MUSHObject obj, string flag)
+    {
+        if (obj.HasFlag(flag))
+            return true;
+        if (!obj.Owner.IsValid || obj.Owner == obj.Id)
+            return false;
+        var owner = db.GetObject(obj.Owner);
+        return owner != null && owner.HasFlag(flag);
     }
 }
 
 public class EmitCommandHandler : ICommandHandler
 {
+    private readonly ExpressionEvaluator? _evaluator;
+
     public string Name => "@emit";
+
+    public EmitCommandHandler(ExpressionEvaluator? evaluator = null)
+    {
+        _evaluator = evaluator;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -35,7 +65,8 @@ public class EmitCommandHandler : ICommandHandler
             return false;
         }
 
-        context.NotifyRoom(execObj.Location, SpoofPrefix.Apply(execObj, context.CommandName, context.Arguments));
+        string message = SpeechMod.Apply(db, _evaluator, context.Executor, context.Arguments, "|");
+        context.NotifyRoom(execObj.Location, message, execObj.Id, !SpoofPrefix.Omits(execObj, context.CommandName));
         return true;
     }
 }
@@ -60,18 +91,18 @@ public class PemitCommandHandler : ICommandHandler
         }
 
         var speaker = db.GetObject(context.Executor);
-        string message = speaker == null
-            ? context.RightArg
-            : SpoofPrefix.Apply(speaker, context.CommandName, context.RightArg);
+        string message = context.RightArg;
+        bool spoofable = speaker != null && !SpoofPrefix.Omits(speaker, context.CommandName);
+        Dbref speakerId = speaker?.Id ?? default;
         bool prompt = context.CommandName.Contains("prompt", StringComparison.OrdinalIgnoreCase);
 
         if (target.Type == ObjectType.Room)
         {
-            context.NotifyRoom(target.Id, message);
+            context.NotifyRoom(target.Id, message, speakerId, spoofable);
         }
         else
         {
-            context.NotifyTarget(target.Id, message, prompt);
+            context.NotifyTarget(target.Id, message, prompt, speakerId, spoofable);
         }
 
         if (!context.Switches.Contains("silent"))
@@ -122,10 +153,9 @@ public class RemitCommandHandler : ICommandHandler
         }
 
         var speaker = db.GetObject(context.Executor);
-        string message = speaker == null
-            ? context.RightArg
-            : SpoofPrefix.Apply(speaker, context.CommandName, context.RightArg);
-        context.NotifyRoom(room.Id, message);
+        string message = context.RightArg;
+        bool spoofable = speaker != null && !SpoofPrefix.Omits(speaker, context.CommandName);
+        context.NotifyRoom(room.Id, message, speaker?.Id ?? default, spoofable);
         context.Notify($"Message sent to {room.Name}.");
         return true;
     }
@@ -172,7 +202,7 @@ public class OemitCommandHandler : ICommandHandler
             return false;
         }
 
-        context.NotifyExcept(execObj.Location, targetRef, SpoofPrefix.Apply(execObj, context.CommandName, context.RightArg));
+        context.NotifyExcept(execObj.Location, targetRef, context.RightArg, execObj.Id, !SpoofPrefix.Omits(execObj, context.CommandName));
         return true;
     }
 }

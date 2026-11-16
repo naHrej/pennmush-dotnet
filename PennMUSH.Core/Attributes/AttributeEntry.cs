@@ -23,13 +23,15 @@ public sealed class AttributeEntry
     {
         if (string.IsNullOrWhiteSpace(name))
             return false;
+        if (name.Length > 1024)
+            return false;
         if (name.StartsWith('`') || name.EndsWith('`'))
             return false;
         if (name.Contains("``"))
             return false;
         foreach (char c in name)
         {
-            if (!char.IsLetterOrDigit(c) && c != '_' && c != '-' && c != '`')
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '-' && c != '`' && c != '.')
                 return false;
         }
         return true;

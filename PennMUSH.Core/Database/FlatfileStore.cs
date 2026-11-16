@@ -275,9 +275,10 @@ public static class FlatfileStore
                         ReadString(reader);
                     }
 
+                    uint warnings = 0;
                     if ((indbFlags & DBF_WARNINGS) != 0)
                     {
-                        ReadString(reader);
+                        uint.TryParse(ReadString(reader), out warnings);
                     }
 
                     long creationTime = 0;
@@ -294,7 +295,8 @@ public static class FlatfileStore
                         Contents = new Dbref(con),
                         Exits = new Dbref(ex),
                         Next = new Dbref(next),
-                        Pennies = pennies
+                        Pennies = pennies,
+                        Warnings = warnings
                     };
 
                     if (creationTime > 0) obj.CreationTime = DateTimeOffset.FromUnixTimeSeconds(creationTime);

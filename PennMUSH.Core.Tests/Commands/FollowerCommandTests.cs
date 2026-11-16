@@ -32,9 +32,9 @@ public class FollowerCommandTests
         _dispatcher.Register(new UnfollowCommandHandler(), "unfollow");
         _dispatcher.Register(new DismissCommandHandler(), "dismiss");
         _dispatcher.Register(new DesertCommandHandler(), "desert");
-        _dispatcher.Register(new GoCommandHandler(dispatcher: _dispatcher, connected: id => _online.Contains(id.Value)), "go");
-        _dispatcher.Register(new EnterCommandHandler(dispatcher: _dispatcher, connected: id => _online.Contains(id.Value)), "enter");
-        _dispatcher.Register(new LeaveCommandHandler(dispatcher: _dispatcher, connected: id => _online.Contains(id.Value)), "leave");
+        _dispatcher.Register(new GoCommandHandler(null, null, _dispatcher, id => _online.Contains(id.Value)), "go");
+        _dispatcher.Register(new EnterCommandHandler(null, _dispatcher, id => _online.Contains(id.Value)), "enter");
+        _dispatcher.Register(new LeaveCommandHandler(null, _dispatcher, id => _online.Contains(id.Value)), "leave");
     }
 
     [Fact]

@@ -2,6 +2,13 @@
 
 `unimplemented-commands.md` names the player commands that still have no registration. This file is the order to port them in. A command belongs early when the data it reads, and the handler it most resembles, already exist. Each later tier adds one foundation and then the commands that need it.
 
+## Backwards compatibility
+
+Softcode written for original PennMUSH has to run here as it was written. Every original command and every original function has a place in this list. That place is finished when the command or function itself is in the server and behaves as it does in PennMUSH. This server may also carry extra commands and functions. An extra path leaves the original row unfinished.
+
+Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
+
+
 The dot beside each order number is the status of that row.
 
 | Dot | Status |
@@ -13,14 +20,14 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. The nospoof emits are blue. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@function` is in the server, with the limits named on that row. The next white block is `addcom`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. `addcom`, `delcom`, `comtitle`, `comlist`, and `@clist` are in the server. The attribute setters are in the server, with the limits named in that block. `@suggest` and `@readcache` are in the server, with the limits named on those rows. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@chownall` is in the server, with the limits named on that row. `@include` is in the server, with the limits named on that row. `@function` is in the server, with the limits named on that row. `@disable` and `@enable` are in the server, with the limits named on that row. `@flag` is in the server, with the limits named on that row. `@attribute` is in the server, with the limits named on that row. `@warnings` is in the server, with the limits named on that row. The next white block is `@malias`.
 
 ## What already exists
 
 These are the pieces a new command can call without a new subsystem:
 
 - Speech and movement: `say`, `pose` (`semipose`, `;`, and `/nospace` omit the space), `@emit`, `@pemit`, `@remit`, `@oemit`, `@cemit`, `whisper`, `page`, `go`, `get`, `drop`, `enter`, `leave`, `give`, `home`, `@teleport`.
-- Objects: attributes (`SetAttribute`, `GetAttribute`, `ClearAttribute`, parent inheritance, a creator dbref, and attribute flags that are stored), `@chown`, `@name`, `@parent`, `@wipe`, `@clone`, `examine`.
+- Objects: attributes (`SetAttribute`, `GetAttribute`, `ClearAttribute`, parent inheritance, a creator dbref, and attribute flags that are stored), `@chown`, `@name`, `@parent`, `@wipe`, `@clone`, `examine`. Softcode writes those attributes with `&ATTR`, `@_ATTR`, and `@` plus a standard attribute name. Those forms are in the server, with the limits named in that block.
 - Locks: `@lock`, `@unlock`, `@elock`, `@ulock`, `@eunlock`, and `@uunlock`. `LockType` names Basic, Enter, Use, Page, Leave, Drop, Give, Teleport, and Speech. `EvalLock` can test a key. Movement, enter, leave, get, drop, give, and page call it. Lock names match regardless of case, so `@lock/enter` is found by the enter check. The named enter and use commands still store `Enter` and `Use`.
 - Flow and queue: `@if` / `@ifelse`, `@skip` (the test reversed), `@switch` (first match unless `/all`), `@select` (always the first match), `@dolist`, `@trigger` (one evaluated result, dispatched once), `@wait`, `@notify` (wakes one waiter), `@halt`, `@allhalt`.
 - World data: zones as a set of dbrefs, pennies, contents and exits as chains linked by `Next`, `GOING` set by `@destroy` and cleared by `@undestroy` / `@unrecycle`. `@purge` and `@nuke` call `ObjectDatabase.DestroyObject` on objects marked `GOING`. SQLite saves objects, attributes, flags, powers, parents, zones, pennies, and cron after a command whose name starts with `@`.
@@ -84,12 +91,12 @@ Each block starts with the foundation. The commands under it come after that fou
 
 ### Nospoof on the emit path
 
-`@emit`, `@oemit`, `@remit`, `@pemit`, `@lemit`, `@prompt`, and `@cemit` add `[Name:] ` when the speaker lacks `Can_spoof`. A wizard, or a speaker with that power, leaves the prefix off an `@ns` command. A listener's `NOSPOOF` flag does not change the text.
+`@emit`, `@oemit`, `@remit`, `@pemit`, `@lemit`, `@prompt`, `@cemit`, and `@zemit` keep the typed text. A listener with `NOSPOOF` sees `[Name:] ` on someone else's emit. `PARANOID` changes that tag to `[Name(#dbref)] ` and also shows it on the listener's own emit. A wizard, or a speaker with `Can_spoof`, leaves the prefix off an `@ns` command for every listener.
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| 🔵 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | A wizard or someone with `Can_spoof` omits the prefix. Anyone else gets the same prefix as the matching emit. The listener's `NOSPOOF` flag is not consulted, and the prefix has no dbref. |
-| 🔴 27 | `@nszemit` | `@zemit`, below. |
+| 🟢 26 | `@nsemit`, `@nsoemit`, `@nsremit`, `@nspemit`, `@nslemit`, `@nsprompt`, `@nscemit` | A wizard or someone with `Can_spoof` omits the prefix for every listener. Anyone else follows the listener rule: `[Name:] ` for `NOSPOOF`, and `[Name(#dbref)] ` when that listener is also `PARANOID`. |
+| 🟢 27 | `@nszemit` | The same command as row 31. |
 
 ### Zones get a player-facing change and a broadcast
 
@@ -100,7 +107,7 @@ Each block starts with the foundation. The commands under it come after that fou
 | 🔵 28 | `@chzone` | Control the object, and control the zone or pass its chzone lock. A non-player loses wizard, royalty, trust, and powers unless a wizard uses `/preserve`. No chzone failure attributes. A zone with no zone lock is locked to its owner. |
 | 🟢 29 | `@chzoneall` | `@chzone` for each object a player owns. Wizards only. |
 | 🟢 30 | `@zemit` | Emit to every room in the zone. You must control the zone. |
-| 🟢 31 | `@nszemit` | `@zemit` that omits the prefix for a wizard or someone with `Can_spoof`. |
+| 🟢 31 | `@nszemit` | `@zemit` that omits the prefix for every listener when the speaker is a wizard or has `Can_spoof`. |
 
 ### Listeners and nearby commands
 
@@ -151,9 +158,9 @@ Login already builds a `WHO` line. The in-game command is that list plus `DOING`
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 45 | `addcom`, `delcom` | Join and leave, and remember the player's channel alias. |
-| ⚪ 46 | `comtitle` | The membership title `@channel` already stores. |
-| ⚪ 47 | `comlist`, `@clist` | The channel list. `/full` is the longer listing. |
+| 🔵 45 | `addcom`, `delcom` | Joins or leaves and remembers the alias. The alias is kept in memory with the channel list, so a restart drops both. There is no join lock and no join announcement. |
+| 🔵 46 | `comtitle` | Sets, shows, or clears the title stored for that alias. Titles are not saved. |
+| 🔵 47 | `comlist`, `@clist` | `comlist` lists your aliases. `@clist` lists channels, and `/full` adds the message count and the flags this server stores. |
 
 `@clock` and `@restart` stay later. `@clock` is channel locks. `@restart` reloads channel runtime state. It does not reboot the process. `@reboot` remains the hot reload.
 
@@ -161,9 +168,26 @@ Login already builds a `WHO` line. The in-game command is that list plus `DOING`
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@motd`, `@listmotd`, `@wizmotd`, `@rejectmotd` | One handler stores the connect, wizard, down, and full announcements. They are shown after the connect files and cleared on restart. |
-| ⚪ 49 | `@suggest` | The same file read and write, for the suggestion file. |
-| ⚪ 50 | `@readcache` | Reload help files and those connect texts. |
+| 🔵 48 | `@motd`, `@listmotd`, `@wizmotd`, `@rejectmotd` | One handler stores the connect, wizard, down, and full announcements. They are shown after the connect files and cleared on restart. |
+
+### Attribute setters softcode already writes
+
+These forms are parsed before the command table, so they are absent from the 167 names in `unimplemented-commands.md`. `@set` toggles flags, and this server also accepts `@set object=ATTR:value`. The original forms are in the server.
+
+A dot is one character in a single attribute name. A grave accent separates a branch from the name under it. Setting KEEP`MID`LEAF creates KEEP and KEEP`MID when they are missing, marks each as a branch, and stores a single space on the new branch. A branch that still has a name under it cannot be cleared. Clearing the last name under a branch leaves the branch and removes the branch mark. A wizard, locked, safe, or no-dump flag on a branch blocks a change to a name under it.
+
+| Status | Form | What has to happen |
+| --- | --- | --- |
+| 🔵 | `&ATTR object=value` | Sets or clears that attribute. No `=` clears it. An empty value clears it. The report is `Name(#dbref)/ATTR - Set.` or `Cleared.` A quiet attribute stays silent. |
+| 🔵 | `@_ATTR object=value` | The same write. The stored name is the text after `@_`, uppercased. |
+| 🔵 | `@attr object=value` | Sets a standard attribute when no real command has that name. `@desc` and `@describe` store `DESCRIBE` with that attribute's standard flags. `@va` through `@vz`, `@wa` through `@wz`, and `@xa` through `@xz` store those exact names. A unique prefix of a prefix-matching attribute matches. `@name` stays the name command. |
+
+Player alias checks, forward-list checks, LISTEN ear announcements, and enum or limit checks are still absent from this write. A name may use letters, digits, `_`, `-`, `.`, and a grave accent. The original name table allows more punctuation. `get()`, `lattr()`, and `examine` still do not apply a branch's restrictions to the names under it.
+
+| Order | Command | Depends on |
+| --- | --- | --- |
+| 🔵 49 | `@suggest` | `/add category=word` and `/delete category=word` change the suggestion vocabulary. A wizard adds or deletes. Anyone listing, including `/list` and a bare `@suggest`, sees the categories. `help` uses the HELP category for a close match. The vocabulary is kept in memory, so a restart clears it, and the match is a short edit distance. |
+| 🔵 50 | `@readcache` | A wizard reports the byte size of each connect text, for the text files and the HTML files, then reloads help. The report ends with "Help files reindexed." There is no file-watch restart. |
 
 ## Tier 3 — one new field or table, then the commands on it
 
@@ -189,9 +213,11 @@ A quota number on the player, saved with the object.
 | 🔵 55 | `@quota` | Show the count and the limit. `/set` writes one player's limit. |
 | 🔵 56 | `@squota` | `@quota/set`. |
 | 🔵 57 | `@allquota` | `@quota` for every player. God only. |
-| ⚪ 58 | `@chownall` | `@chown` across one player's things, rooms, and exits, then adjust both players' quotas. |
+| 🔵 58 | `@chownall` | `@chown` across one player's things, rooms, and exits, then adjust both players' quotas. |
 
 `RQUOTA` stores the objects still available. The line from `@quota` adds the owned count to that remainder. Wizard, royalty, and God are unlimited, and their limit cannot be set. `NO_QUOTA` and `QUOTAS` are not flag-table entries. Creating, cloning, destroying, and `@chown` leave the stored remainder unchanged. `@allquota` prints each remaining quota, and only God can run it.
+
+`@chownall` is wizard-only. It gives away that player's things, rooms, and exits. `/things`, `/rooms`, and `/exits` narrow the set. `/preserve` keeps wizard, royalty, trust, and powers, except a wizard object given to a non-wizard loses WIZARD. The old owner gains one unit of remaining quota per object and the new owner loses one. Zones are replaced with the new owner's zones, with no circular-zone check. The object's queue is not halted. A player name matches anywhere, and `me` means the enactor.
 
 ### Action lists
 
@@ -199,11 +225,13 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 59 | `@include` | Run one attribute inplace as that list. |
+| 🔵 59 | `@include` | Run one attribute inplace as that list. |
 | 🔴 60 | `@assert` | A false check sets the break flag. |
 | 🔴 61 | `@break` | A true check sets the same flag. |
 | 🔴 62 | `@retry` | A true check reruns the frame. The right-hand side replaces `%0` through `%9`. |
 | 🔴 63 | `@verb` | The verb string is visible to the action list. |
+
+`@include` runs the commands in one attribute immediately. `;` and a newline separate commands, and braces keep a `;` inside one command. A `$` or `^` prefix is skipped through the first colon. The right-hand side fills `%0` through `%9`, and the commands run as the player who typed `@include`. An attribute on a parent is included. `/localize`, `/clearregs`, and `/nobreak` are accepted and do not change registers or a break flag. An attribute is included when it can be named, with no read check. A caller's `%0` through `%9` are not passed along when the command has no `=`. An ambiguous name is not reported.
 
 ### Passwords that survive a restart
 
@@ -218,7 +246,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | Order | Command | Depends on |
 | --- | --- | --- |
 | 🔵 67 | `@function` | Adds, lists, reports, updates, aliases, restricts, enables, disables, and deletes a global soft function. Calling it runs the named attribute. The table is not saved. `/clone` and `/restore` do not copy or restore a builtin. `/preserve` and `/builtin` are ignored. A builtin cannot be deleted. A call enforces Nobody, Wizard, God, Admin, NoGagged, and NoFixed. Other restriction names appear on the report and leave the call unchanged. NoGuest is stored, and the flag table has no GUEST flag. A builtin report leaves out the argument count. |
-| ⚪ 68 | `@disable`, `@enable` | An enabled bit on a command. |
+| 🔵 68 | `@disable`, `@enable` | A wizard turns a boolean configuration option on or off. The options are use_ws, use_dns, player_creation, guests, and use_quota. The new value stays in memory. `@quota` and `@squota` read use_quota on each command. A gagged wizard can disable an option and cannot enable one. Other stored options report that they are not on/off switches. An unknown name reports that there is no such option. The change is not written to mush.cnf or the wizard log. |
 | 🔴 69 | `@command` | Add, alias, delete, and restrict a command. |
 | 🔴 70 | `@hook` | Before, after, ignore, override, and extend slots around dispatch. |
 
@@ -226,9 +254,9 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| ⚪ 71 | `@flag` | Create and edit flag definitions. Builtin flags already exist. |
-| ⚪ 72 | `@attribute` | An attribute-definition table. Per-object attributes already exist. |
-| ⚪ 73 | `@warnings` | A warning bitset stored on the object. |
+| 🔵 71 | `@flag` | God creates and edits flag definitions. List, info, add, alias, restrict, type, letter, enable, disable, delete, and decompile use the original messages. A new flag can be set with `@set`. The definition stays in memory and is not saved. `/debug` reports the flag count and bit positions and omits the flag cache. `inherit`, `log`, and `event` are stored on the definition and do not change `@set`. |
+| 🔵 72 | `@attribute` | A wizard edits the attribute definition table: access, limit, enum, rename, delete, info, and decompile. Flags chosen here are used the next time the attribute is set. /limit and /enum reject or rewrite the value. /retroactive updates copies already stored. The edited table stays in memory. Rename does not rewrite values stored under the old name. A prefixmatch flag added here is recorded, and prefix lookup still uses the built-in prefix list. |
+| 🔵 73 | `@warnings` | A warning bitset stored on the object. Names, groups, and `!` negation match the original list, and a new player starts on normal. Examine shows `Warnings checked:`. The bits are saved in the sqlite database, and an original dump's warnings field is loaded. The matcher returns the first object, so two matches do not produce the ambiguous message. |
 | 🔴 74 | `@wcheck` | Those bits, then a topology check of what the player owns. |
 | ⚪ 75 | `@malias` | A mail-alias table beside `MailStore`. This is not a channel command. |
 | ⚪ 76 | `@config` | Read the options `MushConfiguration` already parsed. `/set` changes memory only. |
@@ -261,9 +289,16 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | Command | Wait for |
 | --- | --- |
 | `@assert`, `@break`, `@retry`, `@verb` | `@include` and the action-list frame. |
+| `follow`, `unfollow`, `dismiss`, `desert` | The follower list and the movement hook. |
 | `buy` | Pay-lock checks and penny transfer. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@clock` | Channel locks. It is not a time command. |
 | `@malias` | Mail aliases. It is not `comlist`. |
 | `@sql`, `@mapsql`, `@http`, `@respond`, `@slave` | Tier 5. |
+
+## Player-facing wording, after the sections above
+
+The port keeps each original sentence until the command rows in this file and the function sections in `function-port-order.md` are in the server. Many of those sentences refuse an action and leave out what was required. `You don't look like God.` and `You don't have enough magic for that.` are two of them. On `@flag`, both mean the edit is limited to player #1, and a wizard who is not #1 receives the same refusal. Other commands already use sentences of this kind, and the remaining rows will add more.
+
+`#-1` results already have one home. `PennMUSH.Core/MUSHcode/MushError.cs` names each result and holds its text. After the command rows and function sections above are ported, give the other stock sentences that same treatment. One catalog lists them. A handler names the message, and the words a player sees come from the catalog. That catalog is where the sentences are read together and where their wording is changed. The catalog waits until those commands and functions exist, so the sentences they add are included.

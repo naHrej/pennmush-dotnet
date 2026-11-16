@@ -35,6 +35,7 @@ public class SqliteStore
                 owner INTEGER NOT NULL,
                 home INTEGER NOT NULL,
                 pennies INTEGER NOT NULL,
+                warnings INTEGER NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 modified_at INTEGER NOT NULL
             );
@@ -85,6 +86,16 @@ public class SqliteStore
             );
         ";
         cmd.ExecuteNonQuery();
+        using var alter = conn.CreateCommand();
+        alter.CommandText = "ALTER TABLE objects ADD COLUMN warnings INTEGER NOT NULL DEFAULT 0";
+        try
+        {
+            alter.ExecuteNonQuery();
+        }
+        catch (SqliteException)
+        {
+            // The column is already present on a database created with this schema.
+        }
     }
 
     public void Save(ObjectDatabase db, Scheduling.CronScheduler? cron = null)
@@ -107,8 +118,8 @@ public class SqliteStore
             {
                 objCmd.Transaction = tx;
                 objCmd.CommandText = @"
-                    INSERT INTO objects (id, name, type, location, contents, exits, next, owner, home, pennies, created_at, modified_at)
-                    VALUES ($id, $name, $type, $loc, $con, $ex, $next, $owner, $home, $pennies, $created, $modified);
+                    INSERT INTO objects (id, name, type, location, contents, exits, next, owner, home, pennies, warnings, created_at, modified_at)
+                    VALUES ($id, $name, $type, $loc, $con, $ex, $next, $owner, $home, $pennies, $warnings, $created, $modified);
                 ";
                 objCmd.Parameters.AddWithValue("$id", obj.Id.Value);
                 objCmd.Parameters.AddWithValue("$name", obj.Name);
@@ -120,6 +131,7 @@ public class SqliteStore
                 objCmd.Parameters.AddWithValue("$owner", obj.Owner.Value);
                 objCmd.Parameters.AddWithValue("$home", obj.Home.Value);
                 objCmd.Parameters.AddWithValue("$pennies", obj.Pennies);
+                objCmd.Parameters.AddWithValue("$warnings", (long)obj.Warnings);
                 objCmd.Parameters.AddWithValue("$created", obj.CreationTime.ToUnixTimeSeconds());
                 objCmd.Parameters.AddWithValue("$modified", obj.ModificationTime.ToUnixTimeSeconds());
                 objCmd.ExecuteNonQuery();
@@ -213,7 +225,7 @@ public class SqliteStore
         conn.Open();
 
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, name, type, location, contents, exits, next, owner, home, pennies, created_at, modified_at FROM objects ORDER BY id;";
+        cmd.CommandText = "SELECT id, name, type, location, contents, exits, next, owner, home, pennies, created_at, modified_at, warnings FROM objects ORDER BY id;";
         using var reader = cmd.ExecuteReader();
 
         bool hasRows = false;
@@ -232,6 +244,7 @@ public class SqliteStore
             int pennies = reader.GetInt32(9);
             long created = reader.GetInt64(10);
             long modified = reader.GetInt64(11);
+            uint warnings = reader.IsDBNull(12) ? 0u : (uint)reader.GetInt64(12);
 
             var obj = new MUSHObject(new Dbref(id), name, (ObjectType)type, new Dbref(owner))
             {
@@ -242,7 +255,8 @@ public class SqliteStore
                 Home = new Dbref(home),
                 Pennies = pennies,
                 CreationTime = DateTimeOffset.FromUnixTimeSeconds(created),
-                ModificationTime = DateTimeOffset.FromUnixTimeSeconds(modified)
+                ModificationTime = DateTimeOffset.FromUnixTimeSeconds(modified),
+                Warnings = warnings
             };
 
             db.SetObject(obj);

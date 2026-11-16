@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using PennMUSH.Core.Queue;
 using PennMUSH.Core.Scheduling;
+using PennMUSH.Core.MUSHcode;
 
 public static class CronFunctions
 {
@@ -42,10 +43,10 @@ public static class CronFunctions
     public static string CronInfo(FunctionRegistry? reg, EvaluationContext ctx, string[] args)
     {
         var scheduler = reg?.Scheduler ?? _scheduler;
-        if (scheduler == null || args.Length == 0) return "#-1 NO MATCH";
+        if (scheduler == null || args.Length == 0) return MushError.NoMatch.Text();
         string id = args[0].Trim();
         var job = scheduler.GetJob(id);
-        if (job == null) return "#-1 NO MATCH";
+        if (job == null) return MushError.NoMatch.Text();
 
         string field = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "schedule";
 

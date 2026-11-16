@@ -18,6 +18,7 @@ public class Channel
     public Dbref Owner { get; set; }
     public ChannelFlags Flags { get; set; } = ChannelFlags.Public | ChannelFlags.Player;
     public int BufferCapacity { get; set; } = 50;
+    public int MessageCount { get; private set; }
 
     public IReadOnlyCollection<ChannelMember> Members
     {
@@ -74,6 +75,7 @@ public class Channel
         {
             var msg = new ChannelMessage(DateTimeOffset.UtcNow, senderName, senderId, text);
             _buffer.Add(msg);
+            MessageCount++;
             if (_buffer.Count > BufferCapacity)
             {
                 _buffer.RemoveAt(0);

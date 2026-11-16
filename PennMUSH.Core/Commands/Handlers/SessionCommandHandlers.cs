@@ -8,6 +8,7 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Session;
 using PennMUSH.Core.Types;
+using PennMUSH.Core.MUSHcode;
 
 public class WhoCommandHandler : ICommandHandler
 {
@@ -427,9 +428,9 @@ internal static class SessionReport
     private static string Place(ObjectDatabase db, SessionInfo item)
     {
         if (!item.LoggedIn)
-            return "#-1";
+            return MushError.Nothing.Text();
         var player = db.GetObject(item.PlayerId);
-        return player != null && player.Location.IsValid ? "#" + player.Location.Value : "#-1";
+        return player != null && player.Location.IsValid ? "#" + player.Location.Value : MushError.Nothing.Text();
     }
 
     private static string HostNote(ObjectDatabase db, SessionInfo item)

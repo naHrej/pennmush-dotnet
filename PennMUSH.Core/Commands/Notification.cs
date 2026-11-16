@@ -19,4 +19,7 @@ public record Notification(
     Dbref Except = default,
     string? ProtocolType = null,
     object? ProtocolPayload = null,
-    bool Prompt = false);
+    bool Prompt = false,
+    Dbref Speaker = default,
+    bool Spoofable = false,
+    bool EscapeHtml = false);

@@ -7,7 +7,14 @@ using PennMUSH.Core.Entities;
 
 public class TeleportCommandHandler : ICommandHandler
 {
+    private readonly LookCommandHandler? _lookHandler;
+
     public string Name => "@teleport";
+
+    public TeleportCommandHandler(LookCommandHandler? lookHandler = null)
+    {
+        _lookHandler = lookHandler;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -43,8 +50,10 @@ public class TeleportCommandHandler : ICommandHandler
             return false;
         }
 
-        target.Location = dest.Id;
+        db.MoveObject(target.Id, dest.Id);
         context.Notify("Teleported.");
+        if (target.Type == ObjectType.Player)
+            _lookHandler?.ShowHere(context, db, target.Id, LookKind.Automatic);
         return true;
     }
 

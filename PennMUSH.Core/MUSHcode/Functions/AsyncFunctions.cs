@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
+using PennMUSH.Core.MUSHcode;
 
 public static class AsyncFunctions
 {
@@ -30,7 +31,7 @@ public static class AsyncFunctions
 
     public static string AsyncFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Evaluator == null) return "#-1 NO CODE";
+        if (args.Length == 0 || reg.Evaluator == null) return MushError.NoCode.Text();
 
         string codeToRun = args[0];
         string? callback = args.Length > 1 ? args[1].Trim() : null;
@@ -88,10 +89,10 @@ public static class AsyncFunctions
 
     public static string BgTaskFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || _queue == null) return "#-1 NO COMMAND";
+        if (args.Length == 0 || _queue == null) return MushError.NoCommand.Text();
         string command = args[0];
 
         var entry = _queue.Enqueue(ctx.Executor, ctx.Enactor, command);
-        return entry != null ? $"PID#{entry.Pid}" : "#-1 QUEUE FULL";
+        return entry != null ? $"PID#{entry.Pid}" : MushError.QueueFull.Text();
     }
 }

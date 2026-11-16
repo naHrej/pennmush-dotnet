@@ -1,10 +1,18 @@
 namespace PennMUSH.Core.Commands.Handlers;
 
 using PennMUSH.Core.Database;
+using PennMUSH.Core.MUSHcode;
 
 public class PoseCommandHandler : ICommandHandler
 {
+    private readonly ExpressionEvaluator? _evaluator;
+
     public string Name => "pose";
+
+    public PoseCommandHandler(ExpressionEvaluator? evaluator = null)
+    {
+        _evaluator = evaluator;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -20,7 +28,8 @@ public class PoseCommandHandler : ICommandHandler
         bool noSpace = context.CommandName.Equals(";", StringComparison.Ordinal)
             || context.CommandName.Equals("semipose", StringComparison.OrdinalIgnoreCase)
             || context.Switches.Contains("nospace");
-        string message = noSpace ? $"{name}{context.Arguments}" : $"{name} {context.Arguments}";
+        string spoken = SpeechMod.Apply(db, _evaluator, context.Executor, context.Arguments, noSpace ? ";" : ":");
+        string message = noSpace ? $"{name}{spoken}" : $"{name} {spoken}";
 
         if (execObj != null && execObj.Location.IsValid)
         {

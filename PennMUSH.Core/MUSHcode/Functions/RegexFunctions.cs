@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using PennMUSH.Core.MUSHcode;
 
 public static class RegexFunctions
 {
@@ -59,7 +60,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {
@@ -81,7 +82,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {
@@ -103,7 +104,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {
@@ -128,7 +129,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {
@@ -152,7 +153,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {
@@ -176,7 +177,7 @@ public static class RegexFunctions
         }
         catch (RegexMatchTimeoutException)
         {
-            return "#-1 REGEX TIMEOUT";
+            return MushError.RegexTimeout.Text();
         }
         catch
         {

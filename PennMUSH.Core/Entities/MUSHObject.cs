@@ -27,6 +27,7 @@ public class MUSHObject
     public Dbref Owner { get; set; } = Dbref.Nothing;
     public Dbref Home { get; set; } = Dbref.Nothing;
     public int Pennies { get; set; } = 0;
+    public uint Warnings { get; set; }
     public DateTimeOffset CreationTime { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset ModificationTime { get; set; } = DateTimeOffset.UtcNow;
 
@@ -265,6 +266,48 @@ public class MUSHObject
         }
 
         return AttributeErrorCode.Okay;
+    }
+
+    public void WriteAttributeValue(string name, string value, Dbref setter, AttributeFlags flagsIfNew)
+    {
+        string stored = name.ToUpperInvariant();
+        if (_attributes.TryGetValue(stored, out var existing))
+        {
+            existing.Value = value;
+            existing.Creator = setter;
+        }
+        else
+        {
+            _attributes[stored] = new AttributeEntry(stored, value, setter, flagsIfNew);
+        }
+
+        ModificationTime = DateTimeOffset.UtcNow;
+    }
+
+    public void AddAttributeFlags(string name, AttributeFlags flags)
+    {
+        if (_attributes.TryGetValue(name, out var existing))
+        {
+            existing.Flags |= flags;
+            ModificationTime = DateTimeOffset.UtcNow;
+        }
+    }
+
+    public void RemoveAttributeFlags(string name, AttributeFlags flags)
+    {
+        if (_attributes.TryGetValue(name, out var existing))
+        {
+            existing.Flags &= ~flags;
+            ModificationTime = DateTimeOffset.UtcNow;
+        }
+    }
+
+    public bool RemoveAttribute(string name)
+    {
+        bool removed = _attributes.Remove(name);
+        if (removed)
+            ModificationTime = DateTimeOffset.UtcNow;
+        return removed;
     }
 
     public AttributeErrorCode SetAttributeFlags(string name, AttributeFlags flags)

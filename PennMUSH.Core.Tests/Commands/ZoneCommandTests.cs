@@ -86,7 +86,7 @@ public class ZoneCommandTests
     }
 
     [Fact]
-    public void Zemit_ReachesRoomsInTheZoneAndKeepsTheSpeakerName()
+    public void Zemit_ReachesRoomsInTheZone()
     {
         var zone = _db.CreateObject("District", ObjectType.Thing, _god);
         var inside = _db.CreateObject("Market", ObjectType.Room, _god);
@@ -97,17 +97,21 @@ public class ZoneCommandTests
         Assert.Contains("Permission denied.", denied.Notifications);
 
         var sent = _dispatcher.Dispatch(_god, $"@zemit #{zone.Id.Value}=Hello", _db);
-        Assert.Contains("[One:] Hello", sent.TargetedNotifications.Where(note => note.Scope == NotificationScope.Room && note.Target == inside.Id).Select(note => note.Message));
+        var roomNote = sent.TargetedNotifications.Single(note => note.Scope == NotificationScope.Room && note.Target == inside.Id);
+        Assert.Equal("Hello", roomNote.Message);
+        Assert.True(roomNote.Spoofable);
         Assert.DoesNotContain(sent.TargetedNotifications, note => note.Scope == NotificationScope.Room && note.Target == outside.Id);
         Assert.Contains("You zemit to District.", sent.Notifications);
 
         var asWizard = _dispatcher.Dispatch(_god, $"@nszemit #{zone.Id.Value}=Hello", _db);
-        Assert.Contains("Hello", asWizard.TargetedNotifications.Where(note => note.Target == inside.Id).Select(note => note.Message));
+        var nsNote = asWizard.TargetedNotifications.Single(note => note.Scope == NotificationScope.Room && note.Target == inside.Id);
+        Assert.Equal("Hello", nsNote.Message);
+        Assert.False(nsNote.Spoofable);
 
         _db.GetObject(_god)!.AddPower("Can_spoof");
         var plain = _dispatcher.Dispatch(_god, $"@zemit #{zone.Id.Value}=Hello", _db);
         var forced = _dispatcher.Dispatch(_god, $"@nszemit #{zone.Id.Value}=Hello", _db);
-        Assert.Contains("Hello", plain.TargetedNotifications.Where(note => note.Target == inside.Id).Select(note => note.Message));
-        Assert.Contains("Hello", forced.TargetedNotifications.Where(note => note.Target == inside.Id).Select(note => note.Message));
+        Assert.True(plain.TargetedNotifications.Single(note => note.Scope == NotificationScope.Room && note.Target == inside.Id).Spoofable);
+        Assert.False(forced.TargetedNotifications.Single(note => note.Scope == NotificationScope.Room && note.Target == inside.Id).Spoofable);
     }
 }
