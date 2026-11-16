@@ -3,16 +3,19 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.MUSHcode;
 
 public class ChatCommandHandler : ICommandHandler
 {
     private readonly ChannelRegistry _channels;
+    private readonly ExpressionEvaluator? _evaluator;
 
     public string Name => "@chat";
 
-    public ChatCommandHandler(ChannelRegistry channels)
+    public ChatCommandHandler(ChannelRegistry channels, ExpressionEvaluator? evaluator = null)
     {
         _channels = channels;
+        _evaluator = evaluator;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -53,14 +56,17 @@ public class ChatCommandHandler : ICommandHandler
             return false;
         }
 
+        string token = "\"";
         bool isPose = false;
         if (message.StartsWith(':'))
         {
+            token = ":";
             isPose = true;
             message = message.Substring(1);
         }
         else if (message.StartsWith(';'))
         {
+            token = ";";
             isPose = true;
             message = message.Substring(1);
         }
@@ -68,7 +74,8 @@ public class ChatCommandHandler : ICommandHandler
         var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, message, isPose: isPose);
         if (result != null)
         {
-            context.Notify(result.FormattedMessage);
+            string title = ch.GetMember(executor.Id)?.Title ?? "";
+            FormatAttributes.DeliverChannel(context, db, _evaluator, result, executor.Id, ch.Name, message, executor.Name, title, token, "noisy", false);
             return true;
         }
 

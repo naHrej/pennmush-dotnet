@@ -4,6 +4,7 @@ using System;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.Entities;
+using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 
 public class WhisperCommandHandler : ICommandHandler
@@ -47,7 +48,14 @@ public class WhisperCommandHandler : ICommandHandler
 
 public class PageCommandHandler : ICommandHandler
 {
+    private readonly ExpressionEvaluator? _evaluator;
+
     public string Name => "page";
+
+    public PageCommandHandler(ExpressionEvaluator? evaluator = null)
+    {
+        _evaluator = evaluator;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -87,8 +95,22 @@ public class PageCommandHandler : ICommandHandler
             return false;
         }
 
-        context.Notify($"You page {target.Name} with '{message}'.");
-        context.NotifyTarget(target.Id, $"{senderName} pages: {message}");
+        string outgoing = $"You page {target.Name} with '{message}'.";
+        string incoming = $"{senderName} pages: {message}";
+        string targetRef = target.Id.ToString();
+        if (execObj != null)
+        {
+            string? sent = FormatAttributes.Evaluate(db, _evaluator, execObj, execObj.Id, execObj.Id, "OUTPAGEFORMAT", message, "\"", "", targetRef, outgoing);
+            if (!string.IsNullOrEmpty(sent))
+                outgoing = sent;
+        }
+
+        string? heard = FormatAttributes.Evaluate(db, _evaluator, target, target.Id, context.Executor, "PAGEFORMAT", message, "\"", "", targetRef, incoming);
+        if (!string.IsNullOrEmpty(heard))
+            incoming = heard;
+
+        context.Notify(outgoing);
+        context.NotifyTarget(target.Id, incoming);
         return true;
     }
 }

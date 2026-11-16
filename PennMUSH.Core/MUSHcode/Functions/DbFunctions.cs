@@ -8,6 +8,7 @@ using PennMUSH.Core.Types;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Commands;
+using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Queue;
 
 public static class DbFunctions
@@ -15,6 +16,7 @@ public static class DbFunctions
     public static void Register(FunctionRegistry registry)
     {
         registry.Register("NAME", (ctx, args) => Name(registry, ctx, args));
+        registry.Register("NAMEFORMAT", (ctx, args) => NameFormat(registry, ctx, args));
         registry.Register("GET", (ctx, args) => Get(registry, ctx, args));
         registry.Register("HASATTR", (ctx, args) => HasAttr(registry, ctx, args));
         registry.Register("LOC", (ctx, args) => Loc(registry, ctx, args));
@@ -100,6 +102,29 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         return obj != null ? obj.Name : "#-1 NO MATCH";
+    }
+
+    public static string NameFormat(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        string plain = Name(reg, ctx, args);
+        if (args.Length == 0 || reg.Database == null)
+            return plain;
+
+        var dbref = ParseDbref(args[0], ctx);
+        var obj = reg.Database.GetObject(dbref);
+        if (obj == null)
+            return plain;
+
+        string? formatted = FormatAttributes.Evaluate(
+            reg.Database,
+            reg.Evaluator,
+            obj,
+            ctx.Executor,
+            ctx.Executor,
+            "NAMEFORMAT",
+            obj.Id.ToString(),
+            plain);
+        return string.IsNullOrWhiteSpace(formatted) ? plain : formatted;
     }
 
     public static string Get(FunctionRegistry reg, EvaluationContext ctx, string[] args)
