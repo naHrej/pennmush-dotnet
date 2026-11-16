@@ -9,12 +9,15 @@ using PennMUSH.Core.Types;
 public class QuotaCommandHandler : ICommandHandler
 {
     private readonly bool _useQuota;
+    private readonly Func<bool>? _liveUseQuota;
     private readonly int _startingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? _useQuota;
 
-    public QuotaCommandHandler(bool useQuota = true, int startingQuota = 20)
+    public QuotaCommandHandler(bool useQuota = true, int startingQuota = 20, Func<bool>? liveUseQuota = null)
     {
         _useQuota = useQuota;
         _startingQuota = startingQuota;
+        _liveUseQuota = liveUseQuota;
     }
 
     public string Name => "@quota";
@@ -24,26 +27,29 @@ public class QuotaCommandHandler : ICommandHandler
         if (context.Switches.Contains("all"))
             return QuotaRules.All(context, db, _startingQuota, context.LeftArg);
         if (context.Switches.Contains("set"))
-            return QuotaRules.Set(context, db, _useQuota, _startingQuota);
-        return QuotaRules.Show(context, db, _useQuota, _startingQuota);
+            return QuotaRules.Set(context, db, UseQuotaNow, _startingQuota);
+        return QuotaRules.Show(context, db, UseQuotaNow, _startingQuota);
     }
 }
 
 public class SquotaCommandHandler : ICommandHandler
 {
     private readonly bool _useQuota;
+    private readonly Func<bool>? _liveUseQuota;
     private readonly int _startingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? _useQuota;
 
-    public SquotaCommandHandler(bool useQuota = true, int startingQuota = 20)
+    public SquotaCommandHandler(bool useQuota = true, int startingQuota = 20, Func<bool>? liveUseQuota = null)
     {
         _useQuota = useQuota;
         _startingQuota = startingQuota;
+        _liveUseQuota = liveUseQuota;
     }
 
     public string Name => "@squota";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
-        => QuotaRules.Set(context, db, _useQuota, _startingQuota);
+        => QuotaRules.Set(context, db, UseQuotaNow, _startingQuota);
 }
 
 public class AllQuotaCommandHandler : ICommandHandler
@@ -261,6 +267,11 @@ internal static class QuotaRules
         int remaining = owned <= startingQuota ? startingQuota - owned : owned;
         Store(who, remaining);
         return remaining;
+    }
+
+    public static void Adjust(ObjectDatabase db, MUSHObject who, int payment, int startingQuota)
+    {
+        Store(who, Remaining(db, who, startingQuota) + payment);
     }
 
     private static void Store(MUSHObject who, int remaining)

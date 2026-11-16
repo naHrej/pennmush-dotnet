@@ -1,5 +1,6 @@
 namespace PennMUSH.Core.Database;
 
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -18,6 +19,7 @@ public static class WorldBootstrapper
         god.Location = roomZero.Id;
         god.Home = roomZero.Id;
         god.Pennies = 1000;
+        god.Warnings = WarningBits.Normal;
         god.AddFlag("WIZARD");
 
         // Ensure room zero is owned by God

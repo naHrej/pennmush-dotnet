@@ -819,12 +819,22 @@ public class ListCommandHandler : ICommandHandler
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         string which = context.Arguments.Trim().ToLowerInvariant();
+        bool lower = context.Switches.Contains("lowercase");
+        if (context.Switches.Contains("attribs") || which == "attribs")
+        {
+            string body = string.Join(" ", StandardAttributes.CanonicalNames().OrderBy(name => name, StringComparer.Ordinal));
+            if (lower)
+                body = body.ToLowerInvariant();
+            context.Notify("Attribs: " + body);
+            return true;
+        }
+
         if (context.Switches.Contains("motd") || which == "motd")
         {
             var actor = db.GetObject(context.Executor);
             if (_motd == null || actor == null)
             {
-                context.Notify("Usage: @list commands|flags|powers|functions");
+                context.Notify("Usage: @list commands|flags|powers|functions|attribs");
                 return false;
             }
 
@@ -844,7 +854,7 @@ public class ListCommandHandler : ICommandHandler
         {
             context.Notify(which == "functions"
                 ? "Functions are not available."
-                : "Usage: @list commands|flags|powers|functions");
+                : "Usage: @list commands|flags|powers|functions|attribs");
             return false;
         }
 

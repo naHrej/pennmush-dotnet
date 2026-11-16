@@ -221,3 +221,27 @@ public class EnactorPercentSubstitutionTests
         Assert.Equal("#-1", evaluator.Evaluate("%:", ctx));
     }
 }
+
+public class IterEvaluationTests
+{
+    [Fact]
+    public void Iter_SubstitutesTheItemBeforeEvaluatingTheAction()
+    {
+        var db = new ObjectDatabase();
+        var owner = db.CreateObject("One", ObjectType.Player, new Dbref(1));
+        var tester = db.CreateObject("QueueTester", ObjectType.Thing, owner.Id);
+        var registry = new FunctionRegistry(db);
+        var evaluator = new ExpressionEvaluator(registry.Dispatch, db);
+        registry.Evaluator = evaluator;
+        var ctx = new EvaluationContext(
+            executor: owner.Id,
+            enactor: owner.Id,
+            args: new[] { owner.Id + " " + tester.Id });
+
+        Assert.Equal(
+            owner.Id + "-One " + tester.Id + "-QueueTester",
+            evaluator.Evaluate("[iter(%0,##-[name(##)])]", ctx));
+        Assert.Equal("ITEM:a ITEM:b ITEM:c", evaluator.Evaluate("[iter(a b c,ITEM:##)]", ctx));
+        Assert.Equal("1:a,2:b,3:c", evaluator.Evaluate("[iter(a b c,#@:##, ,\\,)]", ctx));
+    }
+}

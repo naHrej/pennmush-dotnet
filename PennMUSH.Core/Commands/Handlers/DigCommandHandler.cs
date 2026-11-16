@@ -70,13 +70,7 @@ public class DigCommandHandler : ICommandHandler
         {
             db.MoveObject(context.Executor, newRoom.Id);
             context.Notify($"Teleported to {newRoom.Name}.");
-            if (_lookHandler != null)
-            {
-                var lookCtx = new CommandContext { Executor = context.Executor, Enactor = context.Enactor };
-                _lookHandler.Execute(lookCtx, db);
-                foreach (var note in lookCtx.Notifications)
-                    context.Notify(note);
-            }
+            _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         }
 
         return true;

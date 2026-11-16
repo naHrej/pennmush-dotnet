@@ -11,13 +11,15 @@ public class HelpCommandHandler : ICommandHandler
 {
     private readonly HelpStore _helpStore;
     private readonly Func<Dbref, bool>? _receivesHtml;
+    private readonly SuggestionVocabulary? _suggestions;
 
     public string Name => "help";
 
-    public HelpCommandHandler(HelpStore helpStore, Func<Dbref, bool>? receivesHtml = null)
+    public HelpCommandHandler(HelpStore helpStore, Func<Dbref, bool>? receivesHtml = null, SuggestionVocabulary? suggestions = null)
     {
         _helpStore = helpStore;
         _receivesHtml = receivesHtml;
+        _suggestions = suggestions;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -26,7 +28,11 @@ public class HelpCommandHandler : ICommandHandler
         string? result = _helpStore.Lookup(topic);
         if (string.IsNullOrEmpty(result))
         {
-            context.Notify(ForClient($"No entry for '{topic}'.", context));
+            string? suggestion = _suggestions?.Closest("HELP", topic);
+            if (suggestion != null)
+                context.Notify(ForClient($"No help entry for '{topic}'. Did you mean '{suggestion}'?", context));
+            else
+                context.Notify(ForClient($"No entry for '{topic}'.", context));
             return false;
         }
 

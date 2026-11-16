@@ -14,6 +14,8 @@ public class ExpressionEvaluator
     private readonly FunctionDispatcher? _functionDispatcher;
     private readonly ObjectDatabase? _database;
 
+    public Func<string, bool>? IsKnownFunction { get; set; }
+
     public ExpressionEvaluator(FunctionDispatcher? functionDispatcher = null, ObjectDatabase? database = null)
     {
         _functionDispatcher = functionDispatcher;
@@ -26,10 +28,13 @@ public class ExpressionEvaluator
             return string.Empty;
 
         if (!context.CheckExecutionBudget(out string? budgetError))
-            return budgetError ?? "#-1 EXECUTION HALTED";
+            return budgetError ?? MushError.ExecutionHalted.Text();
 
         var sb = new StringBuilder();
         int i = 0;
+        // The first '(' in this walk is a function call when the text
+        // produced so far is a function name. A later '(' is ordinary text.
+        bool functionCheck = IsKnownFunction != null;
 
         while (i < expression.Length)
         {
@@ -78,6 +83,24 @@ public class ExpressionEvaluator
                     sb.Append((char)91);
                     i += 1;
                 }
+            }
+            else if (c == (char)40 && functionCheck) // '('
+            {
+                string candidate = sb.ToString();
+                int close = FindMatchingDelimiter(expression, i, (char)40, (char)41);
+                if (close != -1 && IsValidFunctionName(candidate) && IsKnownFunction!(candidate))
+                {
+                    string rawArgs = expression.Substring(i + 1, close - (i + 1));
+                    sb.Clear();
+                    sb.Append(CallFunction(candidate, rawArgs, context));
+                    i = close + 1;
+                }
+                else
+                {
+                    sb.Append(c);
+                    i += 1;
+                }
+                functionCheck = false;
             }
             else if (c == (char)37) // '%'
             {
@@ -203,6 +226,22 @@ public class ExpressionEvaluator
         return sb.ToString();
     }
 
+    private string CallFunction(string funcName, string rawArgs, EvaluationContext context)
+    {
+        string[] parsedArgs = SplitArguments(rawArgs);
+        // iter() replaces ## and #@ before the action runs. The action
+        // must still contain those tokens when Iter receives it.
+        bool rawArguments = funcName.Equals("iter", StringComparison.OrdinalIgnoreCase);
+        string[] evaluatedArgs = new string[parsedArgs.Length];
+        for (int a = 0; a < parsedArgs.Length; a++)
+            evaluatedArgs[a] = rawArguments ? parsedArgs[a] : Evaluate(parsedArgs[a], context);
+
+        if (_functionDispatcher != null)
+            return _functionDispatcher(funcName, context, evaluatedArgs);
+
+        return MushError.FunctionNotFound.Text("function", funcName.ToUpperInvariant());
+    }
+
     private string EvaluateBracketContent(string inner, EvaluationContext context)
     {
         if (string.IsNullOrWhiteSpace(inner))
@@ -215,22 +254,7 @@ public class ExpressionEvaluator
             if (IsValidFunctionName(funcName))
             {
                 string rawArgs = inner.Substring(firstParen + 1, inner.Length - firstParen - 2);
-                string[] parsedArgs = SplitArguments(rawArgs);
-                // iter() replaces ## and #@ before the action runs. The action
-                // must still contain those tokens when Iter receives it.
-                bool rawArguments = funcName.Equals("iter", StringComparison.OrdinalIgnoreCase);
-                string[] evaluatedArgs = new string[parsedArgs.Length];
-                for (int a = 0; a < parsedArgs.Length; a++)
-                {
-                    evaluatedArgs[a] = rawArguments ? parsedArgs[a] : Evaluate(parsedArgs[a], context);
-                }
-
-                if (_functionDispatcher != null)
-                {
-                    return _functionDispatcher(funcName, context, evaluatedArgs);
-                }
-
-                return $"#-1 FUNCTION ({funcName.ToUpperInvariant()}) NOT FOUND";
+                return CallFunction(funcName, rawArgs, context);
             }
         }
 
@@ -382,20 +406,20 @@ public class ExpressionEvaluator
 
     private string EnactorName(EvaluationContext context)
     {
-        return FindObject(context.Enactor)?.Name ?? "#-1";
+        return FindObject(context.Enactor)?.Name ?? MushError.Nothing.Text();
     }
 
     private string EnactorObjectId(EvaluationContext context)
     {
         var obj = FindObject(context.Enactor);
-        return obj == null ? "#-1" : $"{obj.Id}:{obj.CreationTime.ToUnixTimeSeconds()}";
+        return obj == null ? MushError.Nothing.Text() : $"{obj.Id}:{obj.CreationTime.ToUnixTimeSeconds()}";
     }
 
     private string Pronoun(EvaluationContext context, Func<string, string> select)
     {
         var obj = FindObject(context.Enactor);
         if (obj == null)
-            return "#-1";
+            return MushError.Nothing.Text();
         string sex = obj.GetAttribute("SEX", _database)?.Value ?? string.Empty;
         return select(sex);
     }

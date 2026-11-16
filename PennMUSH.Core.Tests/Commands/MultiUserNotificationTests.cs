@@ -85,6 +85,71 @@ public class MultiUserNotificationTests
     }
 
     [Fact]
+    public async Task Emit_PrefixesOnlyANospoofListener()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"multiuser_emit_{Guid.NewGuid():N}.db");
+        try
+        {
+            var server = new MUSHServer(dbPath);
+            var aliceOutputs = new List<string>();
+            var bobOutputs = new List<string>();
+            var aliceConn = new MUSHConnection(line => { aliceOutputs.Add(line); return Task.CompletedTask; });
+            var bobConn = new MUSHConnection(line => { bobOutputs.Add(line); return Task.CompletedTask; });
+            server.RegisterConnection(aliceConn);
+            server.RegisterConnection(bobConn);
+            await server.HandleInputAsync(aliceConn, "create Alice pass1");
+            await server.HandleInputAsync(bobConn, "create Bob pass2");
+
+            aliceOutputs.Clear();
+            bobOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "@emit The lights dim.");
+            Assert.Contains(bobOutputs, o => o.Contains("The lights dim."));
+            Assert.DoesNotContain(bobOutputs, o => o.Contains("[Alice"));
+            Assert.DoesNotContain(aliceOutputs, o => o.Contains("[Alice"));
+
+            var bob = server.Database.GetObject(bobConn.PlayerId)!;
+            bob.AddFlag("NOSPOOF");
+            aliceOutputs.Clear();
+            bobOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "@emit The lights dim.");
+            Assert.Contains(bobOutputs, o => o.Contains("[Alice:] The lights dim."));
+            Assert.DoesNotContain(aliceOutputs, o => o.Contains("[Alice"));
+
+            bobOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "say hello there");
+            Assert.Contains(bobOutputs, o => o.Contains("Alice says, \"hello there\""));
+            Assert.DoesNotContain(bobOutputs, o => o.Contains("[Alice"));
+
+            bob.AddFlag("PARANOID");
+            bobOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "@emit The lights dim.");
+            Assert.Contains(bobOutputs, o => o.Contains($"[Alice(#{aliceConn.PlayerId.Value})] The lights dim."));
+
+            var alice = server.Database.GetObject(aliceConn.PlayerId)!;
+            alice.AddFlag("NOSPOOF");
+            alice.AddFlag("PARANOID");
+            aliceOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "@emit The lights dim.");
+            Assert.Contains(aliceOutputs, o => o.Contains($"[Alice(#{aliceConn.PlayerId.Value})] The lights dim."));
+
+            alice.AddFlag("WIZARD");
+            bobOutputs.Clear();
+            await server.HandleInputAsync(aliceConn, "@nsemit The lights dim.");
+            Assert.Contains(bobOutputs, o => o.Contains("The lights dim."));
+            Assert.DoesNotContain(bobOutputs, o => o.Contains("[Alice"));
+
+            server.Stop();
+        }
+        finally
+        {
+            if (File.Exists(dbPath))
+            {
+                try { File.Delete(dbPath); } catch { }
+            }
+        }
+    }
+
+    [Fact]
     public async Task MovementAndItemManipulation_BroadcastsToRoom()
     {
         string dbPath = Path.Combine(Path.GetTempPath(), $"multiuser_move_{Guid.NewGuid():N}.db");

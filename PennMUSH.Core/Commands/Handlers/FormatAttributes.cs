@@ -89,9 +89,9 @@ public static class FormatAttributes
             }
 
             if (id == context.Executor)
-                context.Notify(line);
+                context.Notify(line, sender, spoofable);
             else
-                context.NotifyTarget(id, line);
+                context.NotifyTarget(id, line, speaker: sender, spoofable: spoofable);
         }
     }
 }

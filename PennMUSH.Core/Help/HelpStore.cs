@@ -8,11 +8,20 @@ using System.Linq;
 public class HelpStore
 {
     private readonly Dictionary<string, string> _topics = new(StringComparer.OrdinalIgnoreCase);
+    private string? _directory;
 
     public int TopicCount => _topics.Count;
 
+    public void Reload()
+    {
+        _topics.Clear();
+        if (!string.IsNullOrEmpty(_directory))
+            LoadFromDirectory(_directory);
+    }
+
     public void LoadFromDirectory(string directoryPath)
     {
+        _directory = directoryPath;
         if (!Directory.Exists(directoryPath))
             return;
 

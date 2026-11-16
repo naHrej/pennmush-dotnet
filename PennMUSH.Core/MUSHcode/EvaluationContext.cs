@@ -56,25 +56,25 @@ namespace PennMUSH.Core.MUSHcode
         {
             if (CancellationToken.IsCancellationRequested)
             {
-                error = "#-1 TIMEOUT (RUNAWAY LOOP DETECTED)";
+                error = MushError.RunawayLoop.Text();
                 return false;
             }
 
             if (ExecutionDeadline.HasValue && DateTimeOffset.UtcNow > ExecutionDeadline.Value)
             {
-                error = "#-1 TIMEOUT (RUNAWAY LOOP DETECTED)";
+                error = MushError.RunawayLoop.Text();
                 return false;
             }
 
             if (RecursionDepth > MaxRecursionDepth)
             {
-                error = "#-1 FUNCTION RECURSION LIMIT EXCEEDED";
+                error = MushError.FunctionRecursionLimitExceeded.Text();
                 return false;
             }
 
             if (++InvocationCount > MaxInvocations)
             {
-                error = "#-1 FUNCTION INVOCATION LIMIT EXCEEDED";
+                error = MushError.FunctionInvocationLimitExceeded.Text();
                 return false;
             }
 

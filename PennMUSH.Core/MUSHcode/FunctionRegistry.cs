@@ -14,7 +14,17 @@ public class FunctionRegistry
     private readonly Dictionary<string, MUSHFunction> _functions = new(StringComparer.OrdinalIgnoreCase);
 
     public ObjectDatabase? Database { get; }
-    public ExpressionEvaluator? Evaluator { get; set; }
+    private ExpressionEvaluator? _evaluator;
+    public ExpressionEvaluator? Evaluator
+    {
+        get => _evaluator;
+        set
+        {
+            _evaluator = value;
+            if (_evaluator != null)
+                _evaluator.IsKnownFunction = HasFunction;
+        }
+    }
     public Action<PennMUSH.Core.Commands.Notification>? NotificationDispatcher { get; set; }
     public PennMUSH.Core.Protocol.EditorSessionManager? EditorSessions { get; set; }
     public PennMUSH.Core.Scheduling.CronScheduler? Scheduler { get; set; }

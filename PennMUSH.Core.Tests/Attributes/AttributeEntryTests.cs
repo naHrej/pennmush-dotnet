@@ -36,6 +36,7 @@ public class AttributeEntryTests
     [InlineData("MY_ATTR", true)]
     [InlineData("TEST-ATTR", true)]
     [InlineData("TREE`SUB", true)]
+    [InlineData("FOO.BAR", true)]
     [InlineData(null, false)]
     [InlineData("", false)]
     [InlineData("   ", false)]

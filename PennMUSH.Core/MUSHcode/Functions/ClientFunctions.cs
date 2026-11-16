@@ -6,6 +6,7 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Protocol;
 using PennMUSH.Core.Types;
+using PennMUSH.Core.MUSHcode;
 
 public static class ClientFunctions
 {
@@ -29,15 +30,15 @@ public static class ClientFunctions
 
     private static string CEditFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 3) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
 
-        if (!Dbref.TryParse(args[0], out var player)) return "#-1 INVALID PLAYER";
-        if (!Dbref.TryParse(args[1], out var target)) return "#-1 INVALID TARGET";
+        if (!Dbref.TryParse(args[0], out var player)) return MushError.InvalidPlayer.Text();
+        if (!Dbref.TryParse(args[1], out var target)) return MushError.InvalidTarget.Text();
         string attribute = args[2].Trim();
 
         var editorSessions = reg.EditorSessions ?? _editorSessions;
         var openPayload = editorSessions.StartAttributeSession(player, target, attribute, reg.Database ?? new ObjectDatabase());
-        if (openPayload == null) return "#-1 PERMISSION DENIED";
+        if (openPayload == null) return MushError.PermissionDenied.Text();
 
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
@@ -53,9 +54,9 @@ public static class ClientFunctions
 
     private static string CWindowFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 5) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 5) return MushError.TooFewArguments.Text();
 
-        if (!Dbref.TryParse(args[0], out var player)) return "#-1 INVALID PLAYER";
+        if (!Dbref.TryParse(args[0], out var player)) return MushError.InvalidPlayer.Text();
         string windowId = args[1].Trim();
         string target = args[2].Trim();
         string action = args[3].Trim();
@@ -78,9 +79,9 @@ public static class ClientFunctions
 
     private static string CStyleFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
 
-        if (!Dbref.TryParse(args[0], out var player)) return "#-1 INVALID PLAYER";
+        if (!Dbref.TryParse(args[0], out var player)) return MushError.InvalidPlayer.Text();
         string url = args[1].Trim();
 
         var payload = new StyleLoadPayload("style_" + Guid.NewGuid().ToString("N")[..8], url, "global");
@@ -99,9 +100,9 @@ public static class ClientFunctions
 
     private static string CAudioFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
 
-        if (!Dbref.TryParse(args[0], out var player)) return "#-1 INVALID PLAYER";
+        if (!Dbref.TryParse(args[0], out var player)) return MushError.InvalidPlayer.Text();
         string url = args[1].Trim();
         double vol = args.Length > 2 && double.TryParse(args[2], out var v) ? v : 1.0;
         bool loop = args.Length > 3 && (args[3] == "1" || args[3].Equals("true", StringComparison.OrdinalIgnoreCase));
@@ -122,9 +123,9 @@ public static class ClientFunctions
 
     private static string CEmitFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 3) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
 
-        if (!Dbref.TryParse(args[0], out var player)) return "#-1 INVALID PLAYER";
+        if (!Dbref.TryParse(args[0], out var player)) return MushError.InvalidPlayer.Text();
         string type = args[1].Trim();
         string json = args[2].Trim();
 

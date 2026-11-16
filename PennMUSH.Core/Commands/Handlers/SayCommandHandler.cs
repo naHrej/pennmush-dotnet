@@ -34,6 +34,8 @@ public class SayCommandHandler : ICommandHandler
             message = _evaluator.Evaluate(message, evalCtx);
         }
 
+        message = SpeechMod.Apply(db, _evaluator, context.Executor, message, "\"");
+
         context.Notify($"You say, \"{message}\"");
 
         var execObj = db.GetObject(context.Executor);

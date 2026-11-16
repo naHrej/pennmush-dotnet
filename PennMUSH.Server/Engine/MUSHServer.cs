@@ -44,11 +44,13 @@ public class MUSHServer
     public MotdBoard Motd { get; } = new();
     public MailStore Mail { get; }
     public HelpStore Help { get; } = new();
+    public SuggestionVocabulary Suggestions { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
     private readonly byte[] _tokenSecret = Guid.NewGuid().ToByteArray();
     public FunctionRegistry Functions { get; }
     public ExpressionEvaluator Evaluator { get; }
     public CommandDispatcher Dispatcher { get; }
+    private LookCommandHandler? _roomLook;
     public ExtensionManager Extensions { get; }
 
     public IReadOnlyCollection<MUSHConnection> Connections => _connections.Values.ToList();
@@ -171,11 +173,12 @@ public class MUSHServer
     private void RegisterCommands()
     {
         Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
-        Dispatcher.Register(new PoseCommandHandler(), "pose", ":", ";", "semipose");
-        Dispatcher.Register(new LookCommandHandler(Evaluator), "look", "l", "read");
+        Dispatcher.Register(new PoseCommandHandler(Evaluator), "pose", ":", ";", "semipose");
+        _roomLook = new LookCommandHandler(Evaluator);
+        Dispatcher.Register(_roomLook, "look", "l", "read");
         Func<Dbref, bool> online = id => _connections.Values.Any(conn => conn.PlayerId == id);
-        Dispatcher.Register(new GoCommandHandler(dispatcher: Dispatcher, connected: online), "go", "goto", "move");
-        Dispatcher.Register(new DigCommandHandler(), "@dig");
+        Dispatcher.Register(new GoCommandHandler(_roomLook, Evaluator, Dispatcher, online), "go", "goto", "move");
+        Dispatcher.Register(new DigCommandHandler(_roomLook), "@dig");
         Dispatcher.Register(new OpenCommandHandler(), "@open");
         Dispatcher.Register(new LinkCommandHandler(), "@link");
         Dispatcher.Register(new UnlinkCommandHandler(), "@unlink");
@@ -198,17 +201,18 @@ public class MUSHServer
         Dispatcher.Register(new PsCommandHandler(Queue), "@ps");
         Dispatcher.Register(new KickCommandHandler(Queue, Dispatcher), "@kick");
         Dispatcher.Register(new ThinkCommandHandler(Evaluator), "think", "th");
-        Dispatcher.Register(new TeleportCommandHandler(), "@teleport", "@tel");
+        Dispatcher.Register(new TeleportCommandHandler(_roomLook), "@teleport", "@tel");
         Dispatcher.Register(new GetCommandHandler(), "get", "take", "g");
         Dispatcher.Register(new DropCommandHandler(), "drop", "throw", "d");
         Dispatcher.Register(new InventoryCommandHandler(Evaluator), "inventory", "i", "inv");
         Dispatcher.Register(new ChannelCommandHandler(Channels), "@channel");
+        Dispatcher.Register(new ComCommandHandler(Channels), "addcom", "delcom", "comtitle", "comlist", "@clist");
         Dispatcher.Register(new ChatCommandHandler(Channels, Evaluator), "@chat", "+c");
         Dispatcher.Register(new CemitCommandHandler(Channels, Evaluator), "@cemit", "@nscemit");
         Dispatcher.Register(new MailCommandHandler(Mail), "@mail");
         Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
-        Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml), "help", "?");
-        Dispatcher.Register(new EmitCommandHandler(), "@emit", "\\", "@lemit", "@nsemit", "@nslemit");
+        Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml, Suggestions), "help", "?");
+        Dispatcher.Register(new EmitCommandHandler(Evaluator), "@emit", "\\", "@lemit", "@nsemit", "@nslemit");
         Dispatcher.Register(new PemitCommandHandler(), "@pemit", "@prompt", "@nspemit", "@nsprompt");
         Dispatcher.Register(new RemitCommandHandler(), "@remit", "@nsremit");
         Dispatcher.Register(new OemitCommandHandler(), "@oemit", "@nsoemit");
@@ -217,9 +221,9 @@ public class MUSHServer
         Dispatcher.Register(new PageCommandHandler(Evaluator), "page", "p");
 
         // Spatial & Interaction
-        Dispatcher.Register(new HomeCommandHandler(new LookCommandHandler(Evaluator)), "home");
-        Dispatcher.Register(new EnterCommandHandler(Dispatcher, online), "enter");
-        Dispatcher.Register(new LeaveCommandHandler(Dispatcher, online), "leave");
+        Dispatcher.Register(new HomeCommandHandler(_roomLook), "home");
+        Dispatcher.Register(new EnterCommandHandler(_roomLook, Dispatcher, online), "enter");
+        Dispatcher.Register(new LeaveCommandHandler(_roomLook, Dispatcher, online), "leave");
         Dispatcher.Register(new FollowCommandHandler(online), "follow");
         Dispatcher.Register(new UnfollowCommandHandler(), "unfollow");
         Dispatcher.Register(new DismissCommandHandler(), "dismiss");
@@ -234,6 +238,13 @@ public class MUSHServer
         Dispatcher.Register(new SwitchCommandHandler(Dispatcher, Evaluator), "@switch", "@sw", "@select");
         Dispatcher.Register(new DolistCommandHandler(Dispatcher, Evaluator), "@dolist");
         Dispatcher.Register(new TriggerCommandHandler(Dispatcher, Evaluator), "@trigger", "@tr");
+        Dispatcher.Register(new IncludeCommandHandler(Dispatcher, Evaluator), "@include");
+        Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
+        Dispatcher.Register(new EnableCommandHandler(Config, false), "@disable");
+        Dispatcher.Register(new EnableCommandHandler(Config, true), "@enable");
+        Dispatcher.Register(new FlagCommandHandler(), "@flag");
+        Dispatcher.Register(new AttributeCommandHandler(), "@attribute");
+        Dispatcher.Register(new WarningsCommandHandler(), "@warnings");
         Dispatcher.Register(new ForceCommandHandler(Dispatcher), "@force");
         Dispatcher.Register(new IfElseCommandHandler(Dispatcher, Evaluator), "@ifelse", "@if", "@skip");
         Dispatcher.Register(new CommentCommandHandler(), "@@");
@@ -256,15 +267,18 @@ public class MUSHServer
         Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
         Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
         Dispatcher.Register(new PoorCommandHandler(), "@poor");
-        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota), "@quota");
-        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota), "@squota");
+        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota), "@quota");
+        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota), "@squota");
         Dispatcher.Register(new AllQuotaCommandHandler(Config.StartingQuota), "@allquota");
         Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
         Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
+        Dispatcher.Register(new SuggestCommandHandler(Suggestions), "@suggest");
+        Dispatcher.Register(new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config)), "@readcache");
         Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(), "@clone");
         Dispatcher.Register(new ChownCommandHandler(), "@chown");
+        Dispatcher.Register(new ChownAllCommandHandler(Config.StartingQuota), "@chownall");
         Dispatcher.Register(new WipeCommandHandler(), "@wipe");
         Dispatcher.Register(new LockCommandHandler(), "@lock", "@elock", "@ulock");
         Dispatcher.Register(new UnlockCommandHandler(), "@unlock", "@eunlock", "@uunlock");
@@ -276,7 +290,6 @@ public class MUSHServer
         Dispatcher.Register(new BootCommandHandler(_sessions), "@boot");
         Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
         Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
-        Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
         Dispatcher.Register(new VersionCommandHandler(), "@version");
         Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
@@ -421,6 +434,17 @@ public class MUSHServer
         }
     }
 
+    private void ShowArrival(Dbref player)
+    {
+        if (_roomLook == null)
+            return;
+
+        var context = new CommandContext { Executor = player, Enactor = player };
+        _roomLook.ShowHere(context, Database, player, LookKind.Automatic);
+        foreach (var note in context.TargetedNotifications)
+            DispatchNotification(note);
+    }
+
     private async Task HandleLoginAsync(MUSHConnection conn, string input, CancellationToken ct)
     {
         string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -487,7 +511,7 @@ public class MUSHServer
                     await conn.SendLineAsync($"You have {stats.UnreadCount} unread mail message(s). Type '@mail' to read.", ct);
                 }
 
-                Dispatcher.Dispatch(player.Id, "look", Database);
+                ShowArrival(player.Id);
                 BroadcastToRoom(player.Location, $"{player.Name} has connected.", player.Id);
                 break;
             }
@@ -510,6 +534,7 @@ public class MUSHServer
                 newPlayer.Owner = newPlayer.Id;
                 newPlayer.Home = Config.DefaultHome;
                 newPlayer.Pennies = Config.StartingMoney;
+                newPlayer.Warnings = WarningBits.Normal;
                 _playerPasswords[newPlayer.Id] = password;
                 Database.MoveObject(newPlayer.Id, Config.PlayerStart);
 
@@ -526,7 +551,7 @@ public class MUSHServer
                 var pubCh = Channels.GetChannel("Public");
                 pubCh?.AddMember(newPlayer.Id);
 
-                Dispatcher.Dispatch(newPlayer.Id, "look", Database);
+                ShowArrival(newPlayer.Id);
                 BroadcastToRoom(newPlayer.Location, $"{newPlayer.Name} has connected.", newPlayer.Id);
                 break;
             }
@@ -579,21 +604,21 @@ public class MUSHServer
             case NotificationScope.Target:
                 if (notification.Target.IsValid)
                 {
-                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload, notification.Prompt);
+                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload, notification.Prompt, notification.Speaker, notification.Spoofable, notification.EscapeHtml);
                 }
                 break;
 
             case NotificationScope.Room:
                 if (notification.Target.IsValid)
                 {
-                    SendToRoom(notification.Target, notification.Message);
+                    SendToRoom(notification.Target, notification.Message, speaker: notification.Speaker, spoofable: notification.Spoofable);
                 }
                 break;
 
             case NotificationScope.RoomExcept:
                 if (notification.Target.IsValid)
                 {
-                    SendToRoom(notification.Target, notification.Message, notification.Except);
+                    SendToRoom(notification.Target, notification.Message, notification.Except, notification.Speaker, notification.Spoofable);
                 }
                 break;
 
@@ -607,8 +632,9 @@ public class MUSHServer
         }
     }
 
-    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null, bool prompt = false)
+    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null, bool prompt = false, Dbref speaker = default, bool spoofable = false, bool escapeHtml = false)
     {
+        string line = WithNospoof(player, speaker, spoofable, message);
         foreach (var c in _connections.Values)
         {
             if (c.PlayerId == player)
@@ -619,10 +645,21 @@ public class MUSHServer
                 }
                 else
                 {
-                    _ = prompt ? c.SendRawAsync(message) : c.SendLineAsync(message);
+                    _ = prompt ? c.SendRawAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml);
                 }
             }
         }
+    }
+
+    private string WithNospoof(Dbref listenerId, Dbref speakerId, bool spoofable, string message)
+    {
+        if (!spoofable || !speakerId.IsValid || !listenerId.IsValid)
+            return message;
+        var speaker = Database.GetObject(speakerId);
+        var listener = Database.GetObject(listenerId);
+        if (speaker == null || listener == null)
+            return message;
+        return SpoofPrefix.ForListener(Database, speaker, listener, message);
     }
 
     private async Task HandleProtocolEnvelopeAsync(MUSHConnection conn, string type, string? id, string json, CancellationToken ct)
@@ -719,7 +756,7 @@ public class MUSHServer
         }
     }
 
-    public void SendToRoom(Dbref roomRef, string message, Dbref excludePlayerId = default)
+    public void SendToRoom(Dbref roomRef, string message, Dbref excludePlayerId = default, Dbref speaker = default, bool spoofable = false)
     {
         foreach (var c in _connections.Values)
         {
@@ -728,7 +765,7 @@ public class MUSHServer
                 var p = Database.GetObject(c.PlayerId);
                 if (p != null && p.Location == roomRef)
                 {
-                    _ = c.SendLineAsync(message);
+                    _ = c.SendLineAsync(WithNospoof(c.PlayerId, speaker, spoofable, message));
                 }
             }
         }

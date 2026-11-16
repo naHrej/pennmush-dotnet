@@ -20,28 +20,39 @@ public class CommandContext
 
     public void Notify(string message)
     {
-        TargetedNotifications.Add(new Notification(NotificationScope.Self, message, Executor));
+        Notify(message, default, false);
+    }
+
+    public void Notify(string message, bool escapeHtml)
+    {
+        TargetedNotifications.Add(new Notification(NotificationScope.Self, message, Executor, EscapeHtml: escapeHtml));
         Notifications.Add(message);
     }
 
-    public void NotifyTarget(Dbref target, string message, bool prompt = false)
+    public void Notify(string message, Dbref speaker, bool spoofable)
     {
-        TargetedNotifications.Add(new Notification(NotificationScope.Target, message, target, Prompt: prompt));
+        TargetedNotifications.Add(new Notification(NotificationScope.Self, message, Executor, Speaker: speaker, Spoofable: spoofable));
+        Notifications.Add(message);
+    }
+
+    public void NotifyTarget(Dbref target, string message, bool prompt = false, Dbref speaker = default, bool spoofable = false)
+    {
+        TargetedNotifications.Add(new Notification(NotificationScope.Target, message, target, Prompt: prompt, Speaker: speaker, Spoofable: spoofable));
         if (target == Executor)
         {
             Notifications.Add(message);
         }
     }
 
-    public void NotifyRoom(Dbref room, string message)
+    public void NotifyRoom(Dbref room, string message, Dbref speaker = default, bool spoofable = false)
     {
-        TargetedNotifications.Add(new Notification(NotificationScope.Room, message, room));
+        TargetedNotifications.Add(new Notification(NotificationScope.Room, message, room, Speaker: speaker, Spoofable: spoofable));
         Notifications.Add(message);
     }
 
-    public void NotifyExcept(Dbref room, Dbref except, string message)
+    public void NotifyExcept(Dbref room, Dbref except, string message, Dbref speaker = default, bool spoofable = false)
     {
-        TargetedNotifications.Add(new Notification(NotificationScope.RoomExcept, message, room, except));
+        TargetedNotifications.Add(new Notification(NotificationScope.RoomExcept, message, room, except, Speaker: speaker, Spoofable: spoofable));
         if (except != Executor)
         {
             Notifications.Add(message);

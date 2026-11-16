@@ -10,6 +10,7 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Queue;
+using PennMUSH.Core.MUSHcode;
 
 public static class DbFunctions
 {
@@ -65,10 +66,10 @@ public static class DbFunctions
     private static string Pcreate(FunctionRegistry registry, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || registry.Database == null)
-            return "#-1";
+            return MushError.Nothing.Text();
         var actor = registry.Database.GetObject(ctx.Executor);
         if (actor == null)
-            return "#-1";
+            return MushError.Nothing.Text();
         var created = PlayerCreator.Create(
             registry.Database,
             actor,
@@ -81,7 +82,7 @@ public static class DbFunctions
             registry.StartingMoney,
             message => registry.NotificationDispatcher?.Invoke(
                 new Notification(NotificationScope.Self, message, ctx.Executor)));
-        return created.IsValid ? created.ToString() : "#-1";
+        return created.IsValid ? created.ToString() : MushError.Nothing.Text();
     }
 
     public static Dbref ParseDbref(string s, EvaluationContext? ctx = null)
@@ -98,16 +99,16 @@ public static class DbFunctions
 
     public static string Name(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Name : "#-1 NO MATCH";
+        return obj != null ? obj.Name : MushError.NoMatch.Text();
     }
 
     public static string NameFormat(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         string plain = Name(reg, ctx, args);
-        if (args.Length == 0 || reg.Database == null)
+        if (args.Length == 0 || reg.Database == null || plain == MushError.NoMatch.Text())
             return plain;
 
         var dbref = ParseDbref(args[0], ctx);
@@ -129,15 +130,15 @@ public static class DbFunctions
 
     public static string Get(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         int slash = args[0].IndexOf('/');
-        if (slash <= 0 || slash >= args[0].Length - 1) return "#-1 NO MATCH";
+        if (slash <= 0 || slash >= args[0].Length - 1) return MushError.NoMatch.Text();
 
         var dbref = ParseDbref(args[0].Substring(0, slash), ctx);
         string attrName = args[0].Substring(slash + 1).Trim();
 
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var attr = obj.GetAttribute(attrName, reg.Database);
         return attr != null ? attr.Value : string.Empty;
@@ -157,39 +158,39 @@ public static class DbFunctions
 
     public static string Loc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Location.ToString() : "#-1 NO MATCH";
+        return obj != null ? obj.Location.ToString() : MushError.NoMatch.Text();
     }
 
     public static string Owner(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Owner.ToString() : "#-1 NO MATCH";
+        return obj != null ? obj.Owner.ToString() : MushError.NoMatch.Text();
     }
 
     public static string Type(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Type.ToString().ToUpperInvariant() : "#-1 NO MATCH";
+        return obj != null ? obj.Type.ToString().ToUpperInvariant() : MushError.NoMatch.Text();
     }
 
     public static string Ufun(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         int slash = args[0].IndexOf('/');
-        if (slash <= 0 || slash >= args[0].Length - 1) return "#-1 NO MATCH";
+        if (slash <= 0 || slash >= args[0].Length - 1) return MushError.NoMatch.Text();
 
         var dbref = ParseDbref(args[0].Substring(0, slash), ctx);
         string attrName = args[0].Substring(slash + 1).Trim();
 
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var attr = obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
@@ -201,7 +202,7 @@ public static class DbFunctions
             var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, ufunArgs);
             if (!childCtx.PushCall(obj.Id, attrName))
             {
-                return "#-1 RECURSION CYCLE DETECTED";
+                return MushError.RecursionCycleDetected.Text();
             }
             try
             {
@@ -218,10 +219,10 @@ public static class DbFunctions
 
     public static string HasFlagFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length < 2 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         string flagQuery = args[1].Trim();
         if (flagQuery.Length == 1)
@@ -247,10 +248,10 @@ public static class DbFunctions
 
     public static string HasPowerFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length < 2 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         string powerQuery = args[1].Trim();
         var def = FlagTable.FindPower(powerQuery);
@@ -259,10 +260,10 @@ public static class DbFunctions
 
     public static string FlagsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var sb = new StringBuilder();
         // Type letter first
@@ -288,80 +289,80 @@ public static class DbFunctions
 
     public static string LflagsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return string.Join(" ", obj.Flags.OrderBy(f => f));
     }
 
     public static string PowersFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return string.Join(" ", obj.Powers.OrderBy(p => p));
     }
 
     public static string ConFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return obj.Contents.ToString();
     }
 
     public static string ExitsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return string.Join(" ", reg.Database.GetExits(obj.Id).Select(e => e.Id.ToString()));
     }
 
     public static string ParentFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return obj.Parent.ToString();
     }
 
     public static string LparentFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return string.Join(" ", obj.Parents.Select(p => p.ToString()));
     }
 
     public static string ZoneFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return obj.Zone.ToString();
     }
 
     public static string LzoneFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return string.Join(" ", obj.Zones.Select(z => z.ToString()));
     }
@@ -380,9 +381,9 @@ public static class DbFunctions
 
     public static string NumFunc(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "#-1 NO MATCH";
+        if (args.Length == 0) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
-        return dbref.IsValid ? dbref.ToString() : "#-1 NO MATCH";
+        return dbref.IsValid ? dbref.ToString() : MushError.NoMatch.Text();
     }
 
     public static string RnumFunc(EvaluationContext ctx, string[] args)
@@ -394,18 +395,18 @@ public static class DbFunctions
 
     public static string FullNameFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Name : "#-1 NO MATCH";
+        return obj != null ? obj.Name : MushError.NoMatch.Text();
     }
 
     public static string RlocFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         int levels = 1;
         if (args.Length > 1 && int.TryParse(args[1].Trim(), out int lvl) && lvl > 0)
@@ -424,10 +425,10 @@ public static class DbFunctions
 
     public static string WhereFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var curr = obj;
         var seen = new HashSet<Dbref>();
@@ -438,15 +439,15 @@ public static class DbFunctions
             curr = next;
         }
 
-        return curr != null ? curr.Id.ToString() : "#-1 NO MATCH";
+        return curr != null ? curr.Id.ToString() : MushError.NoMatch.Text();
     }
 
     public static string HomeFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return obj.Home.IsValid ? obj.Home.ToString() : "#0";
     }
@@ -507,12 +508,12 @@ public static class DbFunctions
 
     public static string XgetFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length < 2 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         string attrName = args[1].Trim();
 
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var attr = obj.GetAttribute(attrName, reg.Database);
         return attr != null ? attr.Value : string.Empty;
@@ -545,7 +546,7 @@ public static class DbFunctions
         string attrName = args[1].Trim();
 
         var obj = reg.Database?.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         var attr = obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
@@ -604,10 +605,10 @@ public static class DbFunctions
 
     public static string ObjIdFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return "#-1 NO MATCH";
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "#-1 NO MATCH";
+        if (obj == null) return MushError.NoMatch.Text();
 
         return $"{obj.Id}:{obj.CreationTime.ToUnixTimeSeconds()}";
     }

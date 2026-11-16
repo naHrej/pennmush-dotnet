@@ -73,6 +73,7 @@ public static class PlayerCreator
         player.Owner = player.Id;
         player.Home = home;
         player.Pennies = pennies;
+        player.Warnings = WarningBits.Normal;
         player.RemoveFlag("GOING");
         passwords?.Set(player.Id, password);
         if (db.GetObject(start) != null)

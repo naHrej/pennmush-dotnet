@@ -77,4 +77,47 @@ public class ChannelRegistry
 
         return new ChannelBroadcastResult(recipients, formatted);
     }
+
+    public bool HasAlias(Dbref player, string alias) =>
+        AliasesFor(player).ContainsKey(alias);
+
+    public void SetAlias(Dbref player, string alias, string channel) =>
+        AliasesFor(player)[alias] = channel;
+
+    public bool TryGetAlias(Dbref player, string alias, out string? channel) =>
+        AliasesFor(player).TryGetValue(alias, out channel);
+
+    public bool RemoveAlias(Dbref player, string alias, out string? channel) =>
+        AliasesFor(player).TryRemove(alias, out channel);
+
+    public int CountAliases(Dbref player, string channel) =>
+        AliasesFor(player).Values.Count(value => value.Equals(channel, StringComparison.OrdinalIgnoreCase));
+
+    public IReadOnlyList<(string Alias, string Channel)> ListAliases(Dbref player) =>
+        AliasesFor(player)
+            .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => (pair.Key, pair.Value))
+            .ToList();
+
+    public Channel? MatchChannel(string name, out bool ambiguous)
+    {
+        ambiguous = false;
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+        var exact = GetChannel(name);
+        if (exact != null)
+            return exact;
+        var matches = GetAllChannels()
+            .Where(channel => channel.Name.StartsWith(name.Trim(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matches.Count == 1)
+            return matches[0];
+        ambiguous = matches.Count > 1;
+        return null;
+    }
+
+    private readonly ConcurrentDictionary<Dbref, ConcurrentDictionary<string, string>> _aliases = new();
+
+    private ConcurrentDictionary<string, string> AliasesFor(Dbref player) =>
+        _aliases.GetOrAdd(player, _ => new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase));
 }

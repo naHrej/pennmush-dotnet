@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Flags;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Types;
 
@@ -43,6 +44,7 @@ public static class FlagTable
         RegisterFlag(new FlagDefinition { Name = "COLOR", Letter = 'C', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "MONITOR", Letter = 'M', TargetType = ObjectType.None, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "NOSPOOF", Letter = '"', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any | FlagPrivileges.Odark, NegatePermissions = FlagPrivileges.Any | FlagPrivileges.Odark });
+        RegisterFlag(new FlagDefinition { Name = "PARANOID", Letter = '\0', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any | FlagPrivileges.Odark, NegatePermissions = FlagPrivileges.Any | FlagPrivileges.Odark });
         RegisterFlag(new FlagDefinition { Name = "SHARED", Letter = 'Z', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "GAGGED", Letter = 'g', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Wizard, NegatePermissions = FlagPrivileges.Wizard });
         RegisterFlag(new FlagDefinition { Name = "MYOPIC", Letter = 'm', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
@@ -135,7 +137,7 @@ public static class FlagTable
         {
             if (def.Letter == letter)
             {
-                if (def.TargetType == ObjectType.None || def.TargetType == type)
+                if (def.TargetType == ObjectType.None || (type != ObjectType.None && def.TargetType.HasFlag(type)))
                     return def;
             }
         }
@@ -167,7 +169,7 @@ public static class FlagTable
             return false;
         }
 
-        if (flag.TargetType != ObjectType.None && flag.TargetType != target.Type)
+        if (flag.TargetType != ObjectType.None && !flag.TargetType.HasFlag(target.Type))
         {
             error = "That flag cannot be set on that type of object.";
             return false;
@@ -195,5 +197,53 @@ public static class FlagTable
         }
 
         return true;
+    }
+
+    public static void AddFlag(FlagDefinition def)
+    {
+        FlagsByName[def.Name] = def;
+        AllFlags.Add(def);
+    }
+
+    public static void AddAlias(string alias, string canonical)
+    {
+        FlagAliases[alias] = canonical;
+    }
+
+    public static bool IsAlias(string name) => FlagAliases.ContainsKey(name);
+
+    public static void RemoveAlias(string alias)
+    {
+        FlagAliases.Remove(alias);
+    }
+
+    public static IEnumerable<string> AliasesOf(string canonical)
+    {
+        return FlagAliases
+            .Where(pair => pair.Value.Equals(canonical, StringComparison.OrdinalIgnoreCase))
+            .Select(pair => pair.Key)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static void RemoveFlag(FlagDefinition def)
+    {
+        AllFlags.Remove(def);
+        FlagsByName.Remove(def.Name);
+        foreach (string alias in AliasesOf(def.Name).ToList())
+            FlagAliases.Remove(alias);
+    }
+
+    public static FlagDefinition? LetterConflict(char letter, ObjectType type, FlagDefinition? except)
+    {
+        if (letter == '\0')
+            return null;
+        foreach (var def in AllFlags)
+        {
+            if (ReferenceEquals(def, except) || def.Letter != letter)
+                continue;
+            if (def.TargetType == ObjectType.None || type == ObjectType.None || (def.TargetType & type) != 0)
+                return def;
+        }
+        return null;
     }
 }

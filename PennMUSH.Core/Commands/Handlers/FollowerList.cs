@@ -60,7 +60,7 @@ internal static class FollowerList
                 context.NotifyTarget(follower.Id, $"You stop following {leader.Name}.");
         }
 
-        leader.ClearAttribute(Followers);
+        leader.RemoveAttribute(Followers);
     }
 
     public static void ClearFollowing(MUSHObject follower, ObjectDatabase db, CommandContext context, bool noisy)
@@ -79,7 +79,7 @@ internal static class FollowerList
                 context.NotifyTarget(leader.Id, $"{follower.Name} stops following you.");
         }
 
-        follower.ClearAttribute(Following);
+        follower.RemoveAttribute(Following);
     }
 
     public static string Names(ObjectDatabase db, IEnumerable<Dbref> ids)
@@ -254,7 +254,7 @@ internal static class FollowerList
         if (ids.Contains(id))
             return;
         ids.Add(id);
-        obj.SetAttribute(attribute, string.Join(" ", ids), God);
+        obj.WriteAttributeValue(attribute, string.Join(" ", ids), God, 0);
     }
 
     private static void Remove(MUSHObject obj, string attribute, Dbref id)
@@ -266,7 +266,7 @@ internal static class FollowerList
         int index = kept.IndexOf(id);
         if (index >= 0)
             kept.RemoveAt(index);
-        obj.SetAttribute(attribute, string.Join(" ", kept), God);
+        obj.WriteAttributeValue(attribute, string.Join(" ", kept), God, 0);
     }
 }
 

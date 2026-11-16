@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using PennMUSH.Core.MUSHcode;
 
 public static class MathFunctions
 {
@@ -86,37 +87,37 @@ public static class MathFunctions
 
     public static string Div(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double a);
         if (!double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double b) || b == 0)
-            return "#-1 DIVISION BY ZERO";
+            return MushError.DivisionByZero.Text();
         return ((long)(a / b)).ToString();
     }
 
     public static string FDiv(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double a);
         if (!double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double b) || b == 0)
-            return "#-1 DIVISION BY ZERO";
+            return MushError.DivisionByZero.Text();
         return FormatNumber(a / b);
     }
 
     public static string Mod(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         long.TryParse(args[0].Trim(), out long a);
         if (!long.TryParse(args[1].Trim(), out long b) || b == 0)
-            return "#-1 DIVISION BY ZERO";
+            return MushError.DivisionByZero.Text();
         return (a % b).ToString();
     }
 
     public static string Remainder(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "#-1 TOO FEW ARGUMENTS";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double a);
         if (!double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double b) || b == 0)
-            return "#-1 DIVISION BY ZERO";
+            return MushError.DivisionByZero.Text();
         return FormatNumber(a % b);
     }
 
@@ -225,7 +226,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val < 0) return "#-1 SQUARE ROOT OF NEGATIVE";
+        if (val < 0) return MushError.SquareRootOfNegative.Text();
         return FormatNumber(Math.Sqrt(val));
     }
 
@@ -241,7 +242,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val <= 0) return "#-1 LOG OF NONPOSITIVE";
+        if (val <= 0) return MushError.LogOfNonpositive.Text();
         double b = 10;
         if (args.Length > 1 && double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double userBase) && userBase > 0)
             b = userBase;
@@ -252,7 +253,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val <= 0) return "#-1 LOG OF NONPOSITIVE";
+        if (val <= 0) return MushError.LogOfNonpositive.Text();
         return FormatNumber(Math.Log(val));
     }
 
@@ -281,7 +282,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val < -1 || val > 1) return "#-1 OUT OF RANGE";
+        if (val < -1 || val > 1) return MushError.OutOfRange.Text();
         return FormatNumber(Math.Asin(val));
     }
 
@@ -289,7 +290,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val < -1 || val > 1) return "#-1 OUT OF RANGE";
+        if (val < -1 || val > 1) return MushError.OutOfRange.Text();
         return FormatNumber(Math.Acos(val));
     }
 

@@ -83,6 +83,56 @@ public class MushConfiguration
             return html ? WebUtility.HtmlEncode(value) : value;
         });
     }
+
+    public bool TrySetSwitch(string name, bool enabled, out string failure)
+    {
+        failure = "";
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            failure = "No such option.";
+            return false;
+        }
+
+        string key = name.Trim().ToLowerInvariant();
+        switch (key)
+        {
+            case "use_ws":
+                UseWs = enabled;
+                break;
+            case "use_dns":
+                UseDns = enabled;
+                break;
+            case "player_creation":
+                PlayerCreation = enabled;
+                break;
+            case "guests":
+                Guests = enabled;
+                break;
+            case "use_quota":
+                UseQuota = enabled;
+                break;
+            default:
+                failure = KnownDirectives.Contains(key)
+                    ? "That isn't an on/off option."
+                    : "No such option.";
+                return false;
+        }
+
+        Directives[key] = enabled ? "yes" : "no";
+        return true;
+    }
+
+    private static readonly HashSet<string> KnownDirectives = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "include", "command_alias", "function_alias", "reserve_alias", "restrict_command",
+        "restrict_function", "restrict_name", "names_file", "mud_name", "mud_url", "port",
+        "ssl_port", "ip_addr", "use_ws", "ws_url", "use_dns", "player_creation", "guests",
+        "max_guests", "max_players", "master_room", "player_start", "base_room", "default_home",
+        "input_database", "output_database", "crash_database", "mail_database", "chat_database",
+        "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
+        "full_file", "guest_file", "colors_file", "money_singular", "money_plural",
+        "starting_money", "paycheck", "use_quota", "starting_quota"
+    };
 }
 
 public record RestrictionRule(string Restriction, string? ErrorMessage = null);
