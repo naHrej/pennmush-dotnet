@@ -4,16 +4,19 @@ using System;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
+using PennMUSH.Core.MUSHcode;
 
 public class CemitCommandHandler : ICommandHandler
 {
     private readonly ChannelRegistry _channels;
+    private readonly ExpressionEvaluator? _evaluator;
 
     public string Name => "@cemit";
 
-    public CemitCommandHandler(ChannelRegistry channels)
+    public CemitCommandHandler(ChannelRegistry channels, ExpressionEvaluator? evaluator = null)
     {
         _channels = channels;
+        _evaluator = evaluator;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -48,7 +51,19 @@ public class CemitCommandHandler : ICommandHandler
         var result = _channels.Broadcast(ch.Name, executor.Id, executor.Name, body, isEmit: !noisy, isNoisy: noisy);
         if (result != null)
         {
-            context.Notify(result.FormattedMessage);
+            FormatAttributes.DeliverChannel(
+                context,
+                db,
+                _evaluator,
+                result,
+                executor.Id,
+                ch.Name,
+                message,
+                executor.Name,
+                "",
+                "|",
+                noisy ? "noisy" : "silent",
+                true);
             return true;
         }
 

@@ -216,10 +216,13 @@ public class ExpressionEvaluator
             {
                 string rawArgs = inner.Substring(firstParen + 1, inner.Length - firstParen - 2);
                 string[] parsedArgs = SplitArguments(rawArgs);
+                // iter() replaces ## and #@ before the action runs. The action
+                // must still contain those tokens when Iter receives it.
+                bool rawArguments = funcName.Equals("iter", StringComparison.OrdinalIgnoreCase);
                 string[] evaluatedArgs = new string[parsedArgs.Length];
                 for (int a = 0; a < parsedArgs.Length; a++)
                 {
-                    evaluatedArgs[a] = Evaluate(parsedArgs[a], context);
+                    evaluatedArgs[a] = rawArguments ? parsedArgs[a] : Evaluate(parsedArgs[a], context);
                 }
 
                 if (_functionDispatcher != null)

@@ -201,10 +201,10 @@ public class MUSHServer
         Dispatcher.Register(new TeleportCommandHandler(), "@teleport", "@tel");
         Dispatcher.Register(new GetCommandHandler(), "get", "take", "g");
         Dispatcher.Register(new DropCommandHandler(), "drop", "throw", "d");
-        Dispatcher.Register(new InventoryCommandHandler(), "inventory", "i", "inv");
+        Dispatcher.Register(new InventoryCommandHandler(Evaluator), "inventory", "i", "inv");
         Dispatcher.Register(new ChannelCommandHandler(Channels), "@channel");
-        Dispatcher.Register(new ChatCommandHandler(Channels), "@chat", "+c");
-        Dispatcher.Register(new CemitCommandHandler(Channels), "@cemit", "@nscemit");
+        Dispatcher.Register(new ChatCommandHandler(Channels, Evaluator), "@chat", "+c");
+        Dispatcher.Register(new CemitCommandHandler(Channels, Evaluator), "@cemit", "@nscemit");
         Dispatcher.Register(new MailCommandHandler(Mail), "@mail");
         Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
         Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml), "help", "?");
@@ -214,7 +214,7 @@ public class MUSHServer
         Dispatcher.Register(new OemitCommandHandler(), "@oemit", "@nsoemit");
         Dispatcher.Register(new WallCommandHandler(), "@wall", "@wizwall", "@rwall");
         Dispatcher.Register(new WhisperCommandHandler(), "whisper", "w");
-        Dispatcher.Register(new PageCommandHandler(), "page", "p");
+        Dispatcher.Register(new PageCommandHandler(Evaluator), "page", "p");
 
         // Spatial & Interaction
         Dispatcher.Register(new HomeCommandHandler(new LookCommandHandler(Evaluator)), "home");

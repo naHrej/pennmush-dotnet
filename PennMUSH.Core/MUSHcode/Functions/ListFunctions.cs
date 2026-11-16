@@ -465,10 +465,11 @@ public static class ListFunctions
     public static string Iter(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string inDelim = args.Length > 2 ? args[2] : " ";
-        string outDelim = args.Length > 3 ? args[3] : inDelim;
+        string listText = EvaluateIterText(reg, ctx, args[0]);
+        string inDelim = args.Length > 2 ? EvaluateIterText(reg, ctx, args[2]) : " ";
+        string outDelim = args.Length > 3 ? EvaluateIterText(reg, ctx, args[3]) : inDelim;
 
-        var list = SplitList(args[0], inDelim);
+        var list = SplitList(listText, inDelim);
         string pattern = args[1];
         var results = new List<string>();
 
@@ -476,19 +477,17 @@ public static class ListFunctions
         {
             string item = list[i];
             string substituted = pattern.Replace("##", item).Replace("#@", (i + 1).ToString());
-            if (reg.Evaluator != null)
-            {
-                var iterCtx = new EvaluationContext(ctx.Executor, ctx.Enactor, ctx.Caller, ctx.Location, ctx.Arguments);
-                string evaled = reg.Evaluator.Evaluate(substituted, iterCtx);
-                results.Add(evaled);
-            }
-            else
-            {
-                results.Add(substituted);
-            }
+            results.Add(EvaluateIterText(reg, ctx, substituted));
         }
 
         return string.Join(outDelim, results);
+    }
+
+    private static string EvaluateIterText(FunctionRegistry reg, EvaluationContext ctx, string text)
+    {
+        if (reg.Evaluator == null || string.IsNullOrEmpty(text))
+            return text;
+        return reg.Evaluator.Evaluate(text, ctx);
     }
 
     public static string Map(FunctionRegistry reg, EvaluationContext ctx, string[] args)
