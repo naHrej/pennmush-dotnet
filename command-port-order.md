@@ -20,7 +20,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. `addcom`, `delcom`, `comtitle`, `comlist`, and `@clist` are in the server. The attribute setters are in the server, with the limits named in that block. `@suggest` and `@readcache` are in the server, with the limits named on those rows. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@chownall` is in the server, with the limits named on that row. `@include` is in the server, with the limits named on that row. `@function` is in the server, with the limits named on that row. `@disable` and `@enable` are in the server, with the limits named on that row. `@flag` is in the server, with the limits named on that row. `@attribute` is in the server, with the limits named on that row. `@warnings` is in the server, with the limits named on that row. `@malias` is in the server, with the limits named on that row. `@config` is in the server, with the limits named on that row. `@shutdown` is in the server, with the limits named on that row. `@sitelock` is in the server, with the limits named on that row. `@sockset` is in the server, with the limits named on that row. The next white block is `@log`.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. `addcom`, `delcom`, `comtitle`, `comlist`, and `@clist` are in the server. The attribute setters are in the server, with the limits named in that block. `@suggest` and `@readcache` are in the server, with the limits named on those rows. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@chownall` is in the server, with the limits named on that row. `@include` is in the server, with the limits named on that row. `@function` is in the server, with the limits named on that row. `@disable` and `@enable` are in the server, with the limits named on that row. `@flag` is in the server, with the limits named on that row. `@attribute` is in the server, with the limits named on that row. `@warnings` is in the server, with the limits named on that row. `@malias` is in the server, with the limits named on that row. `@config` is in the server, with the limits named on that row. `@shutdown` is in the server, with the limits named on that row. `@sitelock` is in the server, with the limits named on that row. `@sockset` is in the server, with the limits named on that row. The next white block is `@log`. `@command`, `@hook`, `@wcheck`, `buy`, `@dbck`, and `@clock` are in the server, with the limits named on those rows.
 
 ## What already exists
 
@@ -129,7 +129,7 @@ Each block starts with the foundation. The commands under it come after that fou
 | 🔵 36 | `@purge` | Wizards free every `GOING` object except #0, #1, and #2. One purge destroys them. There is no `GOING_TWICE` clock, `@adestroy`, possession sweep, queue drain, or quota refund. |
 | 🔵 37 | `@nuke` | `@destroy` that frees an object already marked `GOING`. `@nuke` and `@destroy/override` can mark a `SAFE` object. A connected player can still be destroyed. |
 
-`@dbck` stays in tier 4. A consistency pass is misleading while locks, mail, channels, and passwords are still unsaved.
+`@dbck` is in the server, with the limits named on that row.
 
 ### The queue can be seen and nudged
 
@@ -162,7 +162,7 @@ Login already builds a `WHO` line. The in-game command is that list plus `DOING`
 | 🔵 46 | `comtitle` | Sets, shows, or clears the title stored for that alias. Titles are not saved. |
 | 🔵 47 | `comlist`, `@clist` | `comlist` lists your aliases. `@clist` lists channels, and `/full` adds the message count and the flags this server stores. |
 
-`@clock` and `@restart` stay later. `@clock` is channel locks. `@restart` reloads channel runtime state. It does not reboot the process. `@reboot` remains the hot reload.
+`@restart` stays later. `@clock` is in the server, with the limits named on that row. `@restart` reloads channel runtime state. It does not reboot the process. `@reboot` remains the hot reload.
 
 ### Text files the server already reads on connect
 
@@ -247,8 +247,8 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | --- | --- | --- |
 | 🔵 67 | `@function` | Adds, lists, reports, updates, aliases, restricts, enables, disables, and deletes a global soft function. Calling it runs the named attribute. The table is not saved. `/clone` and `/restore` do not copy or restore a builtin. `/preserve` and `/builtin` are ignored. A builtin cannot be deleted. A call enforces Nobody, Wizard, God, Admin, NoGagged, and NoFixed. Other restriction names appear on the report and leave the call unchanged. NoGuest is stored, and the flag table has no GUEST flag. A builtin report leaves out the argument count. |
 | 🔵 68 | `@disable`, `@enable` | A wizard turns a boolean configuration option on or off. The options are use_ws, use_dns, player_creation, guests, and use_quota. The new value stays in memory. `@quota` and `@squota` read use_quota on each command. A gagged wizard can disable an option and cannot enable one. Other stored options report that they are not on/off switches. An unknown name reports that there is no such option. The change is not written to mush.cnf or the wizard log. |
-| 🔴 69 | `@command` | Add, alias, delete, and restrict a command. |
-| 🔴 70 | `@hook` | Before, after, ignore, override, and extend slots around dispatch. |
+| 🔵 69 | `@command` | A wizard adds a stub command, aliases it, clones it, and can enable, disable, or restrict it. God deletes a command added this way. A disabled command is skipped. `@command` stays enabled. Restrictions are nobody, noguest, nofixed, nogagged, god, wizard, and admin. The table stays in memory. |
+| 🔵 70 | `@hook` | A wizard, or someone with the Hook power, sets before, after, ignore, override, and extend. Ignore skips the command when the attribute is false. Override and extend run a `$` pattern in place of the command. Before and after evaluate the attribute. `/inline` and `/inplace` are stored, and the hook still runs immediately. `@password` and `@newpassword` cannot be hooked. |
 
 ### Definitions, warnings, mail aliases, config, and vendors
 
@@ -257,21 +257,21 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | 🔵 71 | `@flag` | God creates and edits flag definitions. List, info, add, alias, restrict, type, letter, enable, disable, delete, and decompile use the original messages. A new flag can be set with `@set`. The definition stays in memory and is not saved. `/debug` reports the flag count and bit positions and omits the flag cache. `inherit`, `log`, and `event` are stored on the definition and do not change `@set`. |
 | 🔵 72 | `@attribute` | A wizard edits the attribute definition table: access, limit, enum, rename, delete, info, and decompile. Flags chosen here are used the next time the attribute is set. /limit and /enum reject or rewrite the value. /retroactive updates copies already stored. The edited table stays in memory. Rename does not rewrite values stored under the old name. A prefixmatch flag added here is recorded, and prefix lookup still uses the built-in prefix list. |
 | 🔵 73 | `@warnings` | A warning bitset stored on the object. Names, groups, and `!` negation match the original list, and a new player starts on normal. Examine shows `Warnings checked:`. The bits are saved in the sqlite database, and an original dump's warnings field is loaded. The matcher returns the first object, so two matches do not produce the ambiguous message. |
-| 🔴 74 | `@wcheck` | Those bits, then a topology check of what the player owns. |
+| 🔵 74 | `@wcheck` | Checks the warning bits on an object the player owns. `/me` checks everything that player owns, and `/all` is wizard-only. Missing descriptions, unlinked exits, one-way and multiple exits, success and failure messages, and a lock that names a missing object are reported. A global return exit is not counted. |
 | 🔵 75 | `@malias` | A mail-alias table beside `MailStore`. Names start with `+`. Create, list, members, add, remove, set, describe, rename, chown, useflag, seeflag, stats, destroy, and nuke use the original messages. `@mail +alias=subject/body` sends to the members. The table stays in memory. A sender who cannot see the members gets one confirmation, and the messages are still sent under that sender's name. `malias()` is not registered. |
 | 🔵 76 | `@config` | Lists the options this server already stores, in the original groups that contain one. A mortal does not see the files or messages groups. `/set` changes the value in memory and the directive text used by screen files. `/save` is God only and reports that saves are disabled. The command does not write `mush.cnf`, does not enforce the original integer maxima, and does not set aliases, restrictions, or `include`. |
-| 🔴 77 | `buy` | A vendor's `PRICELIST` attribute, a penny transfer through the same path as `give`, and the Pay lock from tier 2. |
+| 🔵 77 | `buy` | Reads a nearby vendor's `PRICELIST`. A price, a range, or a minimum moves pennies the way `give` does. The Pay lock can refuse. `BUY` and `OBUY` are evaluated when they are set, and `ABUY` is evaluated rather than queued. A gagged player cannot buy. |
 
 ## Tier 4 — wizard tools that need the earlier model to stay still
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| 🔴 78 | `@dbck` | A full consistency walk: locations, homes, zones, owners, and `GOING` objects. |
+| 🔵 78 | `@dbck` | A wizard repairs invalid owners, homes, locations, zones, parents, exit destinations, and attribute creators. A mortal hears `Silly mortal, chicks are for kids!` Owners hear about a circular zone, a zone with no zone lock, and a disconnected room. The check does not write the wizard log. |
 | 🔵 79 | `@shutdown` | A wizard saves and then stops the process. Everyone sees `GAME: Shutdown by` the owner's name. `/panic` is God only and adds `EMERGENCY SHUTDOWN: @shutdown/panic`. The save is the normal database. `/reboot` reloads the engine without dropping sockets and says `GAME: Reboot finished.` It does not re-exec the process, and `@reboot` keeps its own messages. A switch typed after a space, such as `@shutdown /reboot`, counts too. `/paranoid` uses the same save. A failed save still stops, except `/reboot`, which cancels and says `GAME: Reboot failed.` |
 | 🔵 80 | `@sitelock` | A wizard keeps an in-memory ban table. `/ban` refuses connect and create from a matching host, and the player hears `Player connections not allowed.` A plain `@sitelock` refuses create and still allows connect. `/register` refuses create the same way. `/check` and a bare `@sitelock` list the rules. `/remove` deletes by pattern or rule number. The table is not written to the access file, so a process restart clears it. A reload keeps the same table. `/player` has no stored last address. `/name` does not edit a names file. Access options after `=` are not parsed. A connection with no recorded host is not checked. |
 | 🔵 81 | `@sockset` | Shows and sets options on one connected descriptor: prefix, suffix, Pueblo, telnet, width, height, terminal type, accents, color style, prompt newlines, and noquota. Width, height, color, Pueblo, and telnet update that connection. Prefix, suffix, accent stripping, prompt newlines, and noquota are stored and are not applied to output. Setting Pueblo does not send the Pueblo handshake. The options last for the connection. |
 | ⚪ 82 | `@log`, `@logwipe` | A wizard log file. |
-| 🔴 83 | `@clock` | Join, speak, see, hide, and modify locks on a channel. |
+| 🔵 83 | `@clock` | Sets or clears the join, speak, see, hide, and modify locks on a channel. A failed join lock says `Permission to join denied.` A wizard joins anyway. A failed speak lock refuses the message. A failed see lock hides the channel. A member who passes the hide lock is left off `who`. A key is dbrefs combined with `&`, `|`, and `!`. The locks stay in memory. |
 | ⚪ 84 | `@restart` | Rebuild channel runtime state. This is not a server restart. |
 
 ## Tier 5 — subsystems the process does not have
@@ -290,10 +290,8 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | --- | --- |
 | `@assert`, `@break`, `@retry`, `@verb` | `@include` and the action-list frame. |
 | `follow`, `unfollow`, `dismiss`, `desert` | The follower list and the movement hook. |
-| `buy` | Pay-lock checks and penny transfer. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
 | `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
-| `@clock` | Channel locks. It is not a time command. |
 | `@malias` | Mail aliases. It is not `comlist`. |
 | `@sql`, `@mapsql`, `@http`, `@respond`, `@slave` | Tier 5. |
 
