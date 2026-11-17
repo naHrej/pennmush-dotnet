@@ -59,6 +59,13 @@ public class CommandDispatcher
     internal CommandContext DispatchHook(Dbref executor, string input, ObjectDatabase db, Dbref enactor) =>
         Dispatch(executor, input, db, enactor, false);
 
+    internal CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, ActionFrame? frame, Dbref enactor)
+    {
+        var context = Parse(executor, input, enactor);
+        context.Frame = frame;
+        return Run(context, db, true);
+    }
+
     internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args)
     {
         string bound = BindQueuedCommand(executor, enactor, input, args, db);
@@ -81,7 +88,13 @@ public class CommandDispatcher
 
     private CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, Dbref? enactor, bool hooks)
     {
-        var context = Parse(executor, input, enactor);
+        return Run(Parse(executor, input, enactor), db, hooks);
+    }
+
+    private CommandContext Run(CommandContext context, ObjectDatabase db, bool hooks)
+    {
+        Dbref executor = context.Executor;
+        string input = context.RawCommand;
         if (string.IsNullOrEmpty(context.CommandName))
         {
             return context;

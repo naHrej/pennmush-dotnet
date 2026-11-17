@@ -14,6 +14,7 @@ public class CommandContext
     public string Arguments { get; init; } = string.Empty;
     public string LeftArg { get; init; } = string.Empty;
     public string RightArg { get; init; } = string.Empty;
+    public ActionFrame? Frame { get; set; }
 
     public List<Notification> TargetedNotifications { get; } = new();
     public List<string> Notifications { get; } = new();

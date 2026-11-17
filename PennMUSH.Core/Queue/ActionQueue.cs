@@ -55,6 +55,14 @@ public class ActionQueue
         }
     }
 
+    public int HaltWhere(Func<Dbref, bool> match)
+    {
+        lock (_lock)
+        {
+            return _entries.RemoveAll(entry => match(entry.Executor));
+        }
+    }
+
     public int AllHalt()
     {
         lock (_lock)
