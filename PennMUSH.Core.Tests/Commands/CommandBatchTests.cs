@@ -6,6 +6,7 @@ using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
 using Xunit;
 
@@ -13,6 +14,7 @@ public class CommandBatchTests
 {
     private readonly ObjectDatabase _db = new();
     private readonly CommandDispatcher _dispatcher;
+    private readonly ActionQueue _queue = new();
     private readonly ChannelRegistry _channels = new();
     private readonly Dbref _god;
     private readonly Dbref _ada;
@@ -41,7 +43,7 @@ public class CommandBatchTests
         _dispatcher.Register(new CommandCommandHandler(_dispatcher), "@command");
         _dispatcher.Register(new HookCommandHandler(_dispatcher), "@hook");
         _dispatcher.Register(new WcheckCommandHandler(), "@wcheck");
-        _dispatcher.Register(new BuyCommandHandler(evaluator), "buy");
+        _dispatcher.Register(new BuyCommandHandler(evaluator, _queue), "buy");
         _dispatcher.Register(new DbckCommandHandler(), "@dbck");
         _dispatcher.Register(new ClockCommandHandler(_channels), "@clock");
         _dispatcher.Register(new ChannelCommandHandler(_channels), "@channel");
@@ -138,6 +140,29 @@ public class CommandBatchTests
         var refused = _dispatcher.Dispatch(_ada, "buy red hat", _db);
         Assert.Equal("Shop doesn't want your money.", refused.Notifications[0]);
         Assert.Equal(40, _db.GetObject(_ada)!.Pennies);
+    }
+
+    [Fact]
+    public void AbuyQueuesTheVendorsCommandListForTheBuyer()
+    {
+        var vendor = _db.CreateObject("Shop", ObjectType.Thing, _ada);
+        vendor.SetAttribute("PRICELIST", "WIDGET:10", _ada);
+        vendor.SetAttribute("ABUY", "@create %0\n@create spare", _ada);
+        _db.MoveObject(vendor.Id, _room);
+        _dispatcher.Register(new CreateCommandHandler(), "@create");
+
+        var bought = _dispatcher.Dispatch(_ada, "buy widget", _db);
+        Assert.Equal("You buy a widget from Shop.", bought.Notifications[0]);
+        Assert.Equal(2, _queue.Count);
+        Assert.DoesNotContain(_db.GetAllObjects(), obj => obj.Name == "widget");
+
+        var ran = _queue.ProcessReady(DateTimeOffset.UtcNow.AddSeconds(1), _dispatcher, _db);
+        Assert.Equal(0, _queue.Count);
+        var created = _db.GetAllObjects().Where(obj => obj.Name == "widget").ToList();
+        Assert.Single(created);
+        Assert.Equal(vendor.Id, created[0].Owner);
+        Assert.Contains(_db.GetAllObjects(), obj => obj.Name == "spare" && obj.Owner == vendor.Id);
+        Assert.Contains(ran, ctx => ctx.Notifications.Any(note => note.StartsWith("Created: widget")));
     }
 
     [Fact]

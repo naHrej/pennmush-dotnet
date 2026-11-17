@@ -7,13 +7,19 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
 
 public class BuyCommandHandler : ICommandHandler
 {
     private readonly ExpressionEvaluator? _evaluator;
+    private readonly ActionQueue? _queue;
 
-    public BuyCommandHandler(ExpressionEvaluator? evaluator = null) => _evaluator = evaluator;
+    public BuyCommandHandler(ExpressionEvaluator? evaluator = null, ActionQueue? queue = null)
+    {
+        _evaluator = evaluator;
+        _queue = queue;
+    }
 
     public string Name => "buy";
 
@@ -144,12 +150,14 @@ public class BuyCommandHandler : ICommandHandler
         if (actor.Location.IsValid)
             context.NotifyExcept(actor.Location, actor.Id, string.IsNullOrEmpty(obuy) ? others : obuy);
         string? action = vendor.GetAttribute("ABUY", db)?.Value;
-        if (!string.IsNullOrWhiteSpace(action) && _evaluator != null)
+        if (!string.IsNullOrWhiteSpace(action) && _queue != null
+            && (vendor.Type == ObjectType.Player || !vendor.HasFlag("HALT")))
         {
-            var ctx = new EvaluationContext(vendor.Id, actor.Id, location: vendor.Location, args: new[] { item, charge.ToString(CultureInfo.InvariantCulture) });
-            string ran = _evaluator.Evaluate(action, ctx);
-            if (!string.IsNullOrWhiteSpace(ran))
-                context.Notify(ran);
+            _queue.EnqueueActionList(
+                vendor.Id,
+                actor.Id,
+                action,
+                new[] { item, charge.ToString(CultureInfo.InvariantCulture) });
         }
     }
 

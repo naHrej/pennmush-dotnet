@@ -258,7 +258,7 @@ public class MUSHServer
         Dispatcher.Register(new CommandCommandHandler(Dispatcher), "@command");
         Dispatcher.Register(new HookCommandHandler(Dispatcher), "@hook");
         Dispatcher.Register(new WcheckCommandHandler(), "@wcheck");
-        Dispatcher.Register(new BuyCommandHandler(Evaluator), "buy");
+        Dispatcher.Register(new BuyCommandHandler(Evaluator, Queue), "buy");
         Dispatcher.Register(new DbckCommandHandler(), "@dbck");
         Dispatcher.Register(new WarningsCommandHandler(), "@warnings");
         Dispatcher.Register(new ForceCommandHandler(Dispatcher), "@force");

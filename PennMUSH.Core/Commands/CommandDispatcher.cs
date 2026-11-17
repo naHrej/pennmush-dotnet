@@ -59,6 +59,26 @@ public class CommandDispatcher
     internal CommandContext DispatchHook(Dbref executor, string input, ObjectDatabase db, Dbref enactor) =>
         Dispatch(executor, input, db, enactor, false);
 
+    internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args)
+    {
+        string bound = BindQueuedCommand(executor, enactor, input, args, db);
+        if (string.IsNullOrWhiteSpace(bound))
+            return new CommandContext { Executor = executor, Enactor = enactor };
+        return Dispatch(executor, bound, db, enactor, true);
+    }
+
+    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, ObjectDatabase db)
+    {
+        if (_evaluator == null)
+            return input;
+        var ctx = new EvaluationContext(
+            executor,
+            enactor,
+            location: db.GetObject(executor)?.Location ?? Dbref.Nothing,
+            args: args);
+        return _evaluator.Evaluate(input, ctx);
+    }
+
     private CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, Dbref? enactor, bool hooks)
     {
         var context = Parse(executor, input, enactor);

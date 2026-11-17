@@ -118,10 +118,7 @@ public class ActionQueue
 
         var results = new List<CommandContext>();
         foreach (var entry in ready)
-        {
-            var ctx = dispatcher.Dispatch(entry.Executor, entry.Command, db);
-            results.Add(ctx);
-        }
+            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments));
 
         return results;
     }
@@ -149,7 +146,50 @@ public class ActionQueue
 
         var results = new List<CommandContext>();
         foreach (var entry in chosen)
-            results.Add(dispatcher.Dispatch(entry.Executor, entry.Command, db));
+            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments));
         return results;
+    }
+
+    /// <summary>
+    /// Queues one command for each piece of an action list. The enactor and
+    /// arguments stay with every piece and are applied when that piece runs.
+    /// </summary>
+    public int EnqueueActionList(Dbref executor, Dbref enactor, string actionList, string[]? args = null)
+    {
+        int queued = 0;
+        foreach (string piece in PennMUSH.Core.Commands.Handlers.IncludeCommandHandler.SplitCommands(StripListenPrefix(actionList)))
+        {
+            string command = Unwrap(piece);
+            if (command.Length == 0)
+                continue;
+            if (Enqueue(executor, enactor, command, args: args) != null)
+                queued++;
+        }
+        return queued;
+    }
+
+    private static string StripListenPrefix(string value)
+    {
+        if (value.Length == 0 || (value[0] != '$' && value[0] != '^'))
+            return value;
+        for (int i = 1; i < value.Length; i++)
+        {
+            if (value[i] == '\\' && i + 1 < value.Length)
+            {
+                i++;
+                continue;
+            }
+            if (value[i] == ':')
+                return value[(i + 1)..];
+        }
+        return value;
+    }
+
+    private static string Unwrap(string command)
+    {
+        string trimmed = command.Trim();
+        if (trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[^1] == '}')
+            return trimmed[1..^1].Trim();
+        return trimmed;
     }
 }
