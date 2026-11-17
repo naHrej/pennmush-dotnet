@@ -11,12 +11,14 @@ using PennMUSH.Core.Types;
 public class MailCommandHandler : ICommandHandler
 {
     private readonly MailStore _mail;
+    private readonly MailAliasTable? _aliases;
 
     public string Name => "@mail";
 
-    public MailCommandHandler(MailStore mail)
+    public MailCommandHandler(MailStore mail, MailAliasTable? aliases = null)
     {
         _mail = mail;
+        _aliases = aliases;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -149,6 +151,9 @@ public class MailCommandHandler : ICommandHandler
                 }
             }
 
+            if ((targetObj == null || targetObj.Type != ObjectType.Player) && TrySendAlias(context, db, executor))
+                return true;
+
             if (targetObj == null || targetObj.Type != ObjectType.Player)
             {
                 context.Notify($"Player '{context.LeftArg}' not found.");
@@ -194,6 +199,41 @@ public class MailCommandHandler : ICommandHandler
         }
         context.Notify("----------------------------------------------------------------");
 
+        return true;
+    }
+
+    private bool TrySendAlias(CommandContext context, ObjectDatabase db, MUSHObject executor)
+    {
+        if (_aliases == null)
+            return false;
+        string name = context.LeftArg.Trim();
+        if (name.Length == 0 || name[0] != MailAliasTable.Token)
+            return false;
+        var alias = _aliases.Find(executor, name);
+        if (alias == null)
+            return false;
+
+        string subject = "(No Subject)";
+        string body = context.RightArg;
+        int slash = context.RightArg.IndexOf('/');
+        if (slash > 0)
+        {
+            subject = context.RightArg[..slash].Trim();
+            body = context.RightArg[(slash + 1)..].Trim();
+        }
+        bool urgent = context.Switches.Contains("urgent");
+        bool showMembers = MailAliasTable.CanSeeMembers(executor, alias);
+        foreach (var id in alias.Members)
+        {
+            var sent = _mail.SendMail(executor.Id, id, subject, body, urgent);
+            if (!showMembers)
+                continue;
+            var recipient = db.GetObject(id);
+            string who = recipient == null ? id.ToString() : recipient.Name;
+            context.Notify($"Mail sent to {who} (Subject: {sent.Subject}).");
+        }
+        if (!showMembers)
+            context.Notify($"You sent your message to the '{alias.Name}' alias");
         return true;
     }
 }

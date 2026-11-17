@@ -254,4 +254,116 @@ public class ServerIntegrationTests
             }
         }
     }
+
+    [Fact]
+    public async Task ShutdownAnnouncesThenStops()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"server_shutdown_{Guid.NewGuid():N}.db");
+        try
+        {
+            var host = new MUSHServerHost(dbPath);
+            var stopped = false;
+            host.ProcessExit = () => stopped = true;
+            var connOutputs = new List<string>();
+            var conn = new MUSHConnection(line =>
+            {
+                connOutputs.Add(line);
+                return Task.CompletedTask;
+            });
+            host.RegisterConnection(conn);
+            await host.HandleInputAsync(conn, "connect One one");
+            connOutputs.Clear();
+
+            await host.HandleInputAsync(conn, "@shutdown");
+
+            Assert.Contains(connOutputs, line => line.Contains("GAME: Shutdown by One"));
+            Assert.True(stopped);
+            host.Dispose();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                try { File.Delete(dbPath); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ShutdownRebootKeepsTheConnection()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"server_shutdown_reboot_{Guid.NewGuid():N}.db");
+        try
+        {
+            var host = new MUSHServerHost(dbPath);
+            var connOutputs = new List<string>();
+            var conn = new MUSHConnection(line =>
+            {
+                connOutputs.Add(line);
+                return Task.CompletedTask;
+            });
+            host.RegisterConnection(conn);
+            await host.HandleInputAsync(conn, "connect One one");
+            connOutputs.Clear();
+
+            await host.HandleInputAsync(conn, "@shutdown/reboot");
+
+            Assert.Contains(connOutputs, line => line.Contains("GAME: Reboot w/o disconnect by One, please wait."));
+            Assert.Contains(connOutputs, line => line.Contains("GAME: Reboot finished."));
+            Assert.True(conn.IsConnected);
+            Assert.Equal(1, conn.PlayerId.Value);
+
+            connOutputs.Clear();
+            await host.HandleInputAsync(conn, "think [add(20,22)]");
+            Assert.Contains(connOutputs, line => line.Contains("42"));
+            host.Dispose();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                try { File.Delete(dbPath); } catch { }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task BannedHostCannotConnect()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"server_sitelock_{Guid.NewGuid():N}.db");
+        try
+        {
+            var host = new MUSHServerHost(dbPath);
+            var wizard = new MUSHConnection(line => Task.CompletedTask);
+            wizard.Host = "192.0.2.1";
+            host.RegisterConnection(wizard);
+            await host.HandleInputAsync(wizard, "connect One one");
+
+            await host.HandleInputAsync(wizard, "@sitelock/ban 192.0.2.*");
+
+            var outputs = new List<string>();
+            var banned = new MUSHConnection(line =>
+            {
+                outputs.Add(line);
+                return Task.CompletedTask;
+            });
+            banned.Host = "192.0.2.8";
+            host.RegisterConnection(banned);
+            await host.HandleInputAsync(banned, "connect One one");
+
+            Assert.Contains(outputs, line => line.Contains("Player connections not allowed."));
+            Assert.False(banned.PlayerId.IsValid);
+            host.Dispose();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                try { File.Delete(dbPath); } catch { }
+            }
+        }
+    }
 }

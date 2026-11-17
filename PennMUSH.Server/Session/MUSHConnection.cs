@@ -39,6 +39,13 @@ public class MUSHConnection
     public int Commands { get; private set; }
     public long BytesSent { get; private set; }
     public long BytesReceived { get; private set; }
+    public string OutputPrefix { get; set; } = "";
+    public string OutputSuffix { get; set; } = "";
+    public bool TelnetEnabled { get; set; } = true;
+    public bool StripAccents { get; set; }
+    public bool PromptNewlines { get; set; }
+    public bool NoQuota { get; set; }
+    public string? ColorStyle { get; set; }
 
     public MUSHConnection(Func<string, Task>? onSendLine)
     {
@@ -62,6 +69,7 @@ public class MUSHConnection
         Capabilities.SupportsPueblo = true;
         Capabilities.ColorMode = ColorDepth.TrueColor;
         Negotiator = new TelnetNegotiator(Capabilities);
+        TelnetEnabled = false;
     }
 
     public async Task SendEnvelopeAsync<T>(string type, T payload, string? id = null, CancellationToken ct = default)

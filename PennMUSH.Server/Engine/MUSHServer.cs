@@ -7,6 +7,7 @@ using PennMUSH.Core.Flags;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using PennMUSH.Core.Access;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Communication;
@@ -32,6 +33,9 @@ public class MUSHServer
     private readonly ConnectionDirectory _sessions;
     private readonly ConcurrentDictionary<Dbref, string> _playerPasswords = new();
     private readonly CancellationTokenSource _cts = new();
+    private Task _outbound = Task.CompletedTask;
+    private bool _shutdownRequested;
+    private bool _quietRebootRequested;
 
     public MushConfiguration Config { get; }
     public string GameDirectory { get; }
@@ -43,6 +47,8 @@ public class MUSHServer
     public ChannelRegistry Channels { get; }
     public MotdBoard Motd { get; } = new();
     public MailStore Mail { get; }
+    public PennMUSH.Core.Communication.Mail.MailAliasTable MailAliases { get; }
+    public SiteLockTable SiteLocks { get; }
     public HelpStore Help { get; } = new();
     public SuggestionVocabulary Suggestions { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
@@ -55,7 +61,7 @@ public class MUSHServer
 
     public IReadOnlyCollection<MUSHConnection> Connections => _connections.Values.ToList();
 
-    public MUSHServer(string dbPath = "mush.db", string? configPath = null)
+    public MUSHServer(string dbPath = "mush.db", string? configPath = null, SiteLockTable? siteLocks = null)
     {
         _sessions = new ConnectionDirectory(_connections, UnregisterConnection);
         string? resolvedConfig = ResolveConfigPath(configPath);
@@ -76,6 +82,8 @@ public class MUSHServer
         Cron = new CronScheduler();
         Channels = new ChannelRegistry();
         Mail = new MailStore();
+        MailAliases = new PennMUSH.Core.Communication.Mail.MailAliasTable();
+        SiteLocks = siteLocks ?? new SiteLockTable();
 
         bool loaded = Storage.Load(Database, Cron);
         if (!loaded || Database.Count == 0)
@@ -209,7 +217,8 @@ public class MUSHServer
         Dispatcher.Register(new ComCommandHandler(Channels), "addcom", "delcom", "comtitle", "comlist", "@clist");
         Dispatcher.Register(new ChatCommandHandler(Channels, Evaluator), "@chat", "+c");
         Dispatcher.Register(new CemitCommandHandler(Channels, Evaluator), "@cemit", "@nscemit");
-        Dispatcher.Register(new MailCommandHandler(Mail), "@mail");
+        Dispatcher.Register(new MailCommandHandler(Mail, MailAliases), "@mail");
+        Dispatcher.Register(new MaliasCommandHandler(MailAliases), "@malias");
         Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
         Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml, Suggestions), "help", "?");
         Dispatcher.Register(new EmitCommandHandler(Evaluator), "@emit", "\\", "@lemit", "@nsemit", "@nslemit");
@@ -242,6 +251,7 @@ public class MUSHServer
         Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
         Dispatcher.Register(new EnableCommandHandler(Config, false), "@disable");
         Dispatcher.Register(new EnableCommandHandler(Config, true), "@enable");
+        Dispatcher.Register(new ConfigCommandHandler(Config), "@config");
         Dispatcher.Register(new FlagCommandHandler(), "@flag");
         Dispatcher.Register(new AttributeCommandHandler(), "@attribute");
         Dispatcher.Register(new WarningsCommandHandler(), "@warnings");
@@ -288,12 +298,18 @@ public class MUSHServer
         Dispatcher.Register(new WhoCommandHandler(_sessions), "who", "session");
         Dispatcher.Register(new HideCommandHandler(_sessions), "@hide");
         Dispatcher.Register(new BootCommandHandler(_sessions), "@boot");
+        Dispatcher.Register(new SocksetCommandHandler(_sessions), "@sockset");
         Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
         Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
         Dispatcher.Register(new VersionCommandHandler(), "@version");
         Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
         Dispatcher.Register(new RebootCommandHandler(() => OnRebootRequested?.Invoke()), "@reboot");
+        Dispatcher.Register(new ShutdownCommandHandler(
+            () => Storage.Save(Database, Cron),
+            () => _shutdownRequested = true,
+            () => _quietRebootRequested = true), "@shutdown");
+        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks), "@sitelock");
 
         // Apply aliases & reserved aliases from configuration
         foreach (var (alias, orig) in Config.CommandAliases)
@@ -318,9 +334,14 @@ public class MUSHServer
                 Dispatcher.AddRestriction(cmd, rule.Restriction, rule.ErrorMessage);
             }
         }
+
+        Dispatcher.AddRestriction("@malias", "nogagged", null);
+        Dispatcher.AddRestriction("@sockset", "nogagged", null);
     }
 
     public event Action? OnRebootRequested;
+    public event Action? OnQuietRebootRequested;
+    public event Action? OnShutdownRequested;
 
     public void RegisterConnection(MUSHConnection conn, bool isReconnect = false)
     {
@@ -417,6 +438,10 @@ public class MUSHServer
         try
         {
             var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
+            bool shutdown = _shutdownRequested;
+            bool quietReboot = _quietRebootRequested;
+            _shutdownRequested = false;
+            _quietRebootRequested = false;
             foreach (var note in context.TargetedNotifications)
             {
                 DispatchNotification(note);
@@ -425,6 +450,15 @@ public class MUSHServer
             if (context.CommandName.StartsWith('@'))
             {
                 Storage.Save(Database, Cron);
+            }
+
+            if (shutdown || quietReboot)
+            {
+                await FlushOutbound();
+                if (quietReboot)
+                    OnQuietRebootRequested?.Invoke();
+                else
+                    OnShutdownRequested?.Invoke();
             }
         }
         finally
@@ -478,6 +512,16 @@ public class MUSHServer
                     break;
                 }
 
+                if (player.HasFlag("GUEST")
+                    ? !SiteLocks.Can(conn.Host, SiteLockTable.Guest)
+                    : !SiteLocks.Can(conn.Host, SiteLockTable.Connect))
+                {
+                    await conn.SendLineAsync(player.HasFlag("GUEST")
+                        ? "Guest connections not allowed."
+                        : "Player connections not allowed.", ct);
+                    break;
+                }
+
                 // Verify password (default "one" for God, or empty for development)
                 if (_playerPasswords.TryGetValue(player.Id, out var pass) && pass != password)
                 {
@@ -527,6 +571,12 @@ public class MUSHServer
                 if (exists)
                 {
                     await conn.SendLineAsync("That name is already in use.", ct);
+                    break;
+                }
+
+                if (!SiteLocks.Can(conn.Host, SiteLockTable.Create))
+                {
+                    await conn.SendLineAsync("Creation is NOT allowed", ct);
                     break;
                 }
 
@@ -776,9 +826,21 @@ public class MUSHServer
         foreach (var c in _connections.Values)
         {
             if (c.PlayerId.IsValid)
-            {
-                _ = c.SendLineAsync(message);
-            }
+                _outbound = Task.WhenAll(_outbound, c.SendLineAsync(message));
+        }
+    }
+
+    private async Task FlushOutbound()
+    {
+        var pending = _outbound;
+        _outbound = Task.CompletedTask;
+        try
+        {
+            await pending;
+        }
+        catch
+        {
+            // A player who already disconnected does not stop the shutdown.
         }
     }
 

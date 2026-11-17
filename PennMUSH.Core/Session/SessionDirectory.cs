@@ -28,4 +28,6 @@ public interface ISessionDirectory
     void SetHidden(int descriptor, bool hidden);
     void Disconnect(int descriptor);
     void FlushDisconnects();
+    string Sockset(Dbref executor, Dbref subject, int? descriptor, bool own, bool setting, string values, bool wizard, bool seeAll, Func<Dbref, bool> isWizard)
+        => "You are not connected?";
 }
