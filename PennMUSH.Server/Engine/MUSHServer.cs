@@ -106,7 +106,13 @@ public class MUSHServer
         Functions.EditorSessions = EditorSessions;
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
-        Functions.Passwords = new CallbackPasswords((id, password) => _playerPasswords[id] = password);
+        Functions.Passwords = new CallbackPasswords((id, password) =>
+        {
+            _playerPasswords[id] = password;
+            var player = Database.GetObject(id);
+            if (player != null)
+                PasswordHash.Store(player, password);
+        });
         Functions.PlayerStart = Config.PlayerStart;
         Functions.DefaultHome = Config.DefaultHome;
         Functions.StartingMoney = Config.StartingMoney;
@@ -317,6 +323,8 @@ public class MUSHServer
         Dispatcher.Register(new SocksetCommandHandler(_sessions), "@sockset");
         Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
         Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
+        Dispatcher.Register(new PasswordCommandHandler(), "@password");
+        Dispatcher.Register(new NewPasswordCommandHandler(Logs), "@newpassword");
         Dispatcher.Register(new VersionCommandHandler(), "@version");
         Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
@@ -356,6 +364,8 @@ public class MUSHServer
         Dispatcher.AddRestriction("@malias", "nogagged", null);
         Dispatcher.AddRestriction("@sockset", "nogagged", null);
         Dispatcher.AddRestriction("@log", "nogagged", null);
+        Dispatcher.AddRestriction("@password", "noguest", null);
+        Dispatcher.AddRestriction("@newpassword", "wizard", null);
         Dispatcher.AddRestriction("@logwipe", "nogagged", null);
         Dispatcher.AddRestriction("@restart", "nogagged", null);
         Dispatcher.AddRestriction("@retry", "nogagged", null);
@@ -544,10 +554,10 @@ public class MUSHServer
                     break;
                 }
 
-                // Verify password (default "one" for God, or empty for development)
-                if (_playerPasswords.TryGetValue(player.Id, out var pass) && pass != password)
+                _playerPasswords.TryGetValue(player.Id, out var saved);
+                if (!PasswordHash.Accepts(player, password, saved))
                 {
-                    await conn.SendLineAsync("Incorrect password.", ct);
+                    await conn.SendLineAsync("Either that player does not exist, or has a different password.", ct);
                     break;
                 }
 
@@ -608,6 +618,7 @@ public class MUSHServer
                 newPlayer.Pennies = Config.StartingMoney;
                 newPlayer.Warnings = WarningBits.Normal;
                 _playerPasswords[newPlayer.Id] = password;
+                PasswordHash.Store(newPlayer, password);
                 Database.MoveObject(newPlayer.Id, Config.PlayerStart);
 
                 Storage.Save(Database);
