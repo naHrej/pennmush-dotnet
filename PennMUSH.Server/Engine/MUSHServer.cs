@@ -214,6 +214,7 @@ public class MUSHServer
         Dispatcher.Register(new DropCommandHandler(), "drop", "throw", "d");
         Dispatcher.Register(new InventoryCommandHandler(Evaluator), "inventory", "i", "inv");
         Dispatcher.Register(new ChannelCommandHandler(Channels), "@channel");
+        Dispatcher.Register(new ClockCommandHandler(Channels), "@clock");
         Dispatcher.Register(new ComCommandHandler(Channels), "addcom", "delcom", "comtitle", "comlist", "@clist");
         Dispatcher.Register(new ChatCommandHandler(Channels, Evaluator), "@chat", "+c");
         Dispatcher.Register(new CemitCommandHandler(Channels, Evaluator), "@cemit", "@nscemit");
@@ -254,6 +255,11 @@ public class MUSHServer
         Dispatcher.Register(new ConfigCommandHandler(Config), "@config");
         Dispatcher.Register(new FlagCommandHandler(), "@flag");
         Dispatcher.Register(new AttributeCommandHandler(), "@attribute");
+        Dispatcher.Register(new CommandCommandHandler(Dispatcher), "@command");
+        Dispatcher.Register(new HookCommandHandler(Dispatcher), "@hook");
+        Dispatcher.Register(new WcheckCommandHandler(), "@wcheck");
+        Dispatcher.Register(new BuyCommandHandler(Evaluator, Queue), "buy");
+        Dispatcher.Register(new DbckCommandHandler(), "@dbck");
         Dispatcher.Register(new WarningsCommandHandler(), "@warnings");
         Dispatcher.Register(new ForceCommandHandler(Dispatcher), "@force");
         Dispatcher.Register(new IfElseCommandHandler(Dispatcher, Evaluator), "@ifelse", "@if", "@skip");
@@ -326,6 +332,8 @@ public class MUSHServer
         {
             Functions.AddAlias(orig, alias);
         }
+
+        Dispatcher.AddRestriction("buy", "nogagged", null);
 
         foreach (var (cmd, rules) in Config.CommandRestrictions)
         {

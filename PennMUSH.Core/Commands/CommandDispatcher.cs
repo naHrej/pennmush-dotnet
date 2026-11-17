@@ -15,6 +15,8 @@ public class CommandDispatcher
     private readonly ExpressionEvaluator? _evaluator;
 
     public CommandTable Table => _commandTable;
+    public CommandCatalog Catalog { get; } = new();
+    public ExpressionEvaluator? Evaluator => _evaluator;
 
     public CommandDispatcher(ExpressionEvaluator? evaluator = null)
     {
@@ -51,9 +53,35 @@ public class CommandDispatcher
         list.Add((restriction, customErrorMessage));
     }
 
-    public CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db)
+    public CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db) =>
+        Dispatch(executor, input, db, null, true);
+
+    internal CommandContext DispatchHook(Dbref executor, string input, ObjectDatabase db, Dbref enactor) =>
+        Dispatch(executor, input, db, enactor, false);
+
+    internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args)
     {
-        var context = Parse(executor, input);
+        string bound = BindQueuedCommand(executor, enactor, input, args, db);
+        if (string.IsNullOrWhiteSpace(bound))
+            return new CommandContext { Executor = executor, Enactor = enactor };
+        return Dispatch(executor, bound, db, enactor, true);
+    }
+
+    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, ObjectDatabase db)
+    {
+        if (_evaluator == null)
+            return input;
+        var ctx = new EvaluationContext(
+            executor,
+            enactor,
+            location: db.GetObject(executor)?.Location ?? Dbref.Nothing,
+            args: args);
+        return _evaluator.Evaluate(input, ctx);
+    }
+
+    private CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, Dbref? enactor, bool hooks)
+    {
+        var context = Parse(executor, input, enactor);
         if (string.IsNullOrEmpty(context.CommandName))
         {
             return context;
@@ -64,13 +92,19 @@ public class CommandDispatcher
 
         if (lookup.Status == CommandLookupStatus.Found && lookup.Handler != null)
         {
-            if (execObj != null && !CheckRestrictions(execObj, lookup.CanonicalName ?? context.CommandName, context))
+            string canonical = lookup.CanonicalName ?? context.CommandName;
+            if (!Catalog.IsDisabled(canonical))
             {
+                if (execObj != null && !CheckRestrictions(execObj, canonical, context))
+                    return context;
+                if (hooks && !Catalog.Prepare(this, canonical, context, db))
+                    return context;
+
+                lookup.Handler.Execute(context, db);
+                if (hooks)
+                    Catalog.After(this, canonical, context, db);
                 return context;
             }
-
-            lookup.Handler.Execute(context, db);
-            return context;
         }
 
         if (lookup.Status == CommandLookupStatus.Ambiguous)
@@ -288,10 +322,10 @@ public class CommandDispatcher
         return true;
     }
 
-    public static CommandContext Parse(Dbref executor, string input)
+    public static CommandContext Parse(Dbref executor, string input, Dbref? enactor = null)
     {
         if (string.IsNullOrWhiteSpace(input))
-            return new CommandContext { Executor = executor, Enactor = executor };
+            return new CommandContext { Executor = executor, Enactor = enactor ?? executor };
 
         string trimmed = input.TrimStart();
         string cmdToken;
@@ -357,7 +391,7 @@ public class CommandDispatcher
         return new CommandContext
         {
             Executor = executor,
-            Enactor = executor,
+            Enactor = enactor ?? executor,
             RawCommand = input,
             CommandName = cmdName,
             Switches = switches,

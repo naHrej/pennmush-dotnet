@@ -14,4 +14,5 @@ public static class LockType
     public const string Chzone = "Chzone";
     public const string Zone = "Zone";
     public const string Follow = "Follow";
+    public const string Pay = "Pay";
 }

@@ -3,6 +3,8 @@ namespace PennMUSH.Core.Communication.Channels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PennMUSH.Core.Database;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.Types;
 
 public record ChannelMessage(DateTimeOffset Timestamp, string SenderName, Dbref SenderId, string Text);
@@ -10,6 +12,7 @@ public record ChannelMessage(DateTimeOffset Timestamp, string SenderName, Dbref 
 public class Channel
 {
     private readonly Dictionary<Dbref, ChannelMember> _members = new();
+    private readonly Dictionary<string, (string Text, LockNode Key)> _locks = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ChannelMessage> _buffer = new();
     private readonly object _lock = new();
 
@@ -50,6 +53,31 @@ public class Channel
         lock (_lock)
         {
             return _members.Remove(player);
+        }
+    }
+
+    public bool HasLock(string kind)
+    {
+        lock (_lock) return _locks.ContainsKey(kind);
+    }
+
+    public void SetLock(string kind, string text, LockNode key)
+    {
+        lock (_lock) _locks[kind] = (text, key);
+    }
+
+    public void ClearLock(string kind)
+    {
+        lock (_lock) _locks.Remove(kind);
+    }
+
+    public bool Passes(string kind, Dbref who, ObjectDatabase db)
+    {
+        lock (_lock)
+        {
+            if (!_locks.TryGetValue(kind, out var entry))
+                return true;
+            return entry.Key.Evaluate(who, Owner, db);
         }
     }
 

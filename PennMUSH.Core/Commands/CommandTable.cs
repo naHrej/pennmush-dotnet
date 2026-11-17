@@ -109,6 +109,12 @@ public class CommandTable
         }
     }
 
+    public bool ContainsExact(string name) =>
+        _exactCommands.ContainsKey(name.Trim().ToLowerInvariant());
+
+    public int CountNames(string canonical) =>
+        _exactCommands.Count(pair => pair.Value.CanonicalName.Equals(canonical, StringComparison.OrdinalIgnoreCase));
+
     public bool IsReserved(string alias)
     {
         return _reservedAliases.Contains(alias.Trim().ToLowerInvariant());

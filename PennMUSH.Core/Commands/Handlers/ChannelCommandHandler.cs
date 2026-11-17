@@ -79,6 +79,23 @@ public class ChannelCommandHandler : ICommandHandler
                 return false;
             }
 
+            if (!ch.Visible(executor, db))
+            {
+                context.Notify("CHAT: I don't recognize that channel.");
+                return false;
+            }
+
+            if (!ch.Passes("join", executor.Id, db))
+            {
+                if (executor.IsWizard)
+                    context.Notify("CHAT: Warning: You don't meet channel join permissions! (joining anyway)");
+                else
+                {
+                    context.Notify("Permission to join denied.");
+                    return false;
+                }
+            }
+
             if (ch.AddMember(executor.Id))
             {
                 context.Notify($"You join channel <{ch.Name}>.");
@@ -117,9 +134,17 @@ public class ChannelCommandHandler : ICommandHandler
                 return false;
             }
 
+            if (!ch.Visible(executor, db))
+            {
+                context.Notify("CHAT: I don't recognize that channel.");
+                return false;
+            }
+
             context.Notify($"Members on <{ch.Name}>:");
             foreach (var member in ch.Members)
             {
+                if (member.PlayerId != executor.Id && ch.Owner != executor.Id && !executor.IsWizard && ch.Passes("hide", member.PlayerId, db) && ch.HasLock("hide"))
+                    continue;
                 var p = db.GetObject(member.PlayerId);
                 string pName = p != null ? p.Name : member.PlayerId.ToString();
                 string title = !string.IsNullOrEmpty(member.Title) ? $" [{member.Title}]" : "";
@@ -193,6 +218,8 @@ public class ChannelCommandHandler : ICommandHandler
         context.Notify("--------------------------------------------------");
         foreach (var ch in allChannels)
         {
+            if (!ch.Visible(executor, db))
+                continue;
             var ownerObj = db.GetObject(ch.Owner);
             string ownerName = ownerObj != null ? ownerObj.Name : ch.Owner.ToString();
             string onStatus = ch.HasMember(executor.Id) ? "[Joined]" : "[Off]";

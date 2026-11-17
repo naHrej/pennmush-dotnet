@@ -44,9 +44,15 @@ public class ChatCommandHandler : ICommandHandler
         }
 
         var ch = _channels.GetChannel(chName);
-        if (ch == null)
+        if (ch == null || !ch.Visible(executor, db))
         {
-            context.Notify($"Channel <{chName}> not found.");
+            context.Notify("CHAT: No such channel.");
+            return false;
+        }
+
+        if (!ch.Passes("speak", executor.Id, db))
+        {
+            context.Notify($"Sorry, you're not allowed to speak on channel <{ch.Name}>.");
             return false;
         }
 
