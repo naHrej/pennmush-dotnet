@@ -28,6 +28,9 @@ builder.Services.AddHostedService<TelnetListenerService>(sp =>
 });
 
 var app = builder.Build();
+var game = app.Services.GetRequiredService<MUSHServerHost>();
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+game.ProcessExit = () => lifetime.StopApplication();
 
 // Enable WebSockets & Static Files (for stylesheets & assets)
 app.UseWebSockets();

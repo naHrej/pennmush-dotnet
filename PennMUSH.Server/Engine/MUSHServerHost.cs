@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using PennMUSH.Core.Access;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Database;
 using PennMUSH.Server.Session;
@@ -16,6 +17,7 @@ public class MUSHServerHost : IDisposable
     private readonly ConcurrentDictionary<string, MUSHConnection> _activeConnections = new();
     private readonly string _dbPath;
     private readonly string? _configPath;
+    private readonly SiteLockTable _siteLocks = new();
     private MUSHServer _server;
 
     public MUSHServer Server => _server;
@@ -32,8 +34,10 @@ public class MUSHServerHost : IDisposable
 
     private MUSHServer CreateServer()
     {
-        var server = new MUSHServer(_dbPath, _configPath);
+        var server = new MUSHServer(_dbPath, _configPath, _siteLocks);
         server.OnRebootRequested += () => Reboot();
+        server.OnQuietRebootRequested += () => Reboot(announce: false);
+        server.OnShutdownRequested += () => Shutdown();
         return server;
     }
 
@@ -59,16 +63,20 @@ public class MUSHServerHost : IDisposable
     /// starship states and systems), instantiates a fresh MUSHServer engine, and re-binds all
     /// active client sockets and sessions with zero disconnects.
     /// </summary>
-    public void Reboot()
+    public Action? ProcessExit { get; set; }
+
+    public void Reboot(bool announce = true)
     {
         lock (_rebootLock)
         {
             Console.WriteLine("[MUSHServerHost] Executing hot-reboot of game engine...");
 
-            // 1. Notify all connected players
-            foreach (var conn in _activeConnections.Values)
+            if (announce)
             {
-                _ = conn.SendLineAsync("<div class=\"system-msg\">*** Hot-reboot: Persisting universe and reloading engine (sockets preserved)... ***</div>");
+                foreach (var conn in _activeConnections.Values)
+                {
+                    _ = conn.SendLineAsync("<div class=\"system-msg\">*** Hot-reboot: Persisting universe and reloading engine (sockets preserved)... ***</div>");
+                }
             }
 
             // 2. Prepare old server for reboot (persists database, shuts down extensions cleanly)
@@ -81,10 +89,23 @@ public class MUSHServerHost : IDisposable
             foreach (var conn in _activeConnections.Values)
             {
                 _server.RegisterConnection(conn, isReconnect: true);
-                _ = conn.SendLineAsync("<div class=\"system-msg\">*** Hot-reboot complete. Engine reloaded with 0 disconnects. ***</div>");
+                _ = conn.SendLineAsync(announce
+                    ? "<div class=\"system-msg\">*** Hot-reboot complete. Engine reloaded with 0 disconnects. ***</div>"
+                    : "GAME: Reboot finished.");
             }
 
             Console.WriteLine($"[MUSHServerHost] Hot-reboot completed successfully. {_activeConnections.Count} player connections preserved.");
+        }
+    }
+
+    public void Shutdown()
+    {
+        lock (_rebootLock)
+        {
+            _server.Stop();
+            foreach (var conn in _activeConnections.Values)
+                conn.Close();
+            ProcessExit?.Invoke();
         }
     }
 
