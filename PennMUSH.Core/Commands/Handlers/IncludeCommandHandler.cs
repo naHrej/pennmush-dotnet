@@ -69,22 +69,42 @@ public class IncludeCommandHandler : ICommandHandler
         string[] args = context.Arguments.Contains('=')
             ? SplitArgs(context.RightArg)
             : Array.Empty<string>();
+        var frame = new ActionFrame
+        {
+            Parent = context.Frame,
+            NoBreak = context.Switches.Contains("nobreak")
+        };
+        for (int i = 0; i < args.Length && i < ActionFrame.ArgumentCount; i++)
+            frame.Args[i] = args[i];
         string source = StripListenPrefix(attribute.Value);
         _depth++;
         try
         {
-            foreach (string piece in SplitCommands(source))
+            int passes = 0;
+            do
             {
-                string command = Unwrap(piece);
-                if (command.Length == 0)
-                    continue;
-                command = Prepare(command, context, args);
-                if (command.Length == 0)
-                    continue;
-                var result = _dispatcher.Dispatch(context.Executor, command, db);
-                context.TargetedNotifications.AddRange(result.TargetedNotifications);
-                context.Notifications.AddRange(result.Notifications);
+                frame.Retry = false;
+                foreach (string piece in SplitCommands(source))
+                {
+                    string command = Unwrap(piece);
+                    if (command.Length == 0)
+                        continue;
+                    command = Prepare(command, context, frame.Args);
+                    if (command.Length == 0)
+                        continue;
+                    var result = _dispatcher.Dispatch(context.Executor, command, db, frame, context.Enactor);
+                    context.TargetedNotifications.AddRange(result.TargetedNotifications);
+                    context.Notifications.AddRange(result.Notifications);
+                    if (frame.Break)
+                        break;
+                }
+
+                passes++;
             }
+            while (frame.Retry && !frame.Break && passes < RecursionLimit);
+
+            if (frame.Break && !frame.NoBreak && context.Frame != null)
+                context.Frame.Break = true;
         }
         finally
         {
@@ -147,7 +167,7 @@ public class IncludeCommandHandler : ICommandHandler
         return value;
     }
 
-    private static string Unwrap(string command)
+    internal static string Unwrap(string command)
     {
         string trimmed = command.Trim();
         if (trimmed.Length >= 2 && trimmed[0] == '{' && trimmed[^1] == '}' && MatchingBrace(trimmed))

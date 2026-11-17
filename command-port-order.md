@@ -20,7 +20,7 @@ The dot beside each order number is the status of that row.
 | 🔴 | Blocked. Another row, or a subsystem the server does not have, has to land first. |
 | 🟣 | New, and not a PennMUSH command. None of the numbered rows are in this group. |
 
-Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. `addcom`, `delcom`, `comtitle`, `comlist`, and `@clist` are in the server. The attribute setters are in the server, with the limits named in that block. `@suggest` and `@readcache` are in the server, with the limits named on those rows. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@chownall` is in the server, with the limits named on that row. `@include` is in the server, with the limits named on that row. `@function` is in the server, with the limits named on that row. `@disable` and `@enable` are in the server, with the limits named on that row. `@flag` is in the server, with the limits named on that row. `@attribute` is in the server, with the limits named on that row. `@warnings` is in the server, with the limits named on that row. `@malias` is in the server, with the limits named on that row. `@config` is in the server, with the limits named on that row. `@shutdown` is in the server, with the limits named on that row. `@sitelock` is in the server, with the limits named on that row. `@sockset` is in the server, with the limits named on that row. The next white block is `@log`. `@command`, `@hook`, `@wcheck`, `buy`, `@dbck`, and `@clock` are in the server, with the limits named on those rows.
+Rows 1–22 are in the server. Four of them are blue because the original command still does something that row does not. `who`, `session`, `@hide`, `@boot`, and `@poll` are in the server. `@pcreate` creates a player and stores the password until the process restarts. The white rows after them have not been started. The red rows are waiting on the row or the subsystem named in the last column. `enter`, `leave`, `get`, `drop`, `give`, `page`, and `go` test locks. `use` and `empty` are blue, and `teach` is green. `addcom`, `delcom`, `comtitle`, `comlist`, and `@clist` are in the server. The attribute setters are in the server, with the limits named in that block. `@suggest` and `@readcache` are in the server, with the limits named on those rows. `follow`, `unfollow`, `dismiss`, and `desert` are in the server, with the limits named in that block. `@quota`, `@squota`, and `@allquota` are in the server, with the limits named in that block. `@chownall` is in the server, with the limits named on that row. `@include` is in the server, with the limits named on that row. `@function` is in the server, with the limits named on that row. `@disable` and `@enable` are in the server, with the limits named on that row. `@flag` is in the server, with the limits named on that row. `@attribute` is in the server, with the limits named on that row. `@warnings` is in the server, with the limits named on that row. `@malias` is in the server, with the limits named on that row. `@config` is in the server, with the limits named on that row. `@shutdown` is in the server, with the limits named on that row. `@sitelock` is in the server, with the limits named on that row. `@sockset` is in the server, with the limits named on that row. The next blocked rows are `@password` and `@newpassword`. `@log`, `@logwipe`, `@restart`, `@assert`, `@break`, `@retry`, and `@verb` are in the server, with the limits named on those rows. `@command`, `@hook`, `@wcheck`, `buy`, `@dbck`, and `@clock` are in the server, with the limits named on those rows.
 
 ## What already exists
 
@@ -138,7 +138,7 @@ Each block starts with the foundation. The commands under it come after that fou
 | 🔵 38 | `@ps` | Lists your queue. `/all` lists every entry for a wizard, `/summary` and `/count` shorten the report, and a pid shows one entry. No load average and no `/debug` environment. |
 | 🔵 39 | `@kick` | A wizard runs the next N queued commands immediately, including waits whose time has not come. Commands waiting on a semaphore stay queued. |
 
-`@assert`, `@break`, `@retry`, and `@verb` need an action list that can stop or restart. `@trigger` today runs a single dispatched command.
+`@assert`, `@break`, and `@retry` stop or rerun the list `@include` is running. `@verb` runs one object's attribute as another object. `@trigger` today runs a single dispatched command.
 
 ### Who is connected
 
@@ -226,12 +226,12 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | Order | Command | Depends on |
 | --- | --- | --- |
 | 🔵 59 | `@include` | Run one attribute inplace as that list. |
-| 🔴 60 | `@assert` | A false check sets the break flag. |
-| 🔴 61 | `@break` | A true check sets the same flag. |
-| 🔴 62 | `@retry` | A true check reruns the frame. The right-hand side replaces `%0` through `%9`. |
-| 🔴 63 | `@verb` | The verb string is visible to the action list. |
+| 🔵 60 | `@assert` | A false check stops the included list. Its right-hand side runs first. `/queued` puts that side on the queue. |
+| 🔵 61 | `@break` | A true check stops the included list. Its right-hand side runs first. `/queued` puts that side on the queue. |
+| 🔵 62 | `@retry` | A true check reruns the list. The right-hand side replaces `%0` through `%9`. A gagged player cannot retry. A list stops after 50 retries. |
+| 🔵 63 | `@verb` | One object speaks and acts as another. The victim's attribute is evaluated, the room hears the others message, and the action attribute runs as the victim with the actor as enactor. |
 
-`@include` runs the commands in one attribute immediately. `;` and a newline separate commands, and braces keep a `;` inside one command. A `$` or `^` prefix is skipped through the first colon. The right-hand side fills `%0` through `%9`, and the commands run as the player who typed `@include`. An attribute on a parent is included. `/localize`, `/clearregs`, and `/nobreak` are accepted and do not change registers or a break flag. An attribute is included when it can be named, with no read check. A caller's `%0` through `%9` are not passed along when the command has no `=`. An ambiguous name is not reported.
+`@include` runs the commands in one attribute immediately. `;` and a newline separate commands, and braces keep a `;` inside one command. A `$` or `^` prefix is skipped through the first colon. The right-hand side fills `%0` through `%9`, and the commands run as the player who typed `@include`. An attribute on a parent is included. `/localize` and `/clearregs` are accepted and do not change registers. `/nobreak` keeps a break inside the included attribute from stopping the caller. An attribute is included when it can be named, with no read check. A caller's `%0` through `%9` are not passed along when the command has no `=`. An ambiguous name is not reported.
 
 ### Passwords that survive a restart
 
@@ -270,9 +270,9 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | 🔵 79 | `@shutdown` | A wizard saves and then stops the process. Everyone sees `GAME: Shutdown by` the owner's name. `/panic` is God only and adds `EMERGENCY SHUTDOWN: @shutdown/panic`. The save is the normal database. `/reboot` reloads the engine without dropping sockets and says `GAME: Reboot finished.` It does not re-exec the process, and `@reboot` keeps its own messages. A switch typed after a space, such as `@shutdown /reboot`, counts too. `/paranoid` uses the same save. A failed save still stops, except `/reboot`, which cancels and says `GAME: Reboot failed.` |
 | 🔵 80 | `@sitelock` | A wizard keeps an in-memory ban table. `/ban` refuses connect and create from a matching host, and the player hears `Player connections not allowed.` A plain `@sitelock` refuses create and still allows connect. `/register` refuses create the same way. `/check` and a bare `@sitelock` list the rules. `/remove` deletes by pattern or rule number. The table is not written to the access file, so a process restart clears it. A reload keeps the same table. `/player` has no stored last address. `/name` does not edit a names file. Access options after `=` are not parsed. A connection with no recorded host is not checked. |
 | 🔵 81 | `@sockset` | Shows and sets options on one connected descriptor: prefix, suffix, Pueblo, telnet, width, height, terminal type, accents, color style, prompt newlines, and noquota. Width, height, color, Pueblo, and telnet update that connection. Prefix, suffix, accent stripping, prompt newlines, and noquota are stored and are not applied to output. Setting Pueblo does not send the Pueblo handshake. The options last for the connection. |
-| ⚪ 82 | `@log`, `@logwipe` | A wizard log file. |
+| 🔵 82 | `@log`, `@logwipe` | A wizard writes `Logged.` and a line on one of six files in `game/log`. `/recall` prints `Begin log recall.`, the lines written since this process started, and `End log recall.` God wipes a file with password `zap!` and hears `Log wiped.` A wrong password hears `Wrong password.` `/rotate` keeps one uncompressed copy named `.1`. `/trim` keeps the last tenth of the lines. The password is not read from `mush.cnf`. Recall does not reread the file. These commands do not log every command or connection. |
 | 🔵 83 | `@clock` | Sets or clears the join, speak, see, hide, and modify locks on a channel. A failed join lock says `Permission to join denied.` A wizard joins anyway. A failed speak lock refuses the message. A failed see lock hides the channel. A member who passes the hide lock is left off `who`. A key is dbrefs combined with `&`, `|`, and `!`. The locks stay in memory. |
-| ⚪ 84 | `@restart` | Rebuild channel runtime state. This is not a server restart. |
+| 🔵 84 | `@restart` | Halts queues and queues each object's own `STARTUP`. A bare `@restart` says `Halted:`. Naming an object says `Restarting:`. `/all` needs a wizard or the Halt power, and every player hears `Your objects are being globally restarted by` the name. A switch after a space counts. `STARTUP` waits on the queue. Halting does not refund queue pennies. This does not reboot the process. |
 
 ## Tier 5 — subsystems the process does not have
 
@@ -288,10 +288,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 
 | Command | Wait for |
 | --- | --- |
-| `@assert`, `@break`, `@retry`, `@verb` | `@include` and the action-list frame. |
-| `follow`, `unfollow`, `dismiss`, `desert` | The follower list and the movement hook. |
 | `@poll` | Connection replies. `doing` stays the `DOING` command. |
-| `@restart` | Channel reload. It does not replace `@reboot` or `@shutdown`. |
 | `@malias` | Mail aliases. It is not `comlist`. |
 | `@sql`, `@mapsql`, `@http`, `@respond`, `@slave` | Tier 5. |
 

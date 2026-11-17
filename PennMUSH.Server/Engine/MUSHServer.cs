@@ -17,6 +17,7 @@ using PennMUSH.Core.Configuration;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Help;
+using PennMUSH.Core.Logging;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.MUSHcode.Functions;
 using PennMUSH.Core.Protocol;
@@ -49,6 +50,7 @@ public class MUSHServer
     public MailStore Mail { get; }
     public PennMUSH.Core.Communication.Mail.MailAliasTable MailAliases { get; }
     public SiteLockTable SiteLocks { get; }
+    public WizardLog Logs { get; }
     public HelpStore Help { get; } = new();
     public SuggestionVocabulary Suggestions { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
@@ -84,6 +86,7 @@ public class MUSHServer
         Mail = new MailStore();
         MailAliases = new PennMUSH.Core.Communication.Mail.MailAliasTable();
         SiteLocks = siteLocks ?? new SiteLockTable();
+        Logs = new WizardLog(Path.Combine(GameDirectory, "log"));
 
         bool loaded = Storage.Load(Database, Cron);
         if (!loaded || Database.Count == 0)
@@ -249,6 +252,13 @@ public class MUSHServer
         Dispatcher.Register(new DolistCommandHandler(Dispatcher, Evaluator), "@dolist");
         Dispatcher.Register(new TriggerCommandHandler(Dispatcher, Evaluator), "@trigger", "@tr");
         Dispatcher.Register(new IncludeCommandHandler(Dispatcher, Evaluator), "@include");
+        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@assert", Evaluator, Queue), "@assert");
+        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@break", Evaluator, Queue), "@break");
+        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@retry", Evaluator, Queue), "@retry");
+        Dispatcher.Register(new VerbCommandHandler(Dispatcher, Evaluator), "@verb");
+        Dispatcher.Register(new LogCommandHandler(Logs), "@log");
+        Dispatcher.Register(new LogWipeCommandHandler(Logs), "@logwipe");
+        Dispatcher.Register(new RestartCommandHandler(Queue), "@restart");
         Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
         Dispatcher.Register(new EnableCommandHandler(Config, false), "@disable");
         Dispatcher.Register(new EnableCommandHandler(Config, true), "@enable");
@@ -345,6 +355,10 @@ public class MUSHServer
 
         Dispatcher.AddRestriction("@malias", "nogagged", null);
         Dispatcher.AddRestriction("@sockset", "nogagged", null);
+        Dispatcher.AddRestriction("@log", "nogagged", null);
+        Dispatcher.AddRestriction("@logwipe", "nogagged", null);
+        Dispatcher.AddRestriction("@restart", "nogagged", null);
+        Dispatcher.AddRestriction("@retry", "nogagged", null);
     }
 
     public event Action? OnRebootRequested;
