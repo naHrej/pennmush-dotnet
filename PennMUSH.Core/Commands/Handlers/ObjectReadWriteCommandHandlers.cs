@@ -460,7 +460,11 @@ public class DecompileCommandHandler : ICommandHandler
         foreach (var flag in target.Flags.OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             lines.Add($"@set {target.Id}={flag}");
         foreach (var attr in target.Attributes.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            if (attr.Flags.HasFlag(AttributeFlags.Internal))
+                continue;
             lines.Add($"@set {target.Id}={attr.Name}:{attr.Value}");
+        }
         context.Notify(string.Join("\n", lines));
         return true;
     }

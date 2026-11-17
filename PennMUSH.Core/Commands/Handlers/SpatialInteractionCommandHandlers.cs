@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System;
 using System.Text;
+using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Locks;
@@ -297,6 +298,8 @@ public class ExamineCommandHandler : ICommandHandler
             sb.AppendLine("Attributes:");
             foreach (var attr in target.Attributes)
             {
+                if (attr.Flags.HasFlag(AttributeFlags.Internal))
+                    continue;
                 sb.AppendLine($"  {attr.Name} [flags: {attr.Flags}]: {attr.Value}");
             }
         }
