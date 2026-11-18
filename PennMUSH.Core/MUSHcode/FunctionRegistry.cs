@@ -37,6 +37,11 @@ public class FunctionRegistry
     public Dbref PlayerStart { get; set; } = new(0);
     public Dbref DefaultHome { get; set; } = new(0);
     public int StartingMoney { get; set; } = 100;
+    public string MudName { get; set; } = "PennMUSH";
+    public string MudUrl { get; set; } = string.Empty;
+    public Func<IEnumerable<string>>? CommandNamesProvider { get; set; }
+    public DateTimeOffset ServerStartTime { get; set; } = DateTimeOffset.UtcNow;
+    public int RestartCount { get; set; } = 0;
 
     public FunctionRegistry(ObjectDatabase? database = null)
     {
@@ -181,6 +186,8 @@ public class FunctionRegistry
         Functions.AsyncFunctions.Register(this);
         Functions.CronFunctions.Register(this);
         Functions.ClientFunctions.Register(this);
+        Functions.JsonFunctions.Register(this);
+        Functions.CryptoFunctions.Register(this);
     }
 }
 

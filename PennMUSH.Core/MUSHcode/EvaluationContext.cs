@@ -14,6 +14,9 @@ namespace PennMUSH.Core.MUSHcode
         public string[] Arguments { get; init; }
         public Dictionary<string, string> Registers { get; private set; }
         public HashSet<string> CallTrail { get; private set; }
+        public List<(string Text, int Number)> IterStack { get; private set; } = new();
+        public List<string> SwitchStack { get; private set; } = new();
+        public bool IterBreakRequested { get; set; }
 
         public int RecursionDepth { get; set; } = 0;
         public int MaxRecursionDepth { get; set; } = 50;
@@ -39,6 +42,12 @@ namespace PennMUSH.Core.MUSHcode
         public void SetRegister(string name, string value) => Registers[name] = value;
 
         public string GetRegister(string name) => Registers.TryGetValue(name, out var val) ? val : string.Empty;
+
+        public Dictionary<string, string> CloneRegisters()
+            => new(Registers, StringComparer.OrdinalIgnoreCase);
+
+        public void RestoreRegisters(Dictionary<string, string> saved)
+            => Registers = new Dictionary<string, string>(saved, StringComparer.OrdinalIgnoreCase);
 
         public bool PushCall(Dbref target, string attrName)
         {
@@ -93,7 +102,9 @@ namespace PennMUSH.Core.MUSHcode
                 CancellationToken = this.CancellationToken,
                 ExecutionDeadline = this.ExecutionDeadline,
                 Registers = new Dictionary<string, string>(Registers, StringComparer.OrdinalIgnoreCase),
-                CallTrail = new HashSet<string>(CallTrail, StringComparer.OrdinalIgnoreCase)
+                CallTrail = new HashSet<string>(CallTrail, StringComparer.OrdinalIgnoreCase),
+                IterStack = new List<(string Text, int Number)>(IterStack),
+                SwitchStack = new List<string>(SwitchStack)
             };
         }
     }

@@ -60,6 +60,19 @@ public static class LogicFunctions
         registry.Register("SETQ", Setq);
         registry.Register("SETR", Setr);
         registry.Register("R", R);
+
+        // Section 11: Evaluation frame, registers, switch stack
+        registry.Register("NULL", (ctx, args) => string.Empty, noParse: true);
+        registry.Register("@@", (ctx, args) => string.Empty, noParse: true);
+        registry.Register("LIT", Lit, noParse: true);
+        registry.Register("LETQ", (ctx, args) => Letq(registry, ctx, args), noParse: true);
+        registry.Register("LOCALIZE", (ctx, args) => Localize(registry, ctx, args), noParse: true);
+        registry.Register("LISTQ", Listq);
+        registry.Register("REGISTERS", Listq);
+        registry.Register("UNSETQ", Unsetq);
+        registry.Register("SLEV", Slev);
+        registry.Register("STEXT", Stext);
+        registry.Register("FN", (ctx, args) => Fn(registry, ctx, args), noParse: true);
     }
 
     public static bool IsTruthy(string? s) => MushBoolean.IsTrue(s);
@@ -235,26 +248,34 @@ public static class LogicFunctions
         var sb = new StringBuilder();
         bool found = false;
 
-        for (int j = 1; j < args.Length - 1; j += 2)
+        ctx.SwitchStack.Add(target);
+        try
         {
-            string pat = Eval(registry, ctx, args[j]);
-            bool matched = exact
-                ? string.Equals(pat, target, StringComparison.Ordinal)
-                : WildOrRangeMatch(pat, target);
-
-            if (matched)
+            for (int j = 1; j < args.Length - 1; j += 2)
             {
-                string action = exact ? args[j + 1] : args[j + 1].Replace("#$", target);
-                sb.Append(Eval(registry, ctx, action));
-                found = true;
-                if (!findAll) return sb.ToString();
+                string pat = Eval(registry, ctx, args[j]);
+                bool matched = exact
+                    ? string.Equals(pat, target, StringComparison.Ordinal)
+                    : WildOrRangeMatch(pat, target);
+
+                if (matched)
+                {
+                    string action = exact ? args[j + 1] : args[j + 1].Replace("#$", target);
+                    sb.Append(Eval(registry, ctx, action));
+                    found = true;
+                    if (!findAll) return sb.ToString();
+                }
+            }
+
+            if (!found && (args.Length % 2 == 0))
+            {
+                string defAction = exact ? args[^1] : args[^1].Replace("#$", target);
+                sb.Append(Eval(registry, ctx, defAction));
             }
         }
-
-        if (!found && (args.Length % 2 == 0))
+        finally
         {
-            string defAction = exact ? args[^1] : args[^1].Replace("#$", target);
-            sb.Append(Eval(registry, ctx, defAction));
+            ctx.SwitchStack.RemoveAt(ctx.SwitchStack.Count - 1);
         }
 
         return sb.ToString();
@@ -269,32 +290,40 @@ public static class LogicFunctions
         var sb = new StringBuilder();
         bool found = false;
 
-        for (int j = 1; j < args.Length - 1; j += 2)
+        ctx.SwitchStack.Add(target);
+        try
         {
-            string pat = Eval(registry, ctx, args[j]);
-            Match match;
-            try
+            for (int j = 1; j < args.Length - 1; j += 2)
             {
-                match = Regex.Match(target, pat, options, RegexFunctions.DefaultRegexTimeout);
-            }
-            catch
-            {
-                continue;
+                string pat = Eval(registry, ctx, args[j]);
+                Match match;
+                try
+                {
+                    match = Regex.Match(target, pat, options, RegexFunctions.DefaultRegexTimeout);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (match.Success)
+                {
+                    string action = args[j + 1].Replace("#$", target);
+                    sb.Append(Eval(registry, ctx, action));
+                    found = true;
+                    if (!findAll) return sb.ToString();
+                }
             }
 
-            if (match.Success)
+            if (!found && (args.Length % 2 == 0))
             {
-                string action = args[j + 1].Replace("#$", target);
-                sb.Append(Eval(registry, ctx, action));
-                found = true;
-                if (!findAll) return sb.ToString();
+                string defAction = args[^1].Replace("#$", target);
+                sb.Append(Eval(registry, ctx, defAction));
             }
         }
-
-        if (!found && (args.Length % 2 == 0))
+        finally
         {
-            string defAction = args[^1].Replace("#$", target);
-            sb.Append(Eval(registry, ctx, defAction));
+            ctx.SwitchStack.RemoveAt(ctx.SwitchStack.Count - 1);
         }
 
         return sb.ToString();
@@ -351,5 +380,99 @@ public static class LogicFunctions
     {
         if (args.Length == 0) return string.Empty;
         return ctx.GetRegister(args[0].Trim());
+    }
+
+    public static string Lit(EvaluationContext ctx, string[] args)
+        => args.Length > 0 ? args[0] : string.Empty;
+
+    public static string Localize(FunctionRegistry registry, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        var saved = ctx.CloneRegisters();
+        try
+        {
+            return Eval(registry, ctx, args[0]);
+        }
+        finally
+        {
+            ctx.RestoreRegisters(saved);
+        }
+    }
+
+    public static string Letq(FunctionRegistry registry, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        if (args.Length % 2 == 0) return MushError.TooFewArguments.Text();
+
+        var saved = ctx.CloneRegisters();
+        try
+        {
+            for (int i = 0; i + 1 < args.Length - 1; i += 2)
+            {
+                string regName = Eval(registry, ctx, args[i]).Trim();
+                string regVal = Eval(registry, ctx, args[i + 1]);
+                ctx.SetRegister(regName, regVal);
+            }
+            return Eval(registry, ctx, args[^1]);
+        }
+        finally
+        {
+            ctx.RestoreRegisters(saved);
+        }
+    }
+
+    public static string Listq(EvaluationContext ctx, string[] args)
+    {
+        string pattern = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) ? args[0].Trim() : "*";
+        return string.Join(" ", ctx.Registers.Keys
+            .Where(k => PatternMatcher.Match(pattern, k, out _))
+            .OrderBy(k => k, StringComparer.OrdinalIgnoreCase));
+    }
+
+    public static string Unsetq(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+        {
+            ctx.Registers.Clear();
+            return string.Empty;
+        }
+
+        var patterns = args[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (string key in ctx.Registers.Keys.ToList())
+        {
+            if (patterns.Any(p => PatternMatcher.Match(p, key, out _)))
+                ctx.Registers.Remove(key);
+        }
+        return string.Empty;
+    }
+
+    public static string Slev(EvaluationContext ctx, string[] args)
+        => (ctx.SwitchStack.Count - 1).ToString();
+
+    public static string Stext(EvaluationContext ctx, string[] args)
+    {
+        int level = 0;
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            if (!int.TryParse(args[0].Trim(), out level))
+                return MushError.ArgumentMustBeInteger.Text();
+        }
+        if (level < 0 || level >= ctx.SwitchStack.Count)
+            return MushError.OutOfRange.Text();
+        return ctx.SwitchStack[^(level + 1)];
+    }
+
+    public static string Fn(FunctionRegistry registry, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        string fnName = Eval(registry, ctx, args[0]).Trim();
+        if (string.IsNullOrEmpty(fnName)) return string.Empty;
+
+        bool noParse = registry.IsNoParse(fnName);
+        var callArgs = new string[args.Length - 1];
+        for (int i = 1; i < args.Length; i++)
+            callArgs[i - 1] = noParse ? args[i] : Eval(registry, ctx, args[i]);
+
+        return registry.Dispatch(fnName, ctx, callArgs);
     }
 }

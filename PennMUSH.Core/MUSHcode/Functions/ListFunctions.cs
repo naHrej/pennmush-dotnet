@@ -45,6 +45,11 @@ public static class ListFunctions
         registry.Register("LNUM", (ctx, args) => LNum(args));
         registry.Register("ITER", (ctx, args) => Iter(registry, ctx, args), noParse: true);
         registry.Register("PARSE", (ctx, args) => Iter(registry, ctx, args), noParse: true);
+        registry.Register("ILEV", (ctx, args) => ILev(ctx));
+        registry.Register("INUM", (ctx, args) => INum(ctx, args));
+        registry.Register("ITEXT", (ctx, args) => IText(ctx, args));
+        registry.Register("INAME", (ctx, args) => IName(reg: registry, ctx, args));
+        registry.Register("IBREAK", (ctx, args) => IBreak(ctx, args));
         registry.Register("MAP", (ctx, args) => Map(registry, ctx, args));
         registry.Register("FILTER", (ctx, args) => Filter(registry, ctx, args));
         registry.Register("FILTERBOOL", (ctx, args) => FilterBool(registry, ctx, args));
@@ -517,14 +522,72 @@ public static class ListFunctions
         string pattern = args[1];
         var results = new List<string>();
 
-        for (int i = 0; i < list.Count; i++)
+        ctx.IterStack.Add((string.Empty, 0));
+        int stackIdx = ctx.IterStack.Count - 1;
+        try
         {
-            string item = list[i];
-            string substituted = pattern.Replace("##", item).Replace("#@", (i + 1).ToString());
-            results.Add(EvaluateIterText(reg, ctx, substituted));
+            for (int i = 0; i < list.Count; i++)
+            {
+                string item = list[i];
+                ctx.IterStack[stackIdx] = (item, i + 1);
+                string substituted = pattern.Replace("##", item).Replace("#@", (i + 1).ToString());
+                results.Add(EvaluateIterText(reg, ctx, substituted));
+                if (ctx.IterBreakRequested)
+                {
+                    ctx.IterBreakRequested = false;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            ctx.IterStack.RemoveAt(stackIdx);
         }
 
         return string.Join(outDelim, results);
+    }
+
+    public static string ILev(EvaluationContext ctx)
+        => (ctx.IterStack.Count - 1).ToString();
+
+    public static string INum(EvaluationContext ctx, string[] args)
+    {
+        int level = 0;
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            if (!int.TryParse(args[0].Trim(), out level))
+                return MushError.ArgumentMustBeInteger.Text();
+        }
+        if (level < 0 || level >= ctx.IterStack.Count)
+            return MushError.OutOfRange.Text();
+        return ctx.IterStack[^(level + 1)].Number.ToString();
+    }
+
+    public static string IText(EvaluationContext ctx, string[] args)
+    {
+        int level = 0;
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            if (!int.TryParse(args[0].Trim(), out level))
+                return MushError.ArgumentMustBeInteger.Text();
+        }
+        if (level < 0 || level >= ctx.IterStack.Count)
+            return MushError.OutOfRange.Text();
+        return ctx.IterStack[^(level + 1)].Text;
+    }
+
+    public static string IName(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        string text = IText(ctx, args);
+        if (text.StartsWith("#-", StringComparison.Ordinal)) return text;
+        return DbFunctions.Name(reg, ctx, [text]);
+    }
+
+    public static string IBreak(EvaluationContext ctx, string[] args)
+    {
+        if (ctx.IterStack.Count > 0)
+            ctx.IterBreakRequested = true;
+        return string.Empty;
     }
 
     private static string EvaluateIterText(FunctionRegistry reg, EvaluationContext ctx, string text)

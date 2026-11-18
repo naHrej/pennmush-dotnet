@@ -9,7 +9,7 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 387 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5 + 18 added in Section 6). 351 of the 528 original `flist` identifier names are now registered, and 177 original identifier names remain in Sections 7–19.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 454 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5 + 18 added in Section 6 + 67 added across Sections 7, 8, 11, 15, and 16 including `@@`). 417 of the 528 original `flist` identifier names are now registered, and 111 original identifier names remain in Sections 9, 10, 12–14, and 17–19.
 
 A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
@@ -63,15 +63,15 @@ Implemented `grep`, `pgrep`, `grepi`, `wildgrep`, `wildgrepi`, `reglattr`, `regl
 
 `grep`, `pgrep`, `grepi`, `wildgrep`, `wildgrepi`, `reglattr`, `reglattrp`, `regnattr`, `regnattrp`, `regxattr`, `regxattrp`, `lsearch`, `lsearchr`, `nlsearch`, `nsearch`, `lockfilter`, `filterbool`, `foreach`
 
-## 7. Type tests and the names the server already knows
+## 7. [Done] Type tests and the names the server already knows
 
-`type`, `num`, and `objid` already run. These tests only look at the shape of a string or a dbref. `version`, `numversion`, `mudname`, `mudurl`, and `cmds` read the server's own name, version, and command table.
+Implemented in `DbFunctions.cs` (`valid`, `isdbref`, `isint`, `isnum`, `isobjid`, `isword`, `version`, `numversion`, `mudname`, `mudurl`, `cmds`).
 
 `valid`, `isdbref`, `isint`, `isnum`, `isobjid`, `isword`, `version`, `numversion`, `mudname`, `mudurl`, `cmds`
 
-## 8. Clock and time arithmetic
+## 8. [Done] Clock and time arithmetic
 
-`time`, `secs`, `convsecs`, `convtime`, and `timefmt` already run. These read the same clock or do arithmetic on timestamps. `uptime` and `starttime` are the process start the `@uptime` command reports.
+Implemented in `TimeFunctions.cs` (`convutcsecs`, `convutctime`, `csecs`, `ctime`, `etime`, `msecs`, `secscalc`, `starttime`, `stringsecs`, `timecalc`, `timestring`, `uptime`, `utctime`, `restarttime`, `restarts`).
 
 `convutcsecs`, `convutctime`, `csecs`, `ctime`, `etime`, `msecs`, `secscalc`, `starttime`, `stringsecs`, `timecalc`, `timestring`, `uptime`, `utctime`, `restarttime`, `restarts`
 
@@ -87,9 +87,9 @@ Do this with the command block that adds `@zemit` and the `@ns` emits. The funct
 
 `zemit`, `nscemit`, `nsemit`, `nslemit`, `nsoemit`, `nspemit`, `nsprompt`, `nsremit`, `nszemit`
 
-## 11. The evaluation frame `iter` and `ufun` still need
+## 11. [Done] The evaluation frame `iter` and `ufun` still need
 
-`iter`, `setq`, `ufun`, `eval`, and `objeval` already run. `letq` binds `%q` registers for one evaluation and then restores them. `localize` and `ulocal` do that around a default or a user function. `udefault`, `ulambda`, and `uldefault` are the other `ufun` forms. `lit` returns its argument unparsed. `null` returns nothing, and `@@` is the same function under a name that is not an identifier. `ilev`, `inum`, `itext`, and `iname` are the `iter` stack that `%i` reads. `slev` and `stext` are the `switch` stack. `ibreak` stops the loop. `get_eval` evaluates an attribute in the caller's frame. `zfun` is `ufun` on the zone object. `registers` lists the `%q` registers `listq` also reports.
+Implemented across `EvaluationContext.cs`, `ExpressionEvaluator.cs`, `LogicFunctions.cs`, `ListFunctions.cs`, and `DbFunctions.cs` (`letq`, `listq`, `unsetq`, `localize`, `ulocal`, `udefault`, `ulambda`, `uldefault`, `pfun`, `lit`, `null`, `@@`, `ibreak`, `ilev`, `inum`, `itext`, `iname`, `get_eval`, `zfun`, `slev`, `stext`, `registers`, `fn`).
 
 `letq`, `listq`, `unsetq`, `localize`, `ulocal`, `udefault`, `ulambda`, `uldefault`, `pfun`, `lit`, `null`, `ibreak`, `ilev`, `inum`, `itext`, `iname`, `get_eval`, `zfun`, `slev`, `stext`, `registers`, `fn`
 
@@ -111,15 +111,15 @@ Nothing in the evaluator stores color yet. `%k` is unimplemented for the same re
 
 `ansi`, `colors`, `stripansi`, `accent`, `accname`, `render`, `html`, `tag`, `endtag`, `tagwrap`, `pueblo`, `oob`, `wshtml`
 
-## 15. JSON
+## 15. [Done] JSON
 
-There is no JSON parser in the server. Add one parser, then these functions are reads and edits of that value. `isjson` is the test.
+Implemented in `JsonFunctions.cs` using `System.Text.Json` (`json`, `json_map`, `json_mod`, `json_query`, `isjson`, `wsjson`).
 
 `json`, `json_map`, `json_mod`, `json_query`, `isjson`, `wsjson`
 
-## 16. Encoding and cryptography
+## 16. [Done] Encoding and cryptography
 
-These need a hash or a cipher the process does not have. `encode64`, `decode64`, `urlencode`, and `urldecode` are the encodings and can come first inside this block. `sha0` is marked deprecated in the original table. `sqlescape` is only useful once `sql()` exists, so it stays with this block rather than with the SQL functions.
+Implemented in `CryptoFunctions.cs` (`encode64`, `decode64`, `urlencode`, `urldecode`, `formdecode`, `digest`, `encrypt`, `decrypt`, `hmac`, `sha0`, `ssl`, `sqlescape`).
 
 `encode64`, `decode64`, `urlencode`, `urldecode`, `formdecode`, `digest`, `encrypt`, `decrypt`, `hmac`, `sha0`, `ssl`, `sqlescape`
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-Sections 1–6 implemented 185 canonical `flist` names (plus 10 aliases). The remaining sections (7–19) name 177 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
+Sections 1–8, 11, 15, and 16 implemented 251 canonical `flist` names (plus `@@` and 10 aliases). The remaining sections (9, 10, 12–14, 17–19) name 111 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names.
 
 ## Player-facing wording, after the sections above
 
