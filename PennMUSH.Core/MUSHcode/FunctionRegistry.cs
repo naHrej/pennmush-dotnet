@@ -33,6 +33,9 @@ public class FunctionRegistry
     public PennMUSH.Core.Protocol.EditorSessionManager? EditorSessions { get; set; }
     public PennMUSH.Core.Scheduling.CronScheduler? Scheduler { get; set; }
     public PennMUSH.Core.Queue.ActionQueue? Queue { get; set; }
+    public PennMUSH.Core.Communication.Channels.ChannelRegistry? Channels { get; set; }
+    public PennMUSH.Core.Communication.Mail.MailStore? Mail { get; set; }
+    public PennMUSH.Core.Communication.Mail.MailAliasTable? MailAliases { get; set; }
     public IPlayerPasswords? Passwords { get; set; }
     public Dbref PlayerStart { get; set; } = new(0);
     public Dbref DefaultHome { get; set; } = new(0);
@@ -188,6 +191,9 @@ public class FunctionRegistry
         Functions.ClientFunctions.Register(this);
         Functions.JsonFunctions.Register(this);
         Functions.CryptoFunctions.Register(this);
+        Functions.ChannelFunctions.Register(this);
+        Functions.MailFunctions.Register(this);
+        Functions.Section9And18Functions.Register(this);
     }
 }
 
