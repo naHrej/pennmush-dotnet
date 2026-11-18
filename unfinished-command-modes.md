@@ -77,17 +77,16 @@ The search is a case-insensitive contains over that object's own attributes. The
 
 ## @decompile
 
-Handler: `DecompileCommandHandler` in `PennMUSH.Core/Commands/Handlers/ObjectReadWriteCommandHandlers.cs`. Original: `cmd_decompile`.
+Handler: `PennMUSH.Core/Commands/Handlers/DecompileCommandHandler.cs`. Original: `cmd_decompile` and `do_decompile`.
 
-The output is one fixed `@set` listing of flags and non-internal attributes. The switches are not read. Original switches are `DB`, `NAME`, `PREFIX`, `TF`, `FLAGS`, `ATTRIBS`, and `SKIPDEFAULTS`.
+- [x] `/db` refers to the object by dbref. `/name` wins when both are set and refers to it by name.
+- [x] `/prefix`, and an `=<prefix>` argument, starts every line with that prefix.
+- [x] `/tf` uses `TFPREFIX` or `FugueEdit > `, refers to the object by dbref, and omits attribute-flag lines.
+- [x] `/flags` prints the create, link, zone, parent, lock, flag, and power lines.
+- [x] `/attribs` prints only attributes. A pattern after `/` does the same for the names that match.
+- [x] `/skipdefaults` omits attribute-flag lines that match the standard attribute.
 
-- [ ] `/db` writes the decompile in the database form.
-- [ ] `/name` limits the listing to the name.
-- [ ] `/prefix` applies the requested prefix.
-- [ ] `/tf` writes the true/false flag form.
-- [ ] `/flags` limits the listing to flags.
-- [ ] `/attribs` limits the listing to attributes.
-- [ ] `/skipdefaults` omits default attributes.
+A value with a newline, a tab, or a leading or trailing space is written with `@set` and decomposed. `MONIKER` is written with `@moniker`. ANSI markup stays as stored text.
 
 ## @list
 

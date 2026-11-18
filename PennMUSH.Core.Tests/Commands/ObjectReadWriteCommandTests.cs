@@ -126,7 +126,9 @@ public class ObjectReadWriteCommandTests
         _dispatcher.Dispatch(_owner, $"@moniker #{lamp.Id.Value}=Glass Lamp", _db);
         var sent = _dispatcher.Dispatch(_owner, $"@message #{player.Id.Value}=#{lamp.Id.Value}/DESC", _db);
 
-        Assert.Contains($"@set {lamp.Id}=DESC:glass", code.Notifications.Single());
+        Assert.Contains("&DESC Lamp=glass", code.Notifications);
+        Assert.Contains($"@@ Lamp ({lamp.Id})", code.Notifications);
+        Assert.Contains("@create Lamp", code.Notifications);
         Assert.Equal("Glass Lamp", lamp.GetAttribute("MONIKER")!.Value);
         Assert.Equal("glass", sent.TargetedNotifications.Single(n => n.Scope == NotificationScope.Target).Message);
     }

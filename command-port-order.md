@@ -59,7 +59,7 @@ Registered. No new table and no new field. Attribute edits are stored by the exi
 | 🟢 5 | `@atrlock` | Set or clear `AttributeFlags.Locked` and report it. A later `@set` leaves the attribute unchanged unless the setter is a wizard. |
 | 🟢 6 | `@atrchown` | Change the attribute creator. The same operation as `@chown` on one attribute. |
 | 🟢 7 | `@lset` | Change flags on a lock `SetLock` already stores. The lock key stays as it is. |
-| 🟢 8 | `@decompile` | Print an object's flags and attributes back as commands. `examine` already gathers that data. |
+| 🔵 8 | `@decompile` | Rebuilds the object as commands: a comment, `@create` / `@dig/teleport` / `@open`, `@link`, `@chzone`, `@parent`, locks, `@set` flags, `@power`, and `&attr` or `@set` values. `/db` uses the dbref and `/name` uses the name. `/prefix` and `=<prefix>` start every line. `/tf` uses `TFPREFIX`, or `FugueEdit > `, uses the dbref, and omits attribute-flag lines. `/flags` omits attributes. `/attribs` prints only attributes. A pattern after `/` prints the matching attributes. `/skipdefaults` omits attribute flags that match the standard attribute. A newline, tab, or end space is decomposed. ANSI markup stays as stored text. |
 | 🔵 9 | `@moniker` | Set or clear the `MONIKER` attribute. ANSI checking waits until color codes exist; until then the value is stored as text. `%k` stays unimplemented. |
 | 🟢 10 | `@message` | Evaluate one attribute and send it through `@pemit`, `@remit`, or `@oemit`. |
 | 🔵 11 | `@prompt` | `@pemit` with no trailing newline for a direct player target. A room target still uses the normal room send. |
