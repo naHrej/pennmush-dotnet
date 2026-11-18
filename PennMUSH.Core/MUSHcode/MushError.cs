@@ -56,6 +56,7 @@ public enum MushError
     CannotHaveColumnsThatLarge,
     UnknownHashType,
     RegisterNameInvalid,
+    NoSuchLock,
 }
 
 public static class MushErrorText
@@ -113,6 +114,7 @@ public static class MushErrorText
         [MushError.CannotHaveColumnsThatLarge] = "#-1 CANNOT HAVE COLUMNS THAT LARGE",
         [MushError.UnknownHashType] = "#-1 UNKNOWN HASH TYPE",
         [MushError.RegisterNameInvalid] = "#-1 REGISTER NAME INVALID",
+        [MushError.NoSuchLock] = "#-1 NO SUCH LOCK",
     };
 
     /// <summary>

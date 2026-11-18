@@ -9,7 +9,7 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 301 names (192 prior baseline + 109 added in Sections 1–4: all 100 canonical names listed in Sections 1–4 plus 9 aliases: `avg`, `delete`, `element`, `exp`, `modulus`, `parse`, `pickrand`, `soundlike`, and `val`). 266 of the 528 original `flist` identifier names are now registered (including `regsub`, `mod`, etc. and the 100 from Sections 1–4), and 262 original identifier names remain in Sections 5–19.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 369 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5: all 67 canonical names listed in Section 5 plus the `cname` alias for `moniker`). 333 of the 528 original `flist` identifier names are now registered, and 195 original identifier names remain in Sections 6–19.
 
 A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
@@ -51,9 +51,9 @@ Implemented in `RegexFunctions.cs` (`regedit[all][i]` with multi-pair support, `
 
 `regediti`, `regeditalli`, `regrabi`, `regraballi`, `regrepi`, `reglmatch`, `reglmatchi`, `reglmatchall`, `reglmatchalli`
 
-## 5. Values an object already stores
+## 5. [Done] Values an object already stores
 
-Attributes, flags, powers, locks, pennies, parents, the exit chain, and `MONIKER` are already stored. `poss` already reads gender. `aposs` is the absolute possessive from that same gender. `testlock` already evaluates a key. `lock` evaluates one stored lock. `money` reads pennies. `moniker` reads `MONIKER`. `doing` reads the `DOING` attribute. A grave accent in an attribute name is a branch separator, and a dot is one character of a single name. `get()`, `xget()`, `lattr()`, `hasattr()`, and `examine` still have to apply a branch's restrictions to the names under it. A flag that grants access stays on the attribute where it was set. The names that start with `l`, `n`, `lv`, `nv`, `x`, or `xv` list an object's contents, exits, players, or things: every match, the visible matches, or the matches the caller does not see. `children` walks parents in reverse. `entrances` is the same walk as the `@entrances` command.
+Implemented `aposs`, `AttributePermissions.CanRead` (including `` ` `` branch restriction propagation and `examine` integration), and all 66 DB/lock/flag/walker/memory/stats functions in `DbFunctions.cs` (plus `cname` alias for `moniker`).
 
 `aposs`, `money`, `moniker`, `doing`, `locks`, `llocks`, `lockflags`, `llockflags`, `lockowner`, `elock`, `atrlock`, `lock`, `hasattrval`, `hasattrp`, `hasattrpval`, `lattrp`, `nattrp`, `xattr`, `xattrp`, `andflags`, `andlflags`, `andlpowers`, `orflags`, `orlflags`, `orlpowers`, `children`, `nchildren`, `entrances`, `locate`, `pmatch`, `player`, `room`, `exit`, `next`, `nextdbref`, `alias`, `fullalias`, `lplayers`, `lthings`, `lcon`, `ncon`, `nexits`, `nplayers`, `nthings`, `lvcon`, `lvexits`, `lvplayers`, `lvthings`, `nvcon`, `nvexits`, `nvplayers`, `nvthings`, `xcon`, `xexits`, `xplayers`, `xthings`, `xvcon`, `xvexits`, `xvplayers`, `xvthings`, `findable`, `hidden`, `height`, `width`, `objmem`, `playermem`, `lstats`
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-Sections 1–4 implemented 100 canonical `flist` names (plus 9 aliases). The remaining sections (5–19) name 262 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
+Sections 1–5 implemented 167 canonical `flist` names (plus 10 aliases). The remaining sections (6–19) name 195 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
 
 ## Player-facing wording, after the sections above
 
