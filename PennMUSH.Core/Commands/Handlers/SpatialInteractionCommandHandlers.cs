@@ -298,7 +298,7 @@ public class ExamineCommandHandler : ICommandHandler
             sb.AppendLine("Attributes:");
             foreach (var attr in target.Attributes)
             {
-                if (attr.Flags.HasFlag(AttributeFlags.Internal))
+                if (!AttributePermissions.CanRead(execObj, target, attr, target))
                     continue;
                 sb.AppendLine($"  {attr.Name} [flags: {attr.Flags}]: {attr.Value}");
             }

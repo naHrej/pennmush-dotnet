@@ -59,6 +59,7 @@ public static class StringFunctions
         registry.Register("ART", Art);
         registry.Register("SUBJ", Subj);
         registry.Register("POSS", Poss);
+        registry.Register("APOSS", (ctx, args) => Aposs(registry, ctx, args));
         registry.Register("OBJ", Obj);
         registry.Register("SPACE", Space);
         registry.Register("SCRAMBLE", Scramble);
@@ -320,6 +321,30 @@ public static class StringFunctions
             "male" or "m" => "his",
             "female" or "f" => "her",
             "plural" or "p" => "their",
+            _ => "its"
+        };
+    }
+
+    public static string Aposs(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return "its";
+        string g = args[0].Trim();
+        if (reg.Database != null)
+        {
+            var obj = reg.Database.GetObject(DbFunctions.ParseDbref(g, ctx))
+                ?? reg.Database.MatchObject(ctx.Executor, g);
+            if (obj != null)
+            {
+                var sexAttr = obj.GetAttribute("SEX", reg.Database);
+                g = sexAttr?.Value.Trim() ?? string.Empty;
+            }
+        }
+
+        return g.ToLowerInvariant() switch
+        {
+            "male" or "m" or "man" or "boy" => "his",
+            "female" or "f" or "woman" or "girl" => "hers",
+            "plural" or "p" or "they" => "theirs",
             _ => "its"
         };
     }
