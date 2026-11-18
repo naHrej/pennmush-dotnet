@@ -9,7 +9,7 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 369 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5: all 67 canonical names listed in Section 5 plus the `cname` alias for `moniker`). 333 of the 528 original `flist` identifier names are now registered, and 195 original identifier names remain in Sections 6–19.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 387 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5 + 18 added in Section 6). 351 of the 528 original `flist` identifier names are now registered, and 177 original identifier names remain in Sections 7–19.
 
 A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
@@ -57,9 +57,9 @@ Implemented `aposs`, `AttributePermissions.CanRead` (including `` ` `` branch re
 
 `aposs`, `money`, `moniker`, `doing`, `locks`, `llocks`, `lockflags`, `llockflags`, `lockowner`, `elock`, `atrlock`, `lock`, `hasattrval`, `hasattrp`, `hasattrpval`, `lattrp`, `nattrp`, `xattr`, `xattrp`, `andflags`, `andlflags`, `andlpowers`, `orflags`, `orlflags`, `orlpowers`, `children`, `nchildren`, `entrances`, `locate`, `pmatch`, `player`, `room`, `exit`, `next`, `nextdbref`, `alias`, `fullalias`, `lplayers`, `lthings`, `lcon`, `ncon`, `nexits`, `nplayers`, `nthings`, `lvcon`, `lvexits`, `lvplayers`, `lvthings`, `nvcon`, `nvexits`, `nvplayers`, `nvthings`, `xcon`, `xexits`, `xplayers`, `xthings`, `xvcon`, `xvexits`, `xvplayers`, `xvthings`, `findable`, `hidden`, `height`, `width`, `objmem`, `playermem`, `lstats`
 
-## 6. Search attributes and the database
+## 6. [Done] Search attributes and the database
 
-`@grep` already searches one object's own attributes. `grep`, `pgrep`, and `grepi` are that search as a function, including parents. `wildgrep` and the `reglattr` family are the wildcard and regular-expression forms. `lsearch` is the database walk `@search` will use, with the criteria on the right. `lockfilter` keeps the items whose lock passes. `filterbool` is `filter` with a true-or-false test. `foreach` is `iter` that evaluates an action for each item.
+Implemented `grep`, `pgrep`, `grepi`, `wildgrep`, `wildgrepi`, `reglattr`, `reglattrp`, `regnattr`, `regnattrp`, `regxattr`, `regxattrp`, `lsearch`, `lsearchr`, `nlsearch`, `nsearch`, `lockfilter` in `DbFunctions.cs` (reusing `SearchCommandHandler.Matches` and `AttributePermissions.CanRead`), plus `filterbool` and `foreach` in `ListFunctions.cs`.
 
 `grep`, `pgrep`, `grepi`, `wildgrep`, `wildgrepi`, `reglattr`, `reglattrp`, `regnattr`, `regnattrp`, `regxattr`, `regxattrp`, `lsearch`, `lsearchr`, `nlsearch`, `nsearch`, `lockfilter`, `filterbool`, `foreach`
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-Sections 1–5 implemented 167 canonical `flist` names (plus 10 aliases). The remaining sections (6–19) name 195 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
+Sections 1–6 implemented 185 canonical `flist` names (plus 10 aliases). The remaining sections (7–19) name 177 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
 
 ## Player-facing wording, after the sections above
 

@@ -620,7 +620,7 @@ public class SearchCommandHandler : ICommandHandler
         return db.FindPlayer(name);
     }
 
-    private static bool Matches(MUSHObject obj, List<(string Key, string Value)> criteria)
+    public static bool Matches(MUSHObject obj, List<(string Key, string Value)> criteria)
     {
         string? type = null;
         foreach (var pair in criteria)
