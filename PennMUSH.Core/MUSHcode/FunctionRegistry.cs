@@ -12,6 +12,7 @@ public delegate string MUSHFunction(EvaluationContext context, string[] args);
 public class FunctionRegistry
 {
     private readonly Dictionary<string, MUSHFunction> _functions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _noParseFunctions = new(StringComparer.OrdinalIgnoreCase);
 
     public ObjectDatabase? Database { get; }
     private ExpressionEvaluator? _evaluator;
@@ -22,7 +23,10 @@ public class FunctionRegistry
         {
             _evaluator = value;
             if (_evaluator != null)
+            {
                 _evaluator.IsKnownFunction = HasFunction;
+                _evaluator.IsNoParseFunction = IsNoParse;
+            }
         }
     }
     public Action<PennMUSH.Core.Commands.Notification>? NotificationDispatcher { get; set; }
@@ -40,13 +44,16 @@ public class FunctionRegistry
         RegisterBuiltins();
     }
 
-    public void Register(string name, MUSHFunction function)
+    public void Register(string name, MUSHFunction function, bool noParse = false)
     {
         _functions[name] = function;
+        if (noParse)
+            _noParseFunctions.Add(name);
     }
 
     public bool Unregister(string name)
     {
+        _noParseFunctions.Remove(name);
         return _functions.Remove(name);
     }
 
@@ -55,6 +62,8 @@ public class FunctionRegistry
         if (_functions.TryGetValue(original, out var func))
         {
             _functions[alias] = func;
+            if (_noParseFunctions.Contains(original))
+                _noParseFunctions.Add(alias);
             return true;
         }
         return false;
@@ -66,6 +75,14 @@ public class FunctionRegistry
 
     public bool HasFunction(string name) => _functions.ContainsKey(name) || _soft.ContainsKey(name) || _softAliases.ContainsKey(name);
     public bool HasBuiltin(string name) => _functions.ContainsKey(name);
+    public bool IsNoParse(string functionName)
+    {
+        if (_soft.TryGetValue(functionName, out var soft))
+            return soft.Gate.Restrictions.Contains("NoParse");
+        string canonical = _softAliases.TryGetValue(functionName, out var aliased) ? aliased : functionName;
+        return _noParseFunctions.Contains(canonical)
+            || (_builtinGates.TryGetValue(canonical, out var gate) && gate.Restrictions.Contains("NoParse"));
+    }
     public IEnumerable<string> Names => _functions.Keys;
 
     public SoftFunction? FindSoft(string name)

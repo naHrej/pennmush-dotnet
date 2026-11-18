@@ -9,45 +9,45 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` registers 190 names. 164 of those are original names. The other 26 are not original table entries. `insert`, `replace`, `reverse`, and `u` are original aliases registered here before the canonical name (`linsert`, `lreplace`, `flip`, and `ufun`). The rest are this server's own functions: `async`, `attrcnt`, `bgtask`, `caudio`, `cedit`, `columns`, `cron_info`, `cron_list`, `cstyle`, `cwindow`, `exits`, `ifeq`, `inzone`, `lzone`, `mod`, `ordnumber`, `parallel_map`, `regsub`, `rpos`, `secs2time`, `strip`, and `tzoffset`. Those 26 stay. They are not gaps.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 301 names (192 prior baseline + 109 added in Sections 1–4: all 100 canonical names listed in Sections 1–4 plus 9 aliases: `avg`, `delete`, `element`, `exp`, `modulus`, `parse`, `pickrand`, `soundlike`, and `val`). 266 of the 528 original `flist` identifier names are now registered (including `regsub`, `mod`, etc. and the 100 from Sections 1–4), and 262 original identifier names remain in Sections 5–19.
 
-362 original names still have no registration. A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
+A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
 ## What already runs
 
-A new function can call these without a new subsystem:
+Sections 1–4 are now implemented alongside the prior baseline:
 
-- Math: `abs`, `add`, `sub`, `mul`, `div`, `fdiv`, `mod`, `remainder`, `sign`, `min`, `max`, `bound`, `inc`, `dec`, `sqrt`, `round`, `floor`, `ceil`, `trunc`, `mean`, `median`, `stddev`, `dist2d`, `dist3d`, the trig functions, `ln`, `log`, `shl`, `shr`, `band`, `bor`, `bnot`, `bxor`.
-- Strings: `after`, `before`, `cat`, `capstr`, `center`, `edit`, `escape`, `extract`, `mid`, `trim`, `lcstr`, `ucstr`, `strlen`, `strcat`, `repeat`, `space`, `chr`, `ord`, `spellnum`, `wrap`, `ljust`, `rjust`, `reverse`, `revwords`, `strip`.
-- Lists: `iter`, `map`, `filter`, `fold`, `first`, `rest`, `last`, `elements`, `index`, `items`, `itemize`, `lnum`, `member`, `match`, `matchall`, `grab`, `graball`, `insert`, `replace`, `remove`, `ldelete`, `splice`, `setdiff`, `setinter`, `setunion`, `sort`, `sortby`, `shuffle`, `scramble`, `unique`, `words`, `table`.
-- Patterns: `regedit`, `regeditall`, `regmatch`, `regmatchi`, `regrab`, `regraball`, `regrep`, `regsub`, `isregexp`, `soundex`, `comp`.
-- Logic and flow: `if`, `ifeq`, `cand`, `cor`, `t`, `eval`, `objeval`, `default`, `edefault`, `v`, `get`, `xget`, `setq`, `ufun`, `u`. `not` is in section 2.
-- Objects: `name`, `fullname`, `owner`, `type`, `flags`, `lflags`, `powers`, `hasflag`, `haspower`, `hasattr`, `hastype`, `loc`, `rloc`, `con`, `exits`, `lexits`, `home`, `where`, `nearby`, `controls`, `visible`, `parent`, `lparent`, `zone`, `inzone`, `lzone`, `num`, `obj`, `objid`, `testlock`, `attrcnt`, `lattr`, `nattr`, `mtime`.
+- Math & Vectors: `abs`, `add`, `sub`, `mul`, `div`, `floordiv`, `fdiv`, `mod`, `modulo`, `modulus`, `fmod`, `remainder`, `sign`, `min`, `max`, `bound`, `inc`, `dec`, `sqrt`, `power`, `log`, `ln`, `pi`, `e`, `exp`, `round`, `floor`, `ceil`, `trunc`, `val`, `mean`, `avg`, `median`, `stddev`, `dist2d`, `dist3d`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `ctu`, `fraction`, `lmath`, `baseconv`, `rand`, `die`, `shl`, `shr`, `band`, `bor`, `bnot`, `bxor`, `bnand`, `vadd`, `vsub`, `vmul`, `vdot`, `vcross`, `vmag`, `vdim`, `vunit`, `vmax`, `vmin`.
+- Strings: `after`, `before`, `pos`, `lpos`, `rpos`, `left`, `right`, `cat`, `strcat`, `capstr`, `center`, `edit`, `escape`, `extract`, `mid`, `trim`, `trimpenn`, `trimtiny`, `lcstr`, `lcstr2`, `ucstr`, `ucstr2`, `strlen`, `repeat`, `space`, `squish`, `brackets`, `align`, `lalign`, `tr`, `strinsert`, `strdelete`, `delete`, `strreplace`, `stripaccents`, `decompose`, `strmatch`, `soundex`, `soundslike`, `soundlike`, `merge`, `flip`, `reverse`, `chr`, `ord`, `spellnum`, `ordnumber`, `ordinal`, `wrap`, `ljust`, `rjust`, `revwords`, `strip`, `secure`, `comp`.
+- Lists: `iter`, `parse`, `map`, `filter`, `fold`, `first`, `rest`, `last`, `elements`, `index`, `items`, `itemize`, `elist`, `lnum`, `member`, `match`, `element`, `matchall`, `grab`, `graball`, `linsert`, `insert`, `lreplace`, `replace`, `remove`, `ldelete`, `splice`, `step`, `munge`, `mix`, `setdiff`, `setinter`, `setunion`, `setsymdiff`, `sort`, `sortby`, `sortkey`, `shuffle`, `scramble`, `unique`, `words`, `wordpos`, `randword`, `pickrand`, `randextract`, `table`.
+- Patterns: `regedit`, `regediti`, `regeditall`, `regeditalli`, `regsub`, `regmatch`, `regmatchi`, `regrab`, `regrabi`, `regraball`, `regraballi`, `regrep`, `regrepi`, `reglmatch`, `reglmatchi`, `reglmatchall`, `reglmatchalli`, `isregexp`.
+- Logic and flow: `and`, `or`, `not`, `xor`, `nand`, `nor`, `cand`, `ncand`, `cor`, `ncor`, `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `if`, `ifelse`, `ifeq`, `cond`, `condall`, `ncond`, `ncondall`, `switch`, `switchall`, `case`, `caseall`, `reswitch`, `reswitchall`, `reswitchi`, `reswitchalli`, `firstof`, `allof`, `strfirstof`, `strallof`, `t`, `eval`, `objeval`, `default`, `edefault`, `v`, `get`, `xget`, `setq`, `setr`, `r`, `ufun`, `u`.
+- Objects & Catalog: `name`, `fullname`, `nameformat`, `namelist`, `namegrab`, `namegraball`, `owner`, `type`, `flags`, `lflags`, `powers`, `hasflag`, `haspower`, `hasattr`, `hastype`, `loc`, `rloc`, `con`, `exits`, `lexits`, `home`, `where`, `nearby`, `controls`, `visible`, `parent`, `lparent`, `zone`, `inzone`, `lzone`, `num`, `rnum`, `obj`, `objid`, `testlock`, `attrcnt`, `lattr`, `nattr`, `mtime`, `functions`, `list`.
 - Time: `time`, `secs`, `convsecs`, `convtime`, `timefmt`, `etimefmt`, `secs2time`, `isdaylight`, `tzoffset`.
 - Other registered behavior: `cemit`, `cron_info`, `cron_list`, and the client functions `caudio`, `cedit`, `columns`, `cstyle`, `cwindow`. `async`, `bgtask`, and `parallel_map` are this server's queue helpers.
 
 
-## 1. Register the other name of a function that already runs
+## 1. [Done] Register the other name of a function that already runs
 
-These names are the original function, and the name already registered here is the alias. Registering the missing name is the whole change. When `e()` exists, also register `exp`. When `host()`, `idle()`, `strdelete()`, `moniker()`, `speak()`, and `match()` exist, also register `hostname`, `idlesecs`, `delete`, `cname`, `speakpenn`, and `element`. `avg` is the alias of `mean()`, which is already registered.
+Implemented (`flip`, `linsert`, `lreplace`, plus aliases `avg`, `val`, `exp`, `delete`, `element`, `reverse` moved to `flip`, and `parse`). Note: `hostname`, `idlesecs`, `cname`, and `speakpenn` remain deferred with their canonical functions (`host`, `idle`, `moniker`, `speak`) in Sections 9 and 12.
 
 `flip`, `linsert`, `lreplace`
 
-## 2. Logic, comparisons, and the function form of `@switch`
+## 2. [Done] Logic, comparisons, and the function form of `@switch`
 
-`cand`, `cor`, and `if` already run. These are the other boolean and comparison functions, plus `switch()` and `case()`, which stop at the first match the way `@select` does. The `all` forms keep going, the way `@switch` does with `/all`. `reswitch` is the same match with a regular expression. `firstof` and `allof` are the short-circuit forms. `ncand` is `cand` with a different empty-argument rule.
+Implemented in `LogicFunctions.cs` (`cand`, `ncand`, `cor`, `ncor`, `if`, `ifelse`, `cond`, `condall`, `ncond`, `ncondall`, `switch`, `switchall`, `case`, `caseall`, `reswitch`, `reswitchall`, `reswitchi`, `reswitchalli`, `firstof`, `allof`, `strfirstof`, `strallof` using `FN_NOPARSE` lazy evaluation; plus eager `and`, `or`, `not`, `xor`, `nand`, `nor`, `eq`, `neq`, `gt`, `gte`, `lt`, `lte`).
 
 `and`, `or`, `not`, `xor`, `nand`, `nor`, `ncor`, `ncand`, `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `ifelse`, `cond`, `condall`, `ncond`, `ncondall`, `switch`, `switchall`, `case`, `caseall`, `reswitch`, `reswitchall`, `reswitchi`, `reswitchalli`, `firstof`, `allof`, `strfirstof`, `strallof`
 
-## 3. String, list, and math siblings
+## 3. [Done] String, list, and math siblings
 
-`pos` is the plain substring search next to `lpos` and `rpos`. `left`, `right`, `squish`, `brackets`, `align`, and `tr` sit next to `mid`, `trim`, `center`, and `edit`. `lcstr2` and `ucstr2` can call the existing `lcstr` and `ucstr` until real case-folding exists. `bnand` sits next to `band`, `bor`, `bnot`, and `bxor`. `modulo` sits next to `mod`. `e` is the exponential, and `exp` is its alias. The vector functions are arithmetic on number lists. `list()` here is the function catalog (`builtin`, `local`, or `all`), the same table `@list functions` reads, and `functions()` is that list as well.
+Implemented across `StringFunctions.cs`, `ListFunctions.cs`, `LogicFunctions.cs`, `DbFunctions.cs`, and `MathFunctions.cs` (including `soundlike` and `modulus` aliases, multi-argument folding on `sub`/`div`/`fdiv`/`remainder`/`band`/`bor`/`bxor`, and angle-unit support on `sin`/`cos`/`tan`/`asin`/`acos`/`atan`).
 
 `pos`, `left`, `right`, `squish`, `brackets`, `align`, `lalign`, `lcstr2`, `ucstr2`, `tr`, `strinsert`, `strdelete`, `stripaccents`, `decompose`, `trimpenn`, `trimtiny`, `strmatch`, `strreplace`, `soundslike`, `ordinal`, `namelist`, `namegrab`, `namegraball`, `merge`, `lmath`, `setr`, `setsymdiff`, `sortkey`, `wordpos`, `randword`, `randextract`, `mix`, `elist`, `baseconv`, `floordiv`, `modulo`, `fmod`, `pi`, `e`, `atan2`, `fraction`, `rand`, `die`, `ctu`, `bnand`, `vadd`, `vcross`, `vsub`, `vmax`, `vmin`, `vmul`, `vdot`, `vmag`, `vdim`, `vunit`, `list`, `functions`
 
-## 4. Regular-expression forms of functions that already run
+## 4. [Done] Regular-expression forms of functions that already run
 
-`regedit`, `regmatch`, `regrab`, and `regrep` already run. These are the case-insensitive forms and the list-wide forms of the same operations.
+Implemented in `RegexFunctions.cs` (`regedit[all][i]` with multi-pair support, `regrab[all][i]` and `reglmatch[all][i]` with `osep` support, and PennMUSH attribute-matching `regrep`/`regrepi`).
 
 `regediti`, `regeditalli`, `regrabi`, `regraballi`, `regrepi`, `reglmatch`, `reglmatchi`, `reglmatchall`, `reglmatchalli`
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-The sections above name 362 functions. That is every original identifier that is not registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
+Sections 1–4 implemented 100 canonical `flist` names (plus 9 aliases). The remaining sections (5–19) name 262 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names. `@@` is the extra non-identifier, and it is the same implementation as `null`.
 
 ## Player-facing wording, after the sections above
 
