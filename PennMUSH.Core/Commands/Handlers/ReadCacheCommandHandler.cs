@@ -23,14 +23,14 @@ public class ReadCacheCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         foreach (string line in _sizes())
             context.Notify(line);
         _help.Reload();
-        context.Notify("Help files reindexed.");
+        context.Notify(Feedback.HelpFilesReindexed);
         return true;
     }
 }

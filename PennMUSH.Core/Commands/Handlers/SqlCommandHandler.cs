@@ -21,19 +21,19 @@ public class SqlCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !(actor.IsWizard || actor.HasPower("Sql_Ok")))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (!_sql.IsConnected)
         {
-            context.Notify("No SQL database connection.");
+            context.Notify(Feedback.NoSqlDatabaseConnection);
             return false;
         }
 
         if (string.IsNullOrEmpty(context.Arguments))
         {
-            context.Notify("What do you want to query?");
+            context.Notify(Feedback.WhatDoYouWantToQuery);
             return false;
         }
 
@@ -46,19 +46,19 @@ public class SqlCommandHandler : ICommandHandler
     {
         if (!result.Connected)
         {
-            context.Notify("No SQL database connection.");
+            context.Notify(Feedback.NoSqlDatabaseConnection);
             return;
         }
 
         if (result.Error != null)
         {
-            context.Notify($"SQL: Error: {result.Error}");
+            context.Notify(Feedback.SqlError, ("value", $"{result.Error}"));
             return;
         }
 
         if (result.AffectedRows >= 0 && result.Fields.Count == 0)
         {
-            context.Notify($"SQL: {result.AffectedRows} rows affected.");
+            context.Notify(Feedback.SqlRowsAffected, ("value", $"{result.AffectedRows}"));
             return;
         }
 
@@ -66,7 +66,7 @@ public class SqlCommandHandler : ICommandHandler
         if (result.Fields.Count == 0)
         {
             foreach (string?[] _ in result.Rows)
-                context.Notify($"Row {rowNumber++}: NULL");
+                context.Notify(Feedback.RowValueNull, ("value", $"{rowNumber++}"));
             return;
         }
 
@@ -76,7 +76,7 @@ public class SqlCommandHandler : ICommandHandler
             {
                 string? cell = i < row.Length ? row[i] : null;
                 string shown = string.IsNullOrEmpty(cell) ? "NULL" : Sanitize(cell);
-                context.Notify($"Row {rowNumber}, Field {result.Fields[i]}: {shown}");
+                context.Notify(Feedback.RowField, ("value", $"{rowNumber}"), ("value2", $"{result.Fields[i]}"), ("value3", $"{shown}"));
             }
 
             rowNumber++;
@@ -115,13 +115,13 @@ public class MapSqlCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("What do you want to query?");
+            context.Notify(Feedback.WhatDoYouWantToQuery);
             return false;
         }
 
         if (!CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out string objectName, out string attribute))
         {
-            context.Notify("I need to know what attribute to trigger.");
+            context.Notify(Feedback.INeedToKnowWhatAttributeToTrigger);
             return false;
         }
 
@@ -129,7 +129,7 @@ public class MapSqlCommandHandler : ICommandHandler
         var thing = db.MatchObject(context.Executor, objectName);
         if (actor == null || thing == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
@@ -137,13 +137,13 @@ public class MapSqlCommandHandler : ICommandHandler
         if (!CopyAttributeCommandHandler.Controls(actor, thing)
             && (spoof || thing.Owner != actor.Id || !thing.HasFlag("LINK_OK")))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (thing.IsGod && !actor.IsGod)
         {
-            context.Notify("You can't trigger God!");
+            context.Notify(Feedback.YouCantTriggerGod);
             return false;
         }
 
@@ -154,7 +154,7 @@ public class MapSqlCommandHandler : ICommandHandler
         SqlQueryResult result = _sql.Query(context.RightArg);
         if (!result.Connected)
         {
-            context.Notify("No SQL database connection.");
+            context.Notify(Feedback.NoSqlDatabaseConnection);
             return false;
         }
 

@@ -30,7 +30,7 @@ public class IncludeCommandHandler : ICommandHandler
         int slash = left.IndexOf('/');
         if (slash < 0)
         {
-            context.Notify("I need to know what attribute to include.");
+            context.Notify(Feedback.INeedToKnowWhatAttributeToInclude);
             return false;
         }
 
@@ -38,28 +38,28 @@ public class IncludeCommandHandler : ICommandHandler
         string attributeName = left.Substring(slash + 1).Trim();
         if (objectName.Length == 0)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var actor = db.GetObject(context.Executor);
         if (target.IsGod && actor is { IsGod: false })
         {
-            context.Notify("You can't include God!");
+            context.Notify(Feedback.YouCantIncludeGod);
             return false;
         }
 
         var attribute = target.GetAttribute(attributeName.ToUpperInvariant(), db);
         if (attribute == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
 

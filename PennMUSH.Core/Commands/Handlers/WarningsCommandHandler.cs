@@ -17,42 +17,42 @@ public class WarningsCommandHandler : ICommandHandler
         string name = context.LeftArg.Trim();
         if (name.Length == 0)
         {
-            context.Notify("I don't see that object.");
+            context.Notify(Feedback.IDontSeeThatObject);
             return false;
         }
 
         MUSHObject? thing = db.MatchObject(context.Executor, name);
         if (thing == null)
         {
-            context.Notify("I don't see that object.");
+            context.Notify(Feedback.IDontSeeThatObject);
             return false;
         }
 
         if (!CopyAttributeCommandHandler.Controls(actor, thing))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (thing.Type == ObjectType.Garbage || thing.HasFlag("GOING"))
         {
-            context.Notify("Why would you want to be warned about garbage?");
+            context.Notify(Feedback.WhyWouldYouWantToBeWarnedAboutGarbage);
             return false;
         }
 
         uint old = thing.Warnings;
-        uint next = WarningBits.Parse(context.RightArg, unknown => context.Notify($"Unknown warning: {unknown}"));
+        uint next = WarningBits.Parse(context.RightArg, unknown => context.Notify(Feedback.UnknownWarning, ("value", $"{unknown}")));
         if (next != old)
         {
             thing.Warnings = next;
             if (next != 0)
-                context.Notify($"@warnings set to: {WarningBits.Unparse(next)}");
+                context.Notify(Feedback.WarningsSetTo, ("value", $"{WarningBits.Unparse(next)}"));
             else
-                context.Notify("@warnings cleared.");
+                context.Notify(Feedback.WarningsCleared);
         }
         else
         {
-            context.Notify("@warnings not changed.");
+            context.Notify(Feedback.WarningsNotChanged);
         }
 
         return true;

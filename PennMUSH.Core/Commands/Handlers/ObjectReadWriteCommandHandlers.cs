@@ -24,7 +24,7 @@ public class CopyAttributeCommandHandler : ICommandHandler
         var entry = source!.GetAttribute(sourceAttr);
         if (entry == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
 
@@ -48,14 +48,14 @@ public class CopyAttributeCommandHandler : ICommandHandler
             var cleared = source.ClearAttribute(entry.Name, actor!.IsWizard);
             if (cleared == AttributeErrorCode.Locked)
             {
-                context.Notify($"{Describe(source)}/{entry.Name} is locked.");
+                context.Notify(Feedback.IsLocked, ("value", $"{Describe(source)}"), ("value2", $"{entry.Name}"));
                 return false;
             }
-            context.Notify("Moved.");
+            context.Notify(Feedback.Moved);
         }
         else
         {
-            context.Notify("Copied.");
+            context.Notify(Feedback.Copied);
         }
 
         return true;
@@ -75,7 +75,7 @@ public class CopyAttributeCommandHandler : ICommandHandler
         actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -83,19 +83,19 @@ public class CopyAttributeCommandHandler : ICommandHandler
             || string.IsNullOrWhiteSpace(context.RightArg))
         {
             string name = string.IsNullOrEmpty(context.CommandName) ? "@cpattr" : context.CommandName;
-            context.Notify($"Usage: {name} <object>/<attribute>=<object>[/<attribute>][,...]");
+            context.Notify(Feedback.UsageObjectAttributeObjectAttribute, ("value", $"{name}"));
             return false;
         }
 
         source = db.MatchObject(context.Executor, sourceName);
         if (source == null)
         {
-            context.Notify("I can't find the source.");
+            context.Notify(Feedback.ICantFindTheSource);
             return false;
         }
         if (!Controls(actor, source))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -107,7 +107,7 @@ public class CopyAttributeCommandHandler : ICommandHandler
             {
                 if (!TrySplitAttr(piece, out destName, out destAttr))
                 {
-                    context.Notify($"Bad destination '{piece}'.");
+                    context.Notify(Feedback.BadDestination, ("value", $"{piece}"));
                     return false;
                 }
             }
@@ -120,12 +120,12 @@ public class CopyAttributeCommandHandler : ICommandHandler
             var dest = db.MatchObject(context.Executor, destName);
             if (dest == null)
             {
-                context.Notify($"I can't find '{destName}'.");
+                context.Notify(Feedback.ICantFind, ("value", $"{destName}"));
                 return false;
             }
             if (!Controls(actor, dest))
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
             destinations.Add((dest, destAttr));
@@ -168,32 +168,32 @@ public class EditAttributeCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (!CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out var objectName, out var attrName)
             || string.IsNullOrWhiteSpace(context.RightArg) || !context.RightArg.Contains(','))
         {
-            context.Notify("Usage: @edit <object>/<attribute>=<old>,<new>");
+            context.Notify(Feedback.UsageEditObjectAttributeOldNew);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
         if (!CopyAttributeCommandHandler.Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var entry = target.GetAttribute(attrName);
         if (entry == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
 
@@ -202,30 +202,30 @@ public class EditAttributeCommandHandler : ICommandHandler
         string newText = context.RightArg[(comma + 1)..];
         if (oldText.Length == 0)
         {
-            context.Notify("Nothing to replace.");
+            context.Notify(Feedback.NothingToReplace);
             return false;
         }
 
         string updated = entry.Value.Replace(oldText, newText, StringComparison.Ordinal);
         if (updated == entry.Value)
         {
-            context.Notify("Nothing to change.");
+            context.Notify(Feedback.NothingToChange);
             return true;
         }
 
         var err = target.SetAttribute(entry.Name, updated, context.Executor, entry.Flags, actor.IsWizard);
         if (err == AttributeErrorCode.Locked)
         {
-            context.Notify($"{entry.Name} is locked.");
+            context.Notify(Feedback.IsLocked2, ("value", $"{entry.Name}"));
             return false;
         }
         if (err != AttributeErrorCode.Okay)
         {
-            context.Notify($"Could not edit: {err}");
+            context.Notify(Feedback.CouldNotEdit, ("value", $"{err}"));
             return false;
         }
 
-        context.Notify("Edited.");
+        context.Notify(Feedback.Edited);
         return true;
     }
 }
@@ -238,14 +238,14 @@ public class GrepCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @grep <object>=<text>");
+            context.Notify(Feedback.UsageGrepObjectText);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -257,7 +257,7 @@ public class GrepCommandHandler : ICommandHandler
             .ToList();
         if (hits.Count == 0)
         {
-            context.Notify("No match.");
+            context.Notify(Feedback.NoMatch);
             return true;
         }
 
@@ -277,26 +277,26 @@ public class AttributeLockCommandHandler : ICommandHandler
                 string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments : context.LeftArg,
                 out var objectName, out var attrName))
         {
-            context.Notify("Usage: @atrlock <object>/<attribute>[=on|off]");
+            context.Notify(Feedback.UsageAtrlockObjectAttributeOnOff);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
         if (!CopyAttributeCommandHandler.Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var entry = target.GetAttribute(attrName);
         if (entry == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
 
@@ -308,7 +308,7 @@ public class AttributeLockCommandHandler : ICommandHandler
             flags &= ~AttributeFlags.Locked;
         else if (mode.Length > 0)
         {
-            context.Notify("Usage: @atrlock <object>/<attribute>[=on|off]");
+            context.Notify(Feedback.UsageAtrlockObjectAttributeOnOff);
             return false;
         }
 
@@ -317,7 +317,7 @@ public class AttributeLockCommandHandler : ICommandHandler
             var err = target.SetAttributeFlags(entry.Name, flags);
             if (err != AttributeErrorCode.Okay)
             {
-                context.Notify("No such attribute.");
+                context.Notify(Feedback.NoSuchAttribute);
                 return false;
             }
         }
@@ -339,7 +339,7 @@ public class AttributeChownCommandHandler : ICommandHandler
             || !CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out var objectName, out var attrName)
             || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @atrchown <object>/<attribute>=<owner>");
+            context.Notify(Feedback.UsageAtrchownObjectAttributeOwner);
             return false;
         }
 
@@ -347,29 +347,29 @@ public class AttributeChownCommandHandler : ICommandHandler
         var owner = db.MatchObject(context.Executor, context.RightArg.Trim());
         if (target == null || owner == null)
         {
-            context.Notify("I can't find that.");
+            context.Notify(Feedback.ICantFindThat);
             return false;
         }
         if (!CopyAttributeCommandHandler.Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var entry = target.GetAttribute(attrName);
         if (entry == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
         if (entry.Flags.HasFlag(AttributeFlags.Locked) && !actor.IsWizard)
         {
-            context.Notify($"{entry.Name} is locked.");
+            context.Notify(Feedback.IsLocked2, ("value", $"{entry.Name}"));
             return false;
         }
 
         target.SetAttributeCreator(entry.Name, owner.Id);
-        context.Notify($"{entry.Name} is now owned by {owner.Name}.");
+        context.Notify(Feedback.IsNowOwnedBy, ("value", $"{entry.Name}"), ("value2", $"{owner.Name}"));
         return true;
     }
 }
@@ -383,26 +383,26 @@ public class LockFlagCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out var objectName, out var lockName))
         {
-            context.Notify("Usage: @lset <object>/<lock>=[!]<flag>");
+            context.Notify(Feedback.UsageLsetObjectLockFlag);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
         if (!CopyAttributeCommandHandler.Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var entry = target.GetLock(lockName);
         if (entry == null)
         {
-            context.Notify("No such lock.");
+            context.Notify(Feedback.NoSuchLock);
             return false;
         }
 
@@ -415,7 +415,7 @@ public class LockFlagCommandHandler : ICommandHandler
                 string name = clear ? token[1..] : token;
                 if (!TryParseLockFlag(name, out var flag))
                 {
-                    context.Notify($"I don't recognize the lock flag '{name}'.");
+                    context.Notify(Feedback.IDontRecognizeTheLockFlag, ("flag", $"{name}"));
                     return false;
                 }
                 flags = clear ? flags & ~flag : flags | flag;
@@ -423,7 +423,7 @@ public class LockFlagCommandHandler : ICommandHandler
             target.SetLock(entry.Type, entry.Key, entry.Creator, flags);
         }
 
-        context.Notify($"{entry.Type}: {flags}");
+        context.Notify(Feedback.ValueValue4, ("value", $"{entry.Type}"), ("value2", $"{flags}"));
         return true;
     }
 
@@ -452,7 +452,7 @@ public class DecompileCommandHandler : ICommandHandler
         var target = db.MatchObject(context.Executor, name);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -480,14 +480,14 @@ public class MonikerCommandHandler : ICommandHandler
         string objectName = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
         if (actor == null || string.IsNullOrWhiteSpace(objectName))
         {
-            context.Notify("Usage: @moniker <object>[=<text>]");
+            context.Notify(Feedback.UsageMonikerObjectText);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -501,25 +501,25 @@ public class MonikerCommandHandler : ICommandHandler
 
         if (!CopyAttributeCommandHandler.Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrEmpty(context.RightArg))
         {
             target.ClearAttribute("MONIKER", actor.IsWizard);
-            context.Notify("Moniker cleared.");
+            context.Notify(Feedback.MonikerCleared);
             return true;
         }
 
         var err = target.SetAttribute("MONIKER", context.RightArg, context.Executor, wizardOverride: actor.IsWizard);
         if (err == AttributeErrorCode.Locked)
         {
-            context.Notify("MONIKER is locked.");
+            context.Notify(Feedback.MonikerIsLocked);
             return false;
         }
 
-        context.Notify("Moniker set.");
+        context.Notify(Feedback.MonikerSet);
         return true;
     }
 }
@@ -540,7 +540,7 @@ public class MessageCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.LeftArg)
             || !CopyAttributeCommandHandler.TrySplitAttr(context.RightArg, out var objectName, out var attrName))
         {
-            context.Notify("Usage: @message[/remit|/oemit] <target>=<object>/<attribute>");
+            context.Notify(Feedback.UsageMessageRemitOemitTargetObjectAttribute);
             return false;
         }
 
@@ -548,14 +548,14 @@ public class MessageCommandHandler : ICommandHandler
         var holder = db.MatchObject(context.Executor, objectName);
         if (target == null || holder == null)
         {
-            context.Notify("I can't find that.");
+            context.Notify(Feedback.ICantFindThat);
             return false;
         }
 
         var entry = holder.GetAttribute(attrName, db);
         if (entry == null)
         {
-            context.Notify("No such attribute.");
+            context.Notify(Feedback.NoSuchAttribute);
             return false;
         }
 
@@ -567,7 +567,7 @@ public class MessageCommandHandler : ICommandHandler
         {
             if (!target.Location.IsValid)
             {
-                context.Notify("That target has no location.");
+                context.Notify(Feedback.ThatTargetHasNoLocation);
                 return false;
             }
             context.NotifyRoom(target.Location, text);
@@ -576,7 +576,7 @@ public class MessageCommandHandler : ICommandHandler
         {
             if (!target.Location.IsValid)
             {
-                context.Notify("That target has no location.");
+                context.Notify(Feedback.ThatTargetHasNoLocation);
                 return false;
             }
             context.NotifyExcept(target.Location, target.Id, text);
@@ -603,7 +603,7 @@ public class FindCommandHandler : ICommandHandler
         string name = context.RawCommand.Contains('=') ? context.LeftArg.Trim() : context.Arguments.Trim();
         if (!TryRange(context.RightArg, out int low, out int high))
         {
-            context.Notify("Usage: @find [<name>][=<from>-<to>]");
+            context.Notify(Feedback.UsageFindNameFromTo);
             return false;
         }
 
@@ -617,7 +617,7 @@ public class FindCommandHandler : ICommandHandler
 
         if (hits.Count == 0)
         {
-            context.Notify("Nothing found.");
+            context.Notify(Feedback.NothingFound);
             return true;
         }
 
@@ -649,22 +649,22 @@ public class WhereIsCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Usage: @whereis <player>");
+            context.Notify(Feedback.UsageWhereisPlayer);
             return false;
         }
 
         var target = db.FindPlayer(context.Arguments.Trim());
         if (target == null || target.Type != ObjectType.Player)
         {
-            context.Notify("I can't find that player.");
+            context.Notify(Feedback.ICantFindThatPlayer);
             return false;
         }
 
         var place = db.GetObject(target.Location);
         string where = place == null ? "nowhere" : $"{place.Name} ({place.Id})";
-        context.Notify($"{target.Name} is in {where}.");
+        context.Notify(Feedback.ValueIsInValue, ("value", $"{target.Name}"), ("value2", $"{where}"));
         if (!actor.IsWizard && target.Id != actor.Id)
-            context.NotifyTarget(target.Id, $"{actor.Name} is looking for you.");
+            context.NotifyTarget(target.Id, Feedback.IsLookingForYou.Text(("value", $"{actor.Name}")));
         return true;
     }
 }
@@ -679,7 +679,7 @@ public class EntrancesCommandHandler : ICommandHandler
         var place = db.MatchObject(context.Executor, name);
         if (place == null)
         {
-            context.Notify("I can't find that place.");
+            context.Notify(Feedback.ICantFindThatPlace);
             return false;
         }
 
@@ -693,7 +693,7 @@ public class EntrancesCommandHandler : ICommandHandler
 
         if (hits.Count == 0)
         {
-            context.Notify("No entrances.");
+            context.Notify(Feedback.NoEntrances);
             return true;
         }
 
@@ -723,32 +723,32 @@ public class FirstExitCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Usage: @firstexit <exit>");
+            context.Notify(Feedback.UsageFirstexitExit);
             return false;
         }
 
         var exit = db.MatchObject(context.Executor, context.Arguments.Trim());
         if (exit == null || exit.Type != ObjectType.Exit)
         {
-            context.Notify("I can't find that exit.");
+            context.Notify(Feedback.ICantFindThatExit);
             return false;
         }
 
         var room = db.GetObject(exit.Exits);
         if (room == null)
         {
-            context.Notify("That exit is not attached to a room.");
+            context.Notify(Feedback.ThatExitIsNotAttachedToARoom);
             return false;
         }
         if (!CopyAttributeCommandHandler.Controls(actor, room))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         db.RemoveExit(room.Id, exit.Id);
         db.AttachExit(room.Id, exit.Id);
-        context.Notify($"{exit.Name} is now the first exit.");
+        context.Notify(Feedback.IsNowTheFirstExit, ("value", $"{exit.Name}"));
         return true;
     }
 }
@@ -784,12 +784,12 @@ public class PoorCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsGod)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (!int.TryParse(context.Arguments.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int amount) || amount < 0)
         {
-            context.Notify("Usage: @poor <pennies>");
+            context.Notify(Feedback.UsagePoorPennies);
             return false;
         }
 
@@ -800,7 +800,7 @@ public class PoorCommandHandler : ICommandHandler
             count++;
         }
 
-        context.Notify($"Set {count} player(s) to {amount} pennies.");
+        context.Notify(Feedback.SetPlayerSToPennies, ("value", $"{count}"), ("value2", $"{amount}"));
         return true;
     }
 }
@@ -838,7 +838,7 @@ public class ListCommandHandler : ICommandHandler
             var actor = db.GetObject(context.Executor);
             if (_motd == null || actor == null)
             {
-                context.Notify("Usage: @list commands|flags|powers|functions|attribs");
+                context.Notify(Feedback.UsageListCommandsFlagsPowersFunctionsAttribs);
                 return false;
             }
 
@@ -884,7 +884,7 @@ public class DumpCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -894,11 +894,11 @@ public class DumpCommandHandler : ICommandHandler
         }
         catch (Exception ex)
         {
-            context.Notify($"Save failed: {ex.Message}");
+            context.Notify(Feedback.SaveFailed, ("value", $"{ex.Message}"));
             return false;
         }
 
-        context.Notify("Database saved.");
+        context.Notify(Feedback.DatabaseSaved);
         return true;
     }
 }

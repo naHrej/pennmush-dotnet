@@ -13,14 +13,14 @@ public class OpenCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("Open what?");
+            context.Notify(Feedback.OpenWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You cannot open exits from here.");
+            context.Notify(Feedback.YouCannotOpenExitsFromHere);
             return false;
         }
 
@@ -35,12 +35,12 @@ public class OpenCommandHandler : ICommandHandler
             if (destObj != null)
             {
                 db.LinkExit(exitObj.Id, destRef);
-                context.Notify($"Opened and linked to {destObj.Name} ({destObj.Id}).");
+                context.Notify(Feedback.OpenedAndLinkedTo, ("value", $"{destObj.Name}"), ("value2", $"{destObj.Id}"));
                 return true;
             }
         }
 
-        context.Notify("Opened.");
+        context.Notify(Feedback.Opened);
         return true;
     }
 

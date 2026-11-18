@@ -15,14 +15,14 @@ public class WhisperCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: whisper <player>=<message>");
+            context.Notify(Feedback.UsageWhisperPlayerMessage);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -30,18 +30,18 @@ public class WhisperCommandHandler : ICommandHandler
         var target = db.FindInContents(execObj.Location, targetName);
         if (target == null || target.Type != ObjectType.Player)
         {
-            context.Notify("You cannot whisper to someone who isn't here.");
+            context.Notify(Feedback.YouCannotWhisperToSomeoneWhoIsntHere);
             return false;
         }
 
         if (target.Id == context.Executor)
         {
-            context.Notify("You whisper to yourself.");
+            context.Notify(Feedback.YouWhisperToYourself);
             return true;
         }
 
-        context.Notify($"You whisper, \"{context.RightArg}\" to {target.Name}.");
-        context.NotifyTarget(target.Id, $"{execObj.Name} whispers, \"{context.RightArg}\"");
+        context.Notify(Feedback.YouWhisperTo, ("value", $"{context.RightArg}"), ("value2", $"{target.Name}"));
+        context.NotifyTarget(target.Id, Feedback.Whispers.Text(("value", $"{execObj.Name}"), ("value2", $"{context.RightArg}")));
         return true;
     }
 }
@@ -72,7 +72,7 @@ public class PageCommandHandler : ICommandHandler
             int firstSpace = context.Arguments.IndexOf(' ');
             if (firstSpace == -1)
             {
-                context.Notify("Usage: page <player>=<message>");
+                context.Notify(Feedback.UsagePagePlayerMessage);
                 return false;
             }
             targetName = context.Arguments.Substring(0, firstSpace).Trim();
@@ -85,13 +85,13 @@ public class PageCommandHandler : ICommandHandler
         var target = db.FindPlayer(targetName);
         if (target == null)
         {
-            context.Notify($"I cannot find player '{targetName}'.");
+            context.Notify(Feedback.ICannotFindPlayer, ("player", $"{targetName}"));
             return false;
         }
 
         if (!target.EvalLock(LockType.Page, context.Executor, db))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 

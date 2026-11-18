@@ -13,7 +13,7 @@ public class UnlinkCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Unlink what?");
+            context.Notify(Feedback.UnlinkWhat);
             return false;
         }
 
@@ -21,19 +21,19 @@ public class UnlinkCommandHandler : ICommandHandler
         var exitObj = db.GetObject(exitRef);
         if (exitObj == null || exitObj.Type != ObjectType.Exit)
         {
-            context.Notify("I can't see that exit.");
+            context.Notify(Feedback.ICantSeeThatExit);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || (!execObj.IsWizard && execObj.Id != exitObj.Owner))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         db.LinkExit(exitObj.Id, Dbref.Nothing);
-        context.Notify("Unlinked.");
+        context.Notify(Feedback.Unlinked);
         return true;
     }
 

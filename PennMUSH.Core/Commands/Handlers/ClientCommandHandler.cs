@@ -38,7 +38,7 @@ public class ClientCommandHandler : ICommandHandler
             return HandleAudio(context, db, executor);
         }
 
-        context.Notify("Usage: @client/edit <target>/<attr>, @client/window <player>=<id>:<target>:<action>:<html/url>, @client/style <player>=<url>, @client/audio <player>=<url>");
+        context.Notify(Feedback.UsageClientEditTargetAttrClientWindowPlayerIdTargetActionHtmlUrlClient);
         return true;
     }
 
@@ -48,7 +48,7 @@ public class ClientCommandHandler : ICommandHandler
         int slash = arg.IndexOf('/');
         if (slash <= 0)
         {
-            context.Notify("Usage: @client/edit <target>/<attribute>");
+            context.Notify(Feedback.UsageClientEditTargetAttribute);
             return false;
         }
 
@@ -69,20 +69,20 @@ public class ClientCommandHandler : ICommandHandler
         var target = db.GetObject(targetId);
         if (target == null)
         {
-            context.Notify($"Could not find target object '{targetStr}'.");
+            context.Notify(Feedback.CouldNotFindTargetObject, ("object", $"{targetStr}"));
             return false;
         }
 
         var openPayload = _editorSessions.StartAttributeSession(executor.Id, target.Id, attrName, db);
         if (openPayload == null)
         {
-            context.Notify("Permission denied or failed to open editor session.");
+            context.Notify(Feedback.PermissionDeniedOrFailedToOpenEditorSession);
             return false;
         }
 
         context.NotifyProtocol(
             executor.Id,
-            $"[Client] Code editor opened for {target.Name}/{(attrName.ToUpperInvariant())}. (Use client supporting MUjs protocol for visual editor).",
+            Feedback.ClientCodeEditorOpenedForUseClientSupportingMUjsProtocolForVisualEditor.Text(("value", $"{target.Name}"), ("value2", $"{(attrName.ToUpperInvariant())}")),
             "editor.open",
             openPayload
         );
@@ -93,21 +93,21 @@ public class ClientCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.LeftArg) || string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("Usage: @client/window <player>=<windowId>:<target>:<action>:<content>[:<cssUrl>]");
+            context.Notify(Feedback.UsageClientWindowPlayerWindowIdTargetActionContentCssUrl);
             return false;
         }
 
         Dbref player = ResolvePlayer(context.LeftArg, db, executor);
         if (!player.IsValid)
         {
-            context.Notify($"Cannot find player '{context.LeftArg}'.");
+            context.Notify(Feedback.CannotFindPlayer, ("player", $"{context.LeftArg}"));
             return false;
         }
 
         string[] parts = context.RightArg.Split(':', 5);
         if (parts.Length < 4)
         {
-            context.Notify("Usage: @client/window <player>=<windowId>:<target>:<action>:<content>[:<cssUrl>]");
+            context.Notify(Feedback.UsageClientWindowPlayerWindowIdTargetActionContentCssUrl);
             return false;
         }
 
@@ -128,7 +128,7 @@ public class ClientCommandHandler : ICommandHandler
 
         context.NotifyProtocol(
             player,
-            $"[Client Window: {windowId} ({target}/{action})]",
+            Feedback.ClientWindow.Text(("value", $"{windowId}"), ("value2", $"{target}"), ("value3", $"{action}")),
             "window.update",
             payload
         );
@@ -139,14 +139,14 @@ public class ClientCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.LeftArg) || string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("Usage: @client/style <player>=<url>");
+            context.Notify(Feedback.UsageClientStylePlayerUrl);
             return false;
         }
 
         Dbref player = ResolvePlayer(context.LeftArg, db, executor);
         if (!player.IsValid)
         {
-            context.Notify($"Cannot find player '{context.LeftArg}'.");
+            context.Notify(Feedback.CannotFindPlayer, ("player", $"{context.LeftArg}"));
             return false;
         }
 
@@ -158,7 +158,7 @@ public class ClientCommandHandler : ICommandHandler
 
         context.NotifyProtocol(
             player,
-            $"[Client Style Loaded: {payload.Url}]",
+            Feedback.ClientStyleLoaded.Text(("value", $"{payload.Url}")),
             "style.load",
             payload
         );
@@ -169,14 +169,14 @@ public class ClientCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.LeftArg) || string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("Usage: @client/audio <player>=<url>");
+            context.Notify(Feedback.UsageClientAudioPlayerUrl);
             return false;
         }
 
         Dbref player = ResolvePlayer(context.LeftArg, db, executor);
         if (!player.IsValid)
         {
-            context.Notify($"Cannot find player '{context.LeftArg}'.");
+            context.Notify(Feedback.CannotFindPlayer, ("player", $"{context.LeftArg}"));
             return false;
         }
 
@@ -188,7 +188,7 @@ public class ClientCommandHandler : ICommandHandler
 
         context.NotifyProtocol(
             player,
-            $"[Client Audio Cue: {payload.Url}]",
+            Feedback.ClientAudioCue.Text(("value", $"{payload.Url}")),
             "audio.play",
             payload
         );

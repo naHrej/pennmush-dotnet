@@ -14,30 +14,30 @@ public class PasswordCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || actor.Type != ObjectType.Player)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (actor.HasFlag("GUEST"))
         {
-            context.Notify("Guests are not allowed to do that.");
+            context.Notify(Feedback.GuestsAreNotAllowedToDoThat);
             return false;
         }
 
         if (!PasswordHash.Accepts(actor, context.LeftArg, memory: null))
         {
-            context.Notify("The old password that you entered was incorrect.");
+            context.Notify(Feedback.TheOldPasswordThatYouEnteredWasIncorrect);
             return false;
         }
 
         if (!PasswordHash.Ok(context.RightArg))
         {
-            context.Notify("Bad new password.");
+            context.Notify(Feedback.BadNewPassword);
             return false;
         }
 
         PasswordHash.Store(actor, context.RightArg);
-        context.Notify("You have changed your password.");
+        context.Notify(Feedback.YouHaveChangedYourPassword);
         return true;
     }
 }
@@ -55,7 +55,7 @@ public class NewPasswordCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -67,28 +67,28 @@ public class NewPasswordCommandHandler : ICommandHandler
             : db.FindPlayer(name);
         if (victim == null || victim.Type != ObjectType.Player)
         {
-            context.Notify("No such player.");
+            context.Notify(Feedback.NoSuchPlayer);
             return false;
         }
 
         if (password.Length > 0 && !PasswordHash.Ok(password))
         {
-            context.Notify("Bad password.");
+            context.Notify(Feedback.BadPassword);
             return false;
         }
 
         if (victim.IsGod && !actor.IsGod)
         {
-            context.Notify("You cannot change that player's password.");
+            context.Notify(Feedback.YouCannotChangeThatPlayersPassword);
             return false;
         }
 
         PasswordHash.Store(victim, password);
         if (generate)
-            context.Notify($"Password for {victim.Name} changed to {password}.");
+            context.Notify(Feedback.PasswordForChangedTo, ("value", $"{victim.Name}"), ("value2", $"{password}"));
         else
-            context.Notify($"Password for {victim.Name} changed.");
-        context.NotifyTarget(victim.Id, $"Your password has been changed by {actor.Name}.");
+            context.Notify(Feedback.PasswordForChanged, ("value", $"{victim.Name}"));
+        context.NotifyTarget(victim.Id, Feedback.YourPasswordHasBeenChangedBy.Text(("value", $"{actor.Name}")));
         _log?.Append(
             WizardLogKind.Wiz,
             $"WIZ: {Who(actor)} --> {Who(victim)}: *** NEWPASSWORD ***");

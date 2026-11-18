@@ -57,7 +57,7 @@ internal static class FollowerList
                 continue;
             Remove(follower, Following, leader.Id);
             if (noisy)
-                context.NotifyTarget(follower.Id, $"You stop following {leader.Name}.");
+                context.NotifyTarget(follower.Id, Feedback.YouStopFollowing.Text(("value", $"{leader.Name}")));
         }
 
         leader.RemoveAttribute(Followers);
@@ -76,7 +76,7 @@ internal static class FollowerList
                 continue;
             Remove(leader, Followers, follower.Id);
             if (noisy)
-                context.NotifyTarget(leader.Id, $"{follower.Name} stops following you.");
+                context.NotifyTarget(leader.Id, Feedback.StopsFollowingYou.Text(("value", $"{follower.Name}")));
         }
 
         follower.RemoveAttribute(Following);
@@ -302,7 +302,7 @@ internal static class FollowerMovement
             if (!FollowerList.CanSee(follower, leader, room))
                 continue;
 
-            context.NotifyTarget(follower.Id, $"You follow {leader.Name}.");
+            context.NotifyTarget(follower.Id, Feedback.YouFollow.Text(("value", $"{leader.Name}")));
             var nested = dispatcher.Dispatch(follower.Id, command, db);
             context.TargetedNotifications.AddRange(nested.TargetedNotifications);
         }

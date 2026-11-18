@@ -14,14 +14,14 @@ public class GetCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Get what?");
+            context.Notify(Feedback.GetWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -29,25 +29,25 @@ public class GetCommandHandler : ICommandHandler
         var targetObj = db.FindInContents(execObj.Location, targetName);
         if (targetObj == null)
         {
-            context.Notify("I can't find that here.");
+            context.Notify(Feedback.ICantFindThatHere);
             return false;
         }
 
         if (targetObj.Type != ObjectType.Thing)
         {
-            context.Notify("You can't pick that up.");
+            context.Notify(Feedback.YouCantPickThatUp);
             return false;
         }
 
         if (!targetObj.EvalLock(LockType.Basic, context.Executor, db))
         {
-            context.Notify("You can't pick that up.");
+            context.Notify(Feedback.YouCantPickThatUp);
             return false;
         }
 
         db.MoveObject(targetObj.Id, context.Executor);
-        context.Notify("Taken.");
-        context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} takes {targetObj.Name}.");
+        context.Notify(Feedback.Taken);
+        context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueTakesValue.Text(("value", $"{execObj.Name}"), ("value2", $"{targetObj.Name}")));
         return true;
     }
 }

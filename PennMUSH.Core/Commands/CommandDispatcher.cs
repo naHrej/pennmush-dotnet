@@ -135,7 +135,7 @@ public class CommandDispatcher
 
         if (lookup.Status == CommandLookupStatus.Ambiguous)
         {
-            context.Notify("Which of those commands do you mean?");
+            context.Notify(Feedback.WhichOfThoseCommandsDoYouMean);
             return context;
         }
 
@@ -221,7 +221,7 @@ public class CommandDispatcher
             return context;
         }
 
-        context.Notify("Huh?  (Type \"help\" for help.)");
+        context.Notify(Feedback.HuhTypeHelpForHelp);
         return context;
     }
 

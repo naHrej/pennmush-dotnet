@@ -22,7 +22,7 @@ public class SiteLockCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Your delusions of grandeur have been noted.");
+            context.Notify(Feedback.YourDelusionsOfGrandeurHaveBeenNoted);
             return false;
         }
 
@@ -38,7 +38,7 @@ public class SiteLockCommandHandler : ICommandHandler
         if (Has(context, "remove"))
         {
             int removed = string.IsNullOrEmpty(site) ? 0 : _table.Remove(site);
-            context.Notify($"{removed} sitelocks removed.");
+            context.Notify(Feedback.SitelocksRemoved, ("value", $"{removed}"));
             return removed > 0;
         }
         if (Has(context, "check"))
@@ -64,11 +64,11 @@ public class SiteLockCommandHandler : ICommandHandler
     {
         if (site.Length == 0)
         {
-            context.Notify("What site did you want to lock?");
+            context.Notify(Feedback.WhatSiteDidYouWantToLock);
             return false;
         }
         _table.Add(site, can, cant);
-        context.Notify($"Site {site} {verb}");
+        context.Notify(Feedback.SiteValueValue, ("site", $"{site}"), ("value", $"{verb}"));
         return true;
     }
 
@@ -76,7 +76,7 @@ public class SiteLockCommandHandler : ICommandHandler
     {
         if (name.Length == 0)
         {
-            context.Notify("What site did you want to lock?");
+            context.Notify(Feedback.WhatSiteDidYouWantToLock);
             return false;
         }
         var target = db.GetAllObjects().FirstOrDefault(obj =>
@@ -84,10 +84,10 @@ public class SiteLockCommandHandler : ICommandHandler
             && obj.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (target == null)
         {
-            context.Notify("I don't see that object.");
+            context.Notify(Feedback.IDontSeeThatObject);
             return false;
         }
-        context.Notify($"Unable to sitelock {target.Name}: No known ip/host to ban.");
+        context.Notify(Feedback.UnableToSitelockNoKnownIpHostToBan, ("value", $"{target.Name}"));
         return false;
     }
 

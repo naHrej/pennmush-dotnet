@@ -21,7 +21,7 @@ public class MotdCommandHandler : ICommandHandler
         var alias = AliasOf(context.CommandName);
         if ((alias == MotdAlias.Wizard || alias == MotdAlias.Reject) && !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -46,7 +46,7 @@ public class MotdCommandHandler : ICommandHandler
             : actor.IsRoyalty;
         if (!allowed)
         {
-            context.Notify("You may get 15 minutes of fame and glory in life, but not right now.");
+            context.Notify(Feedback.YouMayGet15MinutesOfFameAndGloryInLifeButNotRight);
             return false;
         }
 
@@ -57,13 +57,13 @@ public class MotdCommandHandler : ICommandHandler
 
     public static void Report(CommandContext context, MotdBoard motd, bool includePrivileged)
     {
-        context.Notify($"MOTD: {motd.Connect}");
+        context.Notify(Feedback.MotdValue, ("value", $"{motd.Connect}"));
         if (!includePrivileged)
             return;
 
-        context.Notify($"Wiz MOTD: {motd.Wizard}");
-        context.Notify($"Down MOTD: {motd.Down}");
-        context.Notify($"Full MOTD: {motd.Full}");
+        context.Notify(Feedback.WizMotdValue, ("value", $"{motd.Wizard}"));
+        context.Notify(Feedback.DownMotd, ("value", $"{motd.Down}"));
+        context.Notify(Feedback.FullMotd, ("value", $"{motd.Full}"));
     }
 
     private static MotdKind KindOf(MotdAlias alias) => alias switch

@@ -14,7 +14,7 @@ public class ParentCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("What object do you want to parent?");
+            context.Notify(Feedback.WhatObjectDoYouWantToParent);
             return false;
         }
 
@@ -22,21 +22,21 @@ public class ParentCommandHandler : ICommandHandler
         var targetObj = db.GetObject(targetRef);
         if (targetObj == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || (!execObj.IsWizard && execObj.Id != targetObj.Owner))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(context.RightArg) || context.RightArg.Equals("none", StringComparison.OrdinalIgnoreCase))
         {
             targetObj.ClearParents();
-            context.Notify("Parent cleared.");
+            context.Notify(Feedback.ParentCleared);
             return true;
         }
 
@@ -49,13 +49,13 @@ public class ParentCommandHandler : ICommandHandler
             var pObj = db.GetObject(pRef);
             if (pObj == null)
             {
-                context.Notify($"I can't see parent object {token}.");
+                context.Notify(Feedback.ICantSeeParentObject, ("object", $"{token}"));
                 return false;
             }
 
             if (MUSHObject.WouldCauseParentCycle(targetObj.Id, pRef, db))
             {
-                context.Notify("You would create a loop in the parent tree.");
+                context.Notify(Feedback.YouWouldCreateALoopInTheParentTree);
                 return false;
             }
 
@@ -63,7 +63,7 @@ public class ParentCommandHandler : ICommandHandler
         }
 
         targetObj.SetParents(validParents, db);
-        context.Notify("Parent set.");
+        context.Notify(Feedback.ParentSet);
         return true;
     }
 

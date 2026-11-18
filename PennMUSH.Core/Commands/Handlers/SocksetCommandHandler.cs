@@ -38,7 +38,7 @@ public class SocksetCommandHandler : ICommandHandler
                 var player = SessionAccess.FindPlayer(db, context.Executor, target);
                 if (player == null || player.Type != ObjectType.Player)
                 {
-                    context.Notify("Invalid descriptor.");
+                    context.Notify(Feedback.InvalidDescriptor);
                     return false;
                 }
                 subject = player.Id;

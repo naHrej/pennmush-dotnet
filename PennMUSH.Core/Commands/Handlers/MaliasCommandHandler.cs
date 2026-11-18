@@ -59,7 +59,7 @@ public class MaliasCommandHandler : ICommandHandler
         {
             if (!string.IsNullOrEmpty(context.RightArg))
             {
-                context.Notify("MAIL: Invalid malias command.");
+                context.Notify(Feedback.MailInvalidMaliasCommand);
                 return false;
             }
             return List(context, db, actor);
@@ -82,7 +82,7 @@ public class MaliasCommandHandler : ICommandHandler
             var owner = Shown(db, alias.Owner);
             context.Notify($"+{Fit(alias.Name, 12)} {Fit(alias.Description, 35)} {MailAliasTable.ShortPrivs(alias.NameFlags, alias.MemberFlags)} {Fit(owner, 15)}");
         }
-        context.Notify("*****  End of Mail Aliases *****");
+        context.Notify(Feedback.EndOfMailAliases);
         return true;
     }
 
@@ -91,13 +91,13 @@ public class MaliasCommandHandler : ICommandHandler
         if (!actor.IsRoyalty)
             return List(context, db, actor);
 
-        context.Notify("Num   Name       Description                              Owner       Count");
+        context.Notify(Feedback.NumNameDescriptionOwnerCount);
         for (int i = 0; i < _aliases.Aliases.Count; i++)
         {
             var alias = _aliases.Aliases[i];
             context.Notify($"#{i,-4} +{Fit(alias.Name, 10)} {Fit(alias.Description, 40)} {Fit(Shown(db, alias.Owner), 11)} ({alias.Members.Count,3})");
         }
-        context.Notify("***** End of Mail Aliases *****");
+        context.Notify(Feedback.EndOfMailAliases2);
         return true;
     }
 
@@ -106,12 +106,12 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify($"MAIL: Alias '{context.LeftArg.Trim()}' not found.");
+            context.Notify(Feedback.MailAliasNotFound, ("alias", $"{context.LeftArg.Trim()}"));
             return false;
         }
         if (!MailAliasTable.CanSeeMembers(actor, alias))
         {
-            context.Notify("MAIL: Permission denied.");
+            context.Notify(Feedback.MailPermissionDenied);
             return false;
         }
         var names = new List<string>();
@@ -125,14 +125,14 @@ public class MaliasCommandHandler : ICommandHandler
     {
         if (actor.Type != ObjectType.Player)
         {
-            context.Notify("MAIL: Only players may create mail aliases.");
+            context.Notify(Feedback.MailOnlyPlayersMayCreateMailAliases);
             return false;
         }
         string aliasName = context.LeftArg.Trim();
         string list = context.RightArg;
         if (aliasName.Length == 0 || string.IsNullOrEmpty(list))
         {
-            context.Notify("MAIL: What alias do you want to create?");
+            context.Notify(Feedback.MailWhatAliasDoYouWantToCreate);
             return false;
         }
         if (!MailAliasTable.LegalName(aliasName, out string error))
@@ -142,16 +142,16 @@ public class MaliasCommandHandler : ICommandHandler
         }
         if (_aliases.FindAny(aliasName) != null)
         {
-            context.Notify($"MAIL: Mail Alias '{aliasName}' already exists.");
+            context.Notify(Feedback.MailMailAliasAlreadyExists, ("alias", $"{aliasName}"));
             return false;
         }
 
         var members = Collect(context, db, actor, aliasName, list, existing: null, out bool capped);
         if (capped)
-            context.Notify("MAIL: Alias list is restricted to maximal 100 entries!");
+            context.Notify(Feedback.MailAliasListIsRestrictedToMaximal100Entries);
         if (members.Count == 0)
         {
-            context.Notify("MAIL: No valid recipients for alias-list!");
+            context.Notify(Feedback.MailNoValidRecipientsForAliasList);
             return false;
         }
 
@@ -165,7 +165,7 @@ public class MaliasCommandHandler : ICommandHandler
         };
         alias.Members.AddRange(members);
         _aliases.Add(alias);
-        context.Notify($"MAIL: Alias set '{aliasName}' defined.");
+        context.Notify(Feedback.MailAliasSetDefined, ("value", $"{aliasName}"));
         return true;
     }
 
@@ -176,25 +176,25 @@ public class MaliasCommandHandler : ICommandHandler
             return false;
         if (string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("MAIL: You must set the alias to a non-empty list.");
+            context.Notify(Feedback.MailYouMustSetTheAliasToANonEmptyList);
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("MAIL: Permission denied!");
+            context.Notify(Feedback.MailPermissionDenied2);
             return false;
         }
         var members = Collect(context, db, actor, context.LeftArg.Trim(), context.RightArg, null, out bool capped);
         if (capped)
-            context.Notify("MAIL: Alias list is restricted to maximal 100 entries!");
+            context.Notify(Feedback.MailAliasListIsRestrictedToMaximal100Entries);
         if (members.Count == 0)
         {
-            context.Notify("MAIL: No valid recipients for alias-list!");
+            context.Notify(Feedback.MailNoValidRecipientsForAliasList);
             return false;
         }
         alias.Members.Clear();
         alias.Members.AddRange(members);
-        context.Notify("MAIL: Alias list set.");
+        context.Notify(Feedback.MailAliasListSet);
         return true;
     }
 
@@ -203,15 +203,15 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify($"MAIL: Not a valid alias. Remember to prefix the alias name with {MailAliasTable.Token}.");
+            context.Notify(Feedback.MailNotAValidAliasRememberToPrefixTheAliasNameWith, ("value", $"{MailAliasTable.Token}"));
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("MAIL: Permission denied!");
+            context.Notify(Feedback.MailPermissionDenied2);
             return false;
         }
-        context.Notify("MAIL: Alias Destroyed.");
+        context.Notify(Feedback.MailAliasDestroyed);
         _aliases.RemoveAt(_aliases.IndexOf(alias));
         return true;
     }
@@ -222,24 +222,24 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, shown);
         if (alias == null)
         {
-            context.Notify($"MAIL: Mail Alias '{shown}' not found.");
+            context.Notify(Feedback.MailMailAliasNotFound, ("alias", $"{shown}"));
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         var members = Collect(context, db, actor, shown, context.RightArg, alias, out bool capped);
         if (capped)
-            context.Notify("MAIL: Alias list is restricted to maximal 100 entries!");
+            context.Notify(Feedback.MailAliasListIsRestrictedToMaximal100Entries);
         if (members.Count == 0)
         {
-            context.Notify("MAIL: No valid recipients for alias-list!");
+            context.Notify(Feedback.MailNoValidRecipientsForAliasList);
             return false;
         }
         alias.Members.AddRange(members);
-        context.Notify($"MAIL: Alias set '{shown}' redefined.");
+        context.Notify(Feedback.MailAliasSetRedefined, ("value", $"{shown}"));
         return true;
     }
 
@@ -249,12 +249,12 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, shown);
         if (alias == null)
         {
-            context.Notify($"MAIL: Mail Alias '{shown}' not found.");
+            context.Notify(Feedback.MailMailAliasNotFound, ("alias", $"{shown}"));
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         foreach (string token in MailAliasTable.Tokens(context.RightArg ?? ""))
@@ -264,21 +264,21 @@ public class MaliasCommandHandler : ICommandHandler
             var player = MailAliasTable.ResolvePlayer(db, actor, token);
             if (player == null)
             {
-                context.Notify($"MAIL: No such player '{token}'.");
+                context.Notify(Feedback.MailNoSuchPlayer, ("player", $"{token}"));
                 continue;
             }
             int index = MailAliasTable.MemberIndex(alias, player.Id);
             if (index == 0)
             {
-                context.Notify($"MAIL: player '{token}' is not in alias {shown}.");
+                context.Notify(Feedback.MailPlayerIsNotInAlias, ("player", $"{token}"), ("alias", $"{shown}"));
                 continue;
             }
             int last = alias.Members.Count - 1;
             alias.Members[index - 1] = alias.Members[last];
             alias.Members.RemoveAt(last);
-            context.Notify($"MAIL: {MailAliasTable.Unparse(player)} removed from alias {shown}");
+            context.Notify(Feedback.MailRemovedFromAlias, ("value", $"{MailAliasTable.Unparse(player)}"), ("alias", $"{shown}"));
         }
-        context.Notify($"MAIL: Alias set '{shown}' redefined.");
+        context.Notify(Feedback.MailAliasSetRedefined, ("value", $"{shown}"));
         return true;
     }
 
@@ -287,16 +287,16 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify($"MAIL: Alias {context.LeftArg.Trim()} not found.");
+            context.Notify(Feedback.MailAliasNotFound2, ("alias", $"{context.LeftArg.Trim()}"));
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("MAIL: Permission denied.");
+            context.Notify(Feedback.MailPermissionDenied);
             return false;
         }
         alias.Description = context.RightArg;
-        context.Notify("MAIL: Description changed.");
+        context.Notify(Feedback.MailDescriptionChanged);
         return true;
     }
 
@@ -305,27 +305,27 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify("MAIL: I cannot find that alias!");
+            context.Notify(Feedback.MailICannotFindThatAlias);
             return false;
         }
         string next = context.RightArg.Trim();
         if (next.Length == 0 || next[0] != MailAliasTable.Token)
         {
-            context.Notify($"MAIL: Bad alias. Aliases must start with '{MailAliasTable.Token}'.");
+            context.Notify(Feedback.MailBadAliasAliasesMustStartWith, ("value", $"{MailAliasTable.Token}"));
             return false;
         }
         if (_aliases.FindAny(next) != null)
         {
-            context.Notify("MAIL: That name already exists!");
+            context.Notify(Feedback.MailThatNameAlreadyExists);
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("MAIL: Permission denied.");
+            context.Notify(Feedback.MailPermissionDenied);
             return false;
         }
         alias.Name = next[1..];
-        context.Notify("MAIL: Mail Alias renamed.");
+        context.Notify(Feedback.MailMailAliasRenamed);
         return true;
     }
 
@@ -333,11 +333,11 @@ public class MaliasCommandHandler : ICommandHandler
     {
         if (!actor.IsRoyalty)
         {
-            context.Notify("MAIL: Permission denied.");
+            context.Notify(Feedback.MailPermissionDenied);
             return false;
         }
-        context.Notify($"MAIL: Number of mail aliases defined: {_aliases.Count}");
-        context.Notify($"MAIL: Allocated slots {_aliases.Capacity}");
+        context.Notify(Feedback.MailNumberOfMailAliasesDefined, ("value", $"{_aliases.Count}"));
+        context.Notify(Feedback.MailAllocatedSlots, ("value", $"{_aliases.Capacity}"));
         return true;
     }
 
@@ -346,22 +346,22 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify($"MAIL: Alias {context.LeftArg.Trim()} not found.");
+            context.Notify(Feedback.MailAliasNotFound2, ("alias", $"{context.LeftArg.Trim()}"));
             return false;
         }
         if (!actor.IsWizard)
         {
-            context.Notify("MAIL: You cannot do that!");
+            context.Notify(Feedback.MailYouCannotDoThat);
             return false;
         }
         var next = MailAliasTable.ResolvePlayer(db, actor, context.RightArg.Trim());
         if (next == null)
         {
-            context.Notify("MAIL: I cannot find that player.");
+            context.Notify(Feedback.MailICannotFindThatPlayer);
             return false;
         }
         alias.Owner = next.Id;
-        context.Notify("MAIL: Owner changed for alias.");
+        context.Notify(Feedback.MailOwnerChangedForAlias);
         return true;
     }
 
@@ -370,12 +370,12 @@ public class MaliasCommandHandler : ICommandHandler
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
         {
-            context.Notify("MAIL: I cannot find that alias!");
+            context.Notify(Feedback.MailICannotFindThatAlias);
             return false;
         }
         if (!actor.IsWizard && alias.Owner != actor.Id)
         {
-            context.Notify("MAIL: Permission denied.");
+            context.Notify(Feedback.MailPermissionDenied);
             return false;
         }
         int flags = MailAliasTable.ParsePrivs(context.RightArg);
@@ -383,7 +383,7 @@ public class MaliasCommandHandler : ICommandHandler
             alias.MemberFlags = flags;
         else
             alias.NameFlags = flags;
-        context.Notify($"MAIL: Permission to see/use alias '{context.LeftArg.Trim()}' changed to {MailAliasTable.PrivsText(flags)}");
+        context.Notify(Feedback.MailPermissionToSeeUseAliasChangedTo, ("alias", $"{context.LeftArg.Trim()}"), ("value", $"{MailAliasTable.PrivsText(flags)}"));
         return true;
     }
 
@@ -391,11 +391,11 @@ public class MaliasCommandHandler : ICommandHandler
     {
         if (!actor.IsGod)
         {
-            context.Notify("MAIL: Only god can do that!");
+            context.Notify(Feedback.MailOnlyGodCanDoThat);
             return false;
         }
         _aliases.Clear();
-        context.Notify("MAIL: All mail aliases destroyed!");
+        context.Notify(Feedback.MailAllMailAliasesDestroyed);
         return true;
     }
 
@@ -403,7 +403,7 @@ public class MaliasCommandHandler : ICommandHandler
     {
         var alias = _aliases.Find(actor, context.LeftArg.Trim());
         if (alias == null)
-            context.Notify($"MAIL: Not a valid alias. Remember to prefix the alias name with {MailAliasTable.Token}.");
+            context.Notify(Feedback.MailNotAValidAliasRememberToPrefixTheAliasNameWith, ("value", $"{MailAliasTable.Token}"));
         return alias;
     }
 
@@ -430,15 +430,15 @@ public class MaliasCommandHandler : ICommandHandler
             var player = MailAliasTable.ResolvePlayer(db, actor, token);
             if (player == null)
             {
-                context.Notify($"MAIL: No such player '{token}'.");
+                context.Notify(Feedback.MailNoSuchPlayer, ("player", $"{token}"));
                 continue;
             }
             if (existing != null && MailAliasTable.IsMember(existing, player.Id))
             {
-                context.Notify($"MAIL: player '{token}' exists already in alias {aliasName}.");
+                context.Notify(Feedback.MailPlayerExistsAlreadyInAlias, ("player", $"{token}"), ("alias", $"{aliasName}"));
                 continue;
             }
-            context.Notify($"MAIL: {MailAliasTable.Unparse(player)} added to alias {aliasName}");
+            context.Notify(Feedback.MailAddedToAlias, ("value", $"{MailAliasTable.Unparse(player)}"), ("alias", $"{aliasName}"));
             members.Add(player.Id);
         }
         return members;

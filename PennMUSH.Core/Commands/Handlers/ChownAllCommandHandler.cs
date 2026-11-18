@@ -23,13 +23,13 @@ public class ChownAllCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Try asking them first!");
+            context.Notify(Feedback.TryAskingThemFirst);
             return false;
         }
 
         if (!TryPlayer(db, actor, context.LeftArg, out var victim))
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
@@ -38,7 +38,7 @@ public class ChownAllCommandHandler : ICommandHandler
         {
             if (!TryPlayer(db, actor, context.RightArg, out recipient))
             {
-                context.Notify("I can't see that here.");
+                context.Notify(Feedback.ICantSeeThatHere);
                 return false;
             }
         }
@@ -56,7 +56,7 @@ public class ChownAllCommandHandler : ICommandHandler
 
         QuotaRules.Adjust(db, victim, count, _startingQuota);
         QuotaRules.Adjust(db, recipient, -count, _startingQuota);
-        context.Notify($"Ownership changed for {count} objects.");
+        context.Notify(Feedback.OwnershipChangedForObjects, ("value", $"{count}"));
         return true;
     }
 
@@ -120,12 +120,12 @@ public class ChownAllCommandHandler : ICommandHandler
 
         if (recipient.Id != actor.Id && obj.HasFlag("WIZARD") && !recipient.IsWizard)
         {
-            context.Notify($"Warning: WIZ flag reset on #{obj.Id.Value} because @CHOWN/PRESERVE is to a non-WIZ flagged third-party.");
+            context.Notify(Feedback.WarningWizFlagResetOnBecauseChownPreserveIsToANonWizFlagged, ("value", $"{obj.Id.Value}"));
             obj.RemoveFlag("WIZARD");
         }
         if (obj.Powers.Count > 0 || obj.HasFlag("WIZARD") || obj.HasFlag("ROYALTY") || obj.HasFlag("INHERIT"))
         {
-            context.Notify($"Warning: @CHOWN/PRESERVE on an object (#{obj.Id.Value}) with WIZ, ROY, INHERIT, or @power privileges.");
+            context.Notify(Feedback.WarningChownPreserveOnAnObjectWithWizRoyInheritOrPowerPrivileges, ("object", $"{obj.Id.Value}"));
         }
     }
 }

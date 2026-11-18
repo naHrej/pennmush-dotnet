@@ -23,7 +23,7 @@ public class FunctionCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -60,7 +60,7 @@ public class FunctionCommandHandler : ICommandHandler
         var functions = _functions.ListSoft();
         if (functions.Count == 0)
         {
-            context.Notify("No global user-defined functions exist.");
+            context.Notify(Feedback.NoGlobalUserDefinedFunctionsExist);
             return true;
         }
 
@@ -71,7 +71,7 @@ public class FunctionCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify("Function Name                   Dbref #    Attrib");
+        context.Notify(Feedback.FunctionNameDbrefAttrib);
         foreach (var function in functions)
             context.Notify($"{function.Name,-32} {function.Thing.Value,6}    {function.Attribute}");
         return true;
@@ -94,7 +94,7 @@ public class FunctionCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify("No such function.");
+        context.Notify(Feedback.NoSuchFunction);
         return false;
     }
 
@@ -116,7 +116,7 @@ public class FunctionCommandHandler : ICommandHandler
     {
         if (!global)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -124,38 +124,38 @@ public class FunctionCommandHandler : ICommandHandler
             return false;
         if (string.IsNullOrWhiteSpace(objectName) || string.IsNullOrWhiteSpace(attribute))
         {
-            context.Notify("You must specify an object and an attribute.");
+            context.Notify(Feedback.YouMustSpecifyAnObjectAndAnAttribute);
             return false;
         }
 
         string canonical = name.ToUpperInvariant();
         if (!OkName(canonical))
         {
-            context.Notify("Invalid function name.");
+            context.Notify(Feedback.InvalidFunctionName);
             return false;
         }
 
         var existing = _functions.FindSoft(canonical);
         if (existing == null && (_functions.HasBuiltin(canonical) || _functions.TryAlias(canonical, out _)))
         {
-            context.Notify("You cannot change that built-in function.");
+            context.Notify(Feedback.YouCannotChangeThatBuiltInFunction);
             return false;
         }
         if (existing == null && extra)
         {
-            context.Notify("Expected between 1 and 5 arguments.");
+            context.Notify(Feedback.ExpectedBetween1And5Arguments);
             return false;
         }
 
         var target = Resolve(db, context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
         if (!actor.IsWizard && target.Owner != actor.Id && target.Id != actor.Id)
         {
-            context.Notify("No permission to examine object.");
+            context.Notify(Feedback.NoPermissionToExamineObject);
             return false;
         }
 
@@ -176,44 +176,44 @@ public class FunctionCommandHandler : ICommandHandler
     {
         if (!wizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (string.IsNullOrWhiteSpace(name))
         {
-            context.Notify("What function do you want to alias?");
+            context.Notify(Feedback.WhatFunctionDoYouWantToAlias);
             return false;
         }
         if (!hasEquals || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("What do you want to alias the function as?");
+            context.Notify(Feedback.WhatDoYouWantToAliasTheFunctionAs);
             return false;
         }
 
         string alias = context.RightArg.Trim().ToUpperInvariant();
         if (_functions.HasFunction(alias))
         {
-            context.Notify("There's already a function with that name.");
+            context.Notify(Feedback.TheresAlreadyAFunctionWithThatName);
             return false;
         }
         if (!OkName(alias))
         {
-            context.Notify("Invalid function name.");
+            context.Notify(Feedback.InvalidFunctionName);
             return false;
         }
         if (_functions.FindSoft(name) != null)
         {
-            context.Notify("You cannot alias @functions.");
+            context.Notify(Feedback.YouCannotAliasFunctions);
             return false;
         }
         if (!_functions.HasBuiltin(name))
         {
-            context.Notify("No such function.");
+            context.Notify(Feedback.NoSuchFunction);
             return false;
         }
 
         _functions.SaveAlias(alias, name.ToUpperInvariant());
-        context.Notify("Alias added.");
+        context.Notify(Feedback.AliasAdded);
         return true;
     }
 
@@ -221,17 +221,17 @@ public class FunctionCommandHandler : ICommandHandler
     {
         if (!wizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (string.IsNullOrWhiteSpace(name))
         {
-            context.Notify("Restrict what function?");
+            context.Notify(Feedback.RestrictWhatFunction);
             return false;
         }
         if (!hasEquals)
         {
-            context.Notify("Do what with the function?");
+            context.Notify(Feedback.DoWhatWithTheFunction);
             return false;
         }
 
@@ -251,7 +251,7 @@ public class FunctionCommandHandler : ICommandHandler
         }
         else
         {
-            context.Notify("No such function.");
+            context.Notify(Feedback.NoSuchFunction);
             return false;
         }
 
@@ -264,12 +264,12 @@ public class FunctionCommandHandler : ICommandHandler
     {
         if (!wizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (_functions.TryAlias(name, out _))
         {
-            context.Notify("You can't disable aliases.");
+            context.Notify(Feedback.YouCantDisableAliases);
             return false;
         }
 
@@ -287,7 +287,7 @@ public class FunctionCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify("No such function.");
+        context.Notify(Feedback.NoSuchFunction);
         return false;
     }
 
@@ -295,13 +295,13 @@ public class FunctionCommandHandler : ICommandHandler
     {
         if (!global)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (_functions.TryAlias(name, out _))
         {
             _functions.RemoveAlias(name);
-            context.Notify("Function alias deleted.");
+            context.Notify(Feedback.FunctionAliasDeleted);
             return true;
         }
 
@@ -315,12 +315,12 @@ public class FunctionCommandHandler : ICommandHandler
         var thing = db.GetObject(soft.Thing);
         if (!actor.IsWizard && (thing == null || thing.Owner != actor.Id))
         {
-            context.Notify("You can't delete that @function.");
+            context.Notify(Feedback.YouCantDeleteThatFunction);
             return false;
         }
 
         _functions.RemoveSoft(soft.Name);
-        context.Notify("Function deleted.");
+        context.Notify(Feedback.FunctionDeleted);
         return true;
     }
 
