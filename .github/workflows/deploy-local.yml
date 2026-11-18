@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-deploy:
-    name: Build PennMUSH Server and Hot-Reboot
+    name: Build PennMUSH Server and Restart
     runs-on: [self-hosted, pennmush-dotnet]
 
     steps:
@@ -19,6 +19,28 @@ jobs:
           git fetch origin main
           git checkout main
           git pull origin main
+
+      - name: Stop running PennMUSH Server (to release binary file locks)
+        shell: powershell
+        run: |
+          $targets = Get-CimInstance Win32_Process | Where-Object { 
+            ($_.Name -eq "PennMUSH.Server.exe") -or 
+            ($_.Name -eq "dotnet.exe" -and $_.CommandLine -like "*PennMUSH.Server*")
+          }
+          if ($targets) {
+            Write-Host "Found $($targets.Count) running server process(es). Stopping..."
+            foreach ($t in $targets) {
+              try {
+                Stop-Process -Id $t.ProcessId -Force -ErrorAction SilentlyContinue
+                Write-Host "Stopped process $($t.ProcessId) ($($t.Name))"
+              } catch {
+                Write-Warning "Could not stop process $($t.ProcessId): $_"
+              }
+            }
+            Start-Sleep -Seconds 3
+          } else {
+            Write-Host "No running PennMUSH.Server processes found."
+          }
 
       - name: Build PennMUSH Server
         shell: powershell
@@ -33,13 +55,16 @@ jobs:
             dotnet build $spaceProj -c Debug
           }
 
-      - name: Hot-reboot local PennMUSH server
+      - name: Relaunch PennMUSH Server
         shell: powershell
         run: |
+          Set-Location -Path "C:\Repos\pennmush-dotnet"
+          Write-Host "Starting PennMUSH.Server in background..."
+          Start-Process -FilePath "dotnet" -ArgumentList "run watch --project PennMUSH.Server\" -WorkingDirectory "C:\Repos\pennmush-dotnet"
+          Start-Sleep -Seconds 4
           try {
-            $response = Invoke-RestMethod -Uri "http://localhost:5119/reboot" -Method Post -TimeoutSec 5 -ErrorAction Stop
-            Write-Host "PennMUSH Server hot-reboot triggered successfully."
-            Write-Host ($response | ConvertTo-Json -Compress)
+            $health = Invoke-RestMethod -Uri "http://localhost:5119/health" -TimeoutSec 5 -ErrorAction Stop
+            Write-Host "Server started successfully and responded to health check: $($health.status)"
           } catch {
-            Write-Host "Local PennMUSH server is not currently reachable at http://localhost:5119. Binaries updated for next server startup."
+            Write-Host "Server launched; warming up listener."
           }
