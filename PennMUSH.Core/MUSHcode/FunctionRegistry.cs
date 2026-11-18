@@ -45,6 +45,12 @@ public class FunctionRegistry
     public Func<IEnumerable<string>>? CommandNamesProvider { get; set; }
     public DateTimeOffset ServerStartTime { get; set; } = DateTimeOffset.UtcNow;
     public int RestartCount { get; set; } = 0;
+    public string PollQuestion { get; set; } = string.Empty;
+    public Func<IReadOnlyList<Functions.ConnectionSnapshot>>? ConnectionsProvider { get; set; }
+    public Func<string, string?>? ConfigProvider { get; set; }
+    public Func<Dbref, string, bool>? PasswordVerifier { get; set; }
+    public Func<string, IEnumerable<string>>? TextEntriesProvider { get; set; }
+    public Func<string, string, string?>? TextFileEntryProvider { get; set; }
 
     public FunctionRegistry(ObjectDatabase? database = null)
     {
@@ -194,6 +200,9 @@ public class FunctionRegistry
         Functions.ChannelFunctions.Register(this);
         Functions.MailFunctions.Register(this);
         Functions.Section9And18Functions.Register(this);
+        Functions.ConnectionAndZoneFunctions.Register(this);
+        Functions.TextFormatFunctions.Register(this);
+        Functions.LateSubsystemFunctions.Register(this);
     }
 }
 
