@@ -34,6 +34,8 @@ public class MushConfiguration
     public string CrashDatabase { get; set; } = "data/PANIC.db";
     public string MailDatabase { get; set; } = "data/maildb";
     public string ChatDatabase { get; set; } = "data/chatdb";
+    public string SqlDatabase { get; set; } = string.Empty;
+    public Dbref HttpHandler { get; set; } = Dbref.Nothing;
 
     // Text File Paths (relative to game/ directory)
     public string ConnectFile { get; set; } = "txt/connect.txt";
@@ -129,6 +131,7 @@ public class MushConfiguration
         "ssl_port", "ip_addr", "use_ws", "ws_url", "use_dns", "player_creation", "guests",
         "max_guests", "max_players", "master_room", "player_start", "base_room", "default_home",
         "input_database", "output_database", "crash_database", "mail_database", "chat_database",
+        "sql_database", "http_handler",
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
         "full_file", "guest_file", "colors_file", "money_singular", "money_plural",
         "starting_money", "paycheck", "use_quota", "starting_quota"

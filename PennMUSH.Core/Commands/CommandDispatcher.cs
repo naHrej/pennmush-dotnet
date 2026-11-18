@@ -66,15 +66,22 @@ public class CommandDispatcher
         return Run(context, db, true);
     }
 
-    internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args)
+    internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args, IReadOnlyDictionary<string, string>? registers = null)
     {
-        string bound = BindQueuedCommand(executor, enactor, input, args, db);
+        string bound = BindQueuedCommand(executor, enactor, input, args, registers, db);
         if (string.IsNullOrWhiteSpace(bound))
             return new CommandContext { Executor = executor, Enactor = enactor };
-        return Dispatch(executor, bound, db, enactor, true);
+        var context = Parse(executor, bound, enactor);
+        if (registers != null)
+        {
+            foreach (var register in registers)
+                context.Registers[register.Key] = register.Value;
+        }
+
+        return Run(context, db, true);
     }
 
-    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, ObjectDatabase db)
+    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, IReadOnlyDictionary<string, string>? registers, ObjectDatabase db)
     {
         if (_evaluator == null)
             return input;
@@ -83,6 +90,12 @@ public class CommandDispatcher
             enactor,
             location: db.GetObject(executor)?.Location ?? Dbref.Nothing,
             args: args);
+        if (registers != null)
+        {
+            foreach (var register in registers)
+                ctx.SetRegister(register.Key, register.Value);
+        }
+
         return _evaluator.Evaluate(input, ctx);
     }
 

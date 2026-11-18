@@ -79,6 +79,8 @@ public static class ConfigCatalog
             Db("master_room", "db", c => c.MasterRoom, (c, v) => c.MasterRoom = v),
             Db("player_start", "db", c => c.PlayerStart, (c, v) => c.PlayerStart = v),
             Text("chat_database", "files", c => c.ChatDatabase, (c, v) => c.ChatDatabase = v),
+            Text("sql_database", "files", c => c.SqlDatabase, (c, v) => c.SqlDatabase = v),
+            Db("http_handler", "db", c => c.HttpHandler, (c, v) => c.HttpHandler = v),
             Text("crash_database", "files", c => c.CrashDatabase, (c, v) => c.CrashDatabase = v),
             Text("input_database", "files", c => c.InputDatabase, (c, v) => c.InputDatabase = v),
             Text("mail_database", "files", c => c.MailDatabase, (c, v) => c.MailDatabase = v),

@@ -17,6 +17,7 @@ using PennMUSH.Core.Configuration;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Help;
+using PennMUSH.Core.Http;
 using PennMUSH.Core.Logging;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.MUSHcode.Functions;
@@ -51,6 +52,9 @@ public class MUSHServer
     public PennMUSH.Core.Communication.Mail.MailAliasTable MailAliases { get; }
     public SiteLockTable SiteLocks { get; }
     public WizardLog Logs { get; }
+    public SqlDatabase Sql { get; } = new();
+    public HttpFetch Web { get; } = new();
+    public HttpChannel Http { get; } = new();
     public HelpStore Help { get; } = new();
     public SuggestionVocabulary Suggestions { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
@@ -87,6 +91,21 @@ public class MUSHServer
         MailAliases = new PennMUSH.Core.Communication.Mail.MailAliasTable();
         SiteLocks = siteLocks ?? new SiteLockTable();
         Logs = new WizardLog(Path.Combine(GameDirectory, "log"));
+        Http.Handler = Config.HttpHandler;
+        if (!string.IsNullOrWhiteSpace(Config.SqlDatabase))
+        {
+            string sqlPath = Path.IsPathRooted(Config.SqlDatabase)
+                ? Config.SqlDatabase
+                : Path.Combine(GameDirectory, Config.SqlDatabase);
+            try
+            {
+                Sql.OpenFile(sqlPath);
+            }
+            catch (Exception)
+            {
+                Sql.Close();
+            }
+        }
 
         bool loaded = Storage.Load(Database, Cron);
         if (!loaded || Database.Count == 0)
@@ -265,6 +284,11 @@ public class MUSHServer
         Dispatcher.Register(new LogCommandHandler(Logs), "@log");
         Dispatcher.Register(new LogWipeCommandHandler(Logs), "@logwipe");
         Dispatcher.Register(new RestartCommandHandler(Queue), "@restart");
+        Dispatcher.Register(new SqlCommandHandler(Sql), "@sql");
+        Dispatcher.Register(new MapSqlCommandHandler(Sql, Queue), "@mapsql");
+        Dispatcher.Register(new HttpCommandHandler(Web, Queue), "@http");
+        Dispatcher.Register(new RespondCommandHandler(Http), "@respond");
+        Dispatcher.Register(new SlaveCommandHandler(), "@slave");
         Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
         Dispatcher.Register(new EnableCommandHandler(Config, false), "@disable");
         Dispatcher.Register(new EnableCommandHandler(Config, true), "@enable");
@@ -368,6 +392,10 @@ public class MUSHServer
         Dispatcher.AddRestriction("@newpassword", "wizard", null);
         Dispatcher.AddRestriction("@logwipe", "nogagged", null);
         Dispatcher.AddRestriction("@restart", "nogagged", null);
+        Dispatcher.AddRestriction("@http", "nogagged", null);
+        Dispatcher.AddRestriction("@http", "noguest", null);
+        Dispatcher.AddRestriction("@respond", "nogagged", null);
+        Dispatcher.AddRestriction("@slave", "wizard", null);
         Dispatcher.AddRestriction("@retry", "nogagged", null);
     }
 

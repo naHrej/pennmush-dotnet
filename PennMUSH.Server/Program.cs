@@ -138,4 +138,40 @@ app.Map("/api", async (HttpContext context) =>
     }
 });
 
+app.MapFallback(async (HttpContext context, MUSHServerHost host) =>
+{
+    string body = "";
+    using (var reader = new StreamReader(context.Request.Body))
+        body = await reader.ReadToEndAsync();
+    var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var header in context.Request.Headers)
+        headers[header.Key] = header.Value.ToString();
+    var server = host.Server;
+    var exchange = server.Http.Handle(
+        server.Dispatcher,
+        server.Evaluator,
+        server.Database,
+        context.Request.Method,
+        context.Request.Path + context.Request.QueryString,
+        body,
+        headers);
+    if (!exchange.Handled)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.StatusCode = exchange.Reply.StatusCode;
+    context.Response.ContentType = exchange.Reply.MediaType;
+    foreach (string header in exchange.Reply.Headers)
+    {
+        int split = header.IndexOf(':');
+        if (split > 0)
+            context.Response.Headers[header[..split].Trim()] = header[(split + 1)..].Trim();
+    }
+
+    if (!HttpMethods.IsHead(context.Request.Method))
+        await context.Response.WriteAsync(exchange.Reply.Body.ToString());
+});
+
 app.Run();
