@@ -268,6 +268,7 @@ public class ExpressionEvaluator
     private static bool IsValidFunctionName(string name)
     {
         if (string.IsNullOrEmpty(name)) return false;
+        if (name == "@@") return true;
         foreach (char c in name)
         {
             if (!char.IsLetterOrDigit(c) && c != (char)95)

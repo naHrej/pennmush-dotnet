@@ -164,6 +164,28 @@ public static class DbFunctions
         registry.Register("NLSEARCH", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: false, countOnly: true));
         registry.Register("NSEARCH", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: false, countOnly: true));
         registry.Register("LOCKFILTER", (ctx, args) => LockFilterFunc(registry, ctx, args));
+
+        // Section 7: Type tests and server metadata
+        registry.Register("VALID", (ctx, args) => ValidFunc(registry, ctx, args));
+        registry.Register("ISDBREF", (ctx, args) => IsDbrefFunc(registry, args));
+        registry.Register("ISINT", (ctx, args) => IsIntFunc(args));
+        registry.Register("ISNUM", (ctx, args) => IsNumFunc(args));
+        registry.Register("ISOBJID", (ctx, args) => IsObjIdFunc(registry, args));
+        registry.Register("ISWORD", (ctx, args) => IsWordFunc(args));
+        registry.Register("VERSION", (ctx, args) => "PennMUSH.NET 1.8.8p0");
+        registry.Register("NUMVERSION", (ctx, args) => "1080800");
+        registry.Register("MUDNAME", (ctx, args) => registry.MudName);
+        registry.Register("MUDURL", (ctx, args) => registry.MudUrl);
+        registry.Register("CMDS", (ctx, args) => CmdsFunc(registry));
+
+        // Section 11: Ufun/eval variants
+        registry.Register("ULOCAL", (ctx, args) => ULocalFunc(registry, ctx, args));
+        registry.Register("UDEFAULT", (ctx, args) => UDefaultFunc(registry, ctx, args, localize: false), noParse: true);
+        registry.Register("ULDEFAULT", (ctx, args) => UDefaultFunc(registry, ctx, args, localize: true), noParse: true);
+        registry.Register("ULAMBDA", (ctx, args) => ULambdaFunc(registry, ctx, args), noParse: true);
+        registry.Register("GET_EVAL", (ctx, args) => GetEvalFunc(registry, ctx, args));
+        registry.Register("ZFUN", (ctx, args) => ZFunFunc(registry, ctx, args));
+        registry.Register("PFUN", (ctx, args) => PFunFunc(registry, ctx, args));
     }
 
     private static string Pcreate(FunctionRegistry registry, EvaluationContext ctx, string[] args)
@@ -1880,5 +1902,198 @@ public static class DbFunctions
         }
 
         return string.Join(delim, kept);
+    }
+
+    public static string ValidFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return "0";
+        string cat = args[0].Trim().ToLowerInvariant();
+        string val = args[1];
+
+        return cat switch
+        {
+            "name" => !string.IsNullOrWhiteSpace(val) && !val.Contains('=') && !val.Contains('\r') && !val.Contains('\n') ? "1" : "0",
+            "attrname" => AttributeEntry.IsValidName(val.Trim()) ? "1" : "0",
+            "playername" => !string.IsNullOrWhiteSpace(val) && !val.Any(char.IsWhiteSpace) && !val.Contains('=') ? "1" : "0",
+            "flag" => FlagTable.FindFlag(val.Trim()) != null ? "1" : "0",
+            "power" => FlagTable.FindPower(val.Trim()) != null ? "1" : "0",
+            "function" => !string.IsNullOrWhiteSpace(val) && val.Trim().All(c => char.IsLetterOrDigit(c) || c == '_') ? "1" : "0",
+            "locktype" => !string.IsNullOrWhiteSpace(val) ? "1" : "0",
+            "passwd" => !string.IsNullOrEmpty(val) ? "1" : "0",
+            "qreg" => !string.IsNullOrWhiteSpace(val) && val.Trim().All(c => char.IsLetterOrDigit(c) || c == '_') ? "1" : "0",
+            _ => "0"
+        };
+    }
+
+    public static string IsDbrefFunc(FunctionRegistry reg, string[] args)
+    {
+        if (args.Length == 0 || !Dbref.TryParse(args[0].Trim(), out var d) || !d.IsValid)
+            return "0";
+        if (reg.Database == null) return "1";
+        var obj = reg.Database.GetObject(d);
+        return obj != null && obj.Type != ObjectType.Garbage ? "1" : "0";
+    }
+
+    public static string IsIntFunc(string[] args)
+        => args.Length > 0 && long.TryParse(args[0].Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _) ? "1" : "0";
+
+    public static string IsNumFunc(string[] args)
+        => args.Length > 0
+           && double.TryParse(args[0].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double d)
+           && !double.IsNaN(d) && !double.IsInfinity(d)
+            ? "1" : "0";
+
+    public static string IsObjIdFunc(FunctionRegistry reg, string[] args)
+    {
+        if (args.Length == 0) return "0";
+        string raw = args[0].Trim();
+        int colon = raw.IndexOf(':');
+        if (colon <= 0 || colon >= raw.Length - 1) return "0";
+        if (!Dbref.TryParse(raw.Substring(0, colon), out var d) || !d.IsValid) return "0";
+        if (!long.TryParse(raw.Substring(colon + 1), out long ts)) return "0";
+        if (reg.Database == null) return "1";
+        var obj = reg.Database.GetObject(d);
+        return obj != null && obj.Type != ObjectType.Garbage && obj.CreationTime.ToUnixTimeSeconds() == ts ? "1" : "0";
+    }
+
+    public static string IsWordFunc(string[] args)
+        => args.Length > 0 && args[0].Length > 0 && args[0].All(char.IsLetter) ? "1" : "0";
+
+    public static string CmdsFunc(FunctionRegistry reg)
+    {
+        if (reg.CommandNamesProvider == null) return string.Empty;
+        return string.Join(" ", reg.CommandNamesProvider()
+            .Select(c => c.ToUpperInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
+    }
+
+    public static string ULocalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var saved = ctx.CloneRegisters();
+        try
+        {
+            return Ufun(reg, ctx, args);
+        }
+        finally
+        {
+            ctx.RestoreRegisters(saved);
+        }
+    }
+
+    public static string UDefaultFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool localize)
+    {
+        if (args.Length < 2 || reg.Database == null) return string.Empty;
+
+        string eval(string raw) => reg.Evaluator != null ? reg.Evaluator.Evaluate(raw, ctx) : raw;
+
+        string spec = eval(args[0]);
+        int slash = spec.IndexOf('/');
+        MUSHObject? obj = null;
+        string attrName = spec.Trim();
+        if (slash > 0 && slash < spec.Length - 1)
+        {
+            obj = reg.Database.GetObject(ParseDbref(spec.Substring(0, slash), ctx));
+            attrName = spec.Substring(slash + 1).Trim();
+        }
+        else
+        {
+            obj = reg.Database.GetObject(ctx.Executor);
+        }
+
+        var looker = reg.Database.GetObject(ctx.Executor);
+        var attr = obj != null
+            ? (looker != null
+                ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
+                : obj.GetAttribute(attrName, reg.Database))
+            : null;
+
+        if (attr == null)
+            return eval(args[1]);
+
+        var uargs = new string[Math.Max(1, args.Length - 1)];
+        uargs[0] = $"{obj!.Id}/{attrName}";
+        for (int i = 2; i < args.Length; i++)
+            uargs[i - 1] = eval(args[i]);
+
+        if (!localize)
+            return Ufun(reg, ctx, uargs);
+
+        var saved = ctx.CloneRegisters();
+        try
+        {
+            return Ufun(reg, ctx, uargs);
+        }
+        finally
+        {
+            ctx.RestoreRegisters(saved);
+        }
+    }
+
+    public static string ULambdaFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        string eval(string raw) => reg.Evaluator != null ? reg.Evaluator.Evaluate(raw, ctx) : raw;
+
+        var evalArgs = new string[args.Length - 1];
+        for (int i = 1; i < args.Length; i++)
+            evalArgs[i - 1] = eval(args[i]);
+
+        string rawFirst = args[0].TrimStart();
+        if (rawFirst.StartsWith("#lambda/", StringComparison.OrdinalIgnoreCase))
+        {
+            string body = rawFirst.Substring("#lambda/".Length);
+            if (reg.Evaluator == null) return body;
+            var childCtx = ctx.CreateChildContext(ctx.Executor, ctx.Executor, evalArgs);
+            return reg.Evaluator.Evaluate(body, childCtx);
+        }
+
+        string first = eval(args[0]);
+        if (first.StartsWith("#lambda/", StringComparison.OrdinalIgnoreCase))
+        {
+            string body = first.Substring("#lambda/".Length);
+            if (reg.Evaluator == null) return body;
+            var childCtx = ctx.CreateChildContext(ctx.Executor, ctx.Executor, evalArgs);
+            return reg.Evaluator.Evaluate(body, childCtx);
+        }
+
+        var uargs = new string[args.Length];
+        uargs[0] = first;
+        Array.Copy(evalArgs, 0, uargs, 1, evalArgs.Length);
+        return Ufun(reg, ctx, uargs);
+    }
+
+    public static string GetEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        string raw = Get(reg, ctx, args);
+        if (string.IsNullOrEmpty(raw) || raw.StartsWith("#-") || reg.Evaluator == null)
+            return raw;
+        return reg.Evaluator.Evaluate(raw, ctx);
+    }
+
+    public static string ZFunFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || reg.Database == null) return string.Empty;
+        var execObj = reg.Database.GetObject(ctx.Executor);
+        if (execObj == null || !execObj.Zone.IsValid) return string.Empty;
+
+        var uargs = new string[args.Length];
+        uargs[0] = $"{execObj.Zone}/{args[0].Trim()}";
+        for (int i = 1; i < args.Length; i++)
+            uargs[i] = args[i];
+        return Ufun(reg, ctx, uargs);
+    }
+
+    public static string PFunFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || reg.Database == null) return string.Empty;
+        var execObj = reg.Database.GetObject(ctx.Executor);
+        if (execObj == null || !execObj.Parent.IsValid) return string.Empty;
+
+        var uargs = new string[args.Length];
+        uargs[0] = $"{execObj.Parent}/{args[0].Trim()}";
+        for (int i = 1; i < args.Length; i++)
+            uargs[i] = args[i];
+        return Ufun(reg, ctx, uargs);
     }
 }
