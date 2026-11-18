@@ -19,6 +19,7 @@ public class Channel
     public string Name { get; set; }
     public string Description { get; set; } = string.Empty;
     public Dbref Owner { get; set; }
+    public Dbref Mogrifier { get; set; } = Dbref.Nothing;
     public ChannelFlags Flags { get; set; } = ChannelFlags.Public | ChannelFlags.Player;
     public int BufferCapacity { get; set; } = 50;
     public int MessageCount { get; private set; }
@@ -59,6 +60,11 @@ public class Channel
     public bool HasLock(string kind)
     {
         lock (_lock) return _locks.ContainsKey(kind);
+    }
+
+    public string GetLockText(string kind)
+    {
+        lock (_lock) return _locks.TryGetValue(kind, out var entry) ? entry.Text : string.Empty;
     }
 
     public void SetLock(string kind, string text, LockNode key)

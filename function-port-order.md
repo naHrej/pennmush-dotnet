@@ -9,7 +9,7 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 454 names (192 prior baseline + 109 added in Sections 1–4 + 68 added in Section 5 + 18 added in Section 6 + 67 added across Sections 7, 8, 11, 15, and 16 including `@@`). 417 of the 528 original `flist` identifier names are now registered, and 111 original identifier names remain in Sections 9, 10, 12–14, and 17–19.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 505 names (454 prior + 51 newly registered across Sections 9, 13, 17, and 18; `pcreate` was already registered). 469 of the 528 original `flist` identifier names are now registered, and 59 original identifier names remain across Sections 10, 12, 14, and 19.
 
 A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
@@ -75,9 +75,9 @@ Implemented in `TimeFunctions.cs` (`convutcsecs`, `convutctime`, `csecs`, `ctime
 
 `convutcsecs`, `convutctime`, `csecs`, `ctime`, `etime`, `msecs`, `secscalc`, `starttime`, `stringsecs`, `timecalc`, `timestring`, `uptime`, `utctime`, `restarttime`, `restarts`
 
-## 9. Functions that perform a command the server already has
+## 9. [Done] Functions that perform a command the server already has
 
-The function evaluates its arguments and calls the matching command. `set()` calls `@set`. `wipe()` calls `@wipe`. `attrib_set()` calls the same write as `&`, `@_`, and `@` plus an attribute name. Those commands are in the server. This function is still unregistered. `speak` formats dialogue and may call a transform attribute through the existing `ufun`. `zemit` and the `ns` names call the zone broadcast and the nospoof prefix, which are already registered.
+Implemented in `Section9And18Functions.cs` (`emit`, `pemit`, `remit`, `oemit`, `lemit`, `prompt`, `message`, `set`, `wipe`, `attrib_set`, `lset`, `create`, `open`, `link`, `tel`, `dig`, `clone`, `speak`; `pcreate` in `DbFunctions.cs`).
 
 `emit`, `pemit`, `remit`, `oemit`, `lemit`, `prompt`, `message`, `set`, `wipe`, `attrib_set`, `lset`, `create`, `open`, `link`, `tel`, `dig`, `clone`, `pcreate`, `speak`
 
@@ -99,9 +99,9 @@ Login already knows the connection list, which is what the `who` command will pr
 
 `conn`, `idle`, `lwho`, `lwhoid`, `nwho`, `xwho`, `xwhoid`, `ports`, `lports`, `host`, `ipaddr`, `terminfo`, `mwho`, `mwhoid`, `nmwho`, `xmwho`, `xmwhoid`, `zmwho`, `zwho`
 
-## 13. Channels
+## 13. [Done] Channels
 
-`cemit` already sends to a channel. `ChannelRegistry` already joins, titles, and lists members in memory. These functions read that registry. They do not need a second channel system. Channel membership is still not saved.
+Implemented in `ChannelFunctions.cs` backed by `ChannelRegistry` (`cbuffer`, `cbufferadd`, `cdesc`, `cflags`, `channels`, `clflags`, `clock`, `cmogrifier`, `cmsgs`, `cowner`, `crecall`, `cstatus`, `ctitle`, `cusers`, `cwho`).
 
 `cbuffer`, `cbufferadd`, `cdesc`, `cflags`, `channels`, `clflags`, `clock`, `cmogrifier`, `cmsgs`, `cowner`, `crecall`, `cstatus`, `ctitle`, `cusers`, `cwho`
 
@@ -123,15 +123,15 @@ Implemented in `CryptoFunctions.cs` (`encode64`, `decode64`, `urlencode`, `urlde
 
 `encode64`, `decode64`, `urlencode`, `urldecode`, `formdecode`, `digest`, `encrypt`, `decrypt`, `hmac`, `sha0`, `ssl`, `sqlescape`
 
-## 17. Mail
+## 17. [Done] Mail
 
-Mail exists in memory and is not saved. The `@malias` command is the alias table. These functions read and send that mail. Do them with the mail-alias command, not before it.
+Implemented in `MailFunctions.cs` backed by `MailStore` and `MailAliasTable` (`mail`, `maillist`, `mailfrom`, `mailsend`, `mailstats`, `maildstats`, `mailfstats`, `mailstatus`, `mailsubject`, `mailtime`, `malias`, `folderstats`, `sent`, `recv`).
 
 `mail`, `maillist`, `mailfrom`, `mailsend`, `mailstats`, `maildstats`, `mailfstats`, `mailstatus`, `mailsubject`, `mailtime`, `malias`, `folderstats`, `sent`, `recv`
 
-## 18. The queue, once `@ps` can see it
+## 18. [Done] The queue, once `@ps` can see it
 
-`@ps` is the command that lists `ActionQueue` entries. These functions are that list as softcode. `scan` reports the `$` listeners `@scan` will report.
+Implemented in `Section9And18Functions.cs` backed by `ActionQueue` and database attribute matching (`pidinfo`, `getpids`, `lpids`, `scan`).
 
 `pidinfo`, `getpids`, `lpids`, `scan`
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-Sections 1–8, 11, 15, and 16 implemented 251 canonical `flist` names (plus `@@` and 10 aliases). The remaining sections (9, 10, 12–14, 17–19) name 111 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names.
+Sections 1–9, 11, 13, 15–18 implemented 303 canonical `flist` names (plus `@@` and 10 aliases). The remaining sections (10, 12, 14, 19) name 59 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names.
 
 ## Player-facing wording, after the sections above
 
