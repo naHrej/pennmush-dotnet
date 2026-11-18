@@ -47,6 +47,8 @@ public static class ListFunctions
         registry.Register("PARSE", (ctx, args) => Iter(registry, ctx, args), noParse: true);
         registry.Register("MAP", (ctx, args) => Map(registry, ctx, args));
         registry.Register("FILTER", (ctx, args) => Filter(registry, ctx, args));
+        registry.Register("FILTERBOOL", (ctx, args) => FilterBool(registry, ctx, args));
+        registry.Register("FOREACH", (ctx, args) => ForEach(registry, ctx, args));
         registry.Register("FOLD", (ctx, args) => Fold(registry, ctx, args));
         registry.Register("ITEMIZE", (ctx, args) => Itemize(args));
         registry.Register("ELIST", (ctx, args) => EList(args));
@@ -570,6 +572,83 @@ public static class ListFunctions
         }
 
         return string.Join(outDelim, results);
+    }
+
+    public static string FilterBool(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return string.Empty;
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        if (args.Length > 3 && args[3].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string attrRef = args[0];
+        string inDelim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        string outDelim = args.Length > 3 && args[3].Length == 1 ? args[3] : inDelim;
+
+        var list = SplitList(args[1], inDelim);
+        var results = new List<string>();
+        int extraCount = Math.Max(0, args.Length - 4);
+
+        foreach (var item in list)
+        {
+            var uargs = new string[2 + extraCount];
+            uargs[0] = attrRef;
+            uargs[1] = item;
+            for (int i = 0; i < extraCount; i++)
+                uargs[2 + i] = args[4 + i];
+
+            string res = DbFunctions.Ufun(reg, ctx, uargs);
+            if (LogicFunctions.IsTruthy(res))
+                results.Add(item);
+        }
+
+        return string.Join(outDelim, results);
+    }
+
+    public static string ForEach(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || string.IsNullOrEmpty(args[1])) return string.Empty;
+
+        string attrRef = args[0];
+        string text = args[1];
+        string startMarker = args.Length > 2 ? args[2] : string.Empty;
+        string endMarker = args.Length > 3 ? args[3] : string.Empty;
+
+        var sb = new System.Text.StringBuilder();
+        int idx = 0;
+
+        if (!string.IsNullOrEmpty(startMarker))
+        {
+            int startPos = text.IndexOf(startMarker, StringComparison.Ordinal);
+            if (startPos < 0) return text;
+            sb.Append(text, 0, startPos);
+            idx = startPos + startMarker.Length;
+        }
+
+        int endPos = text.Length;
+        int afterEndIdx = text.Length;
+        if (!string.IsNullOrEmpty(endMarker))
+        {
+            int foundEnd = text.IndexOf(endMarker, idx, StringComparison.Ordinal);
+            if (foundEnd >= 0)
+            {
+                endPos = foundEnd;
+                afterEndIdx = foundEnd + endMarker.Length;
+            }
+        }
+
+        int charPos = 0;
+        for (int i = idx; i < endPos; i++)
+        {
+            sb.Append(DbFunctions.Ufun(reg, ctx, [attrRef, text[i].ToString(), charPos.ToString()]));
+            charPos++;
+        }
+
+        if (afterEndIdx < text.Length)
+            sb.Append(text, afterEndIdx, text.Length - afterEndIdx);
+
+        return sb.ToString();
     }
 
     public static string Fold(FunctionRegistry reg, EvaluationContext ctx, string[] args)

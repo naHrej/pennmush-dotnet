@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.Locks;
@@ -143,6 +144,26 @@ public static class DbFunctions
         registry.Register("OBJMEM", (ctx, args) => ObjMemFunc(registry, ctx, args));
         registry.Register("PLAYERMEM", (ctx, args) => PlayerMemFunc(registry, ctx, args));
         registry.Register("LSTATS", (ctx, args) => LStatsFunc(registry, ctx, args));
+
+        // Section 6: Attribute search and database search
+        registry.Register("GREP", (ctx, args) => GrepFunc(registry, ctx, args, includeParents: false, ignoreCase: false, wildcard: false));
+        registry.Register("PGREP", (ctx, args) => GrepFunc(registry, ctx, args, includeParents: true, ignoreCase: false, wildcard: false));
+        registry.Register("GREPI", (ctx, args) => GrepFunc(registry, ctx, args, includeParents: false, ignoreCase: true, wildcard: false));
+        registry.Register("WILDGREP", (ctx, args) => GrepFunc(registry, ctx, args, includeParents: false, ignoreCase: false, wildcard: true));
+        registry.Register("WILDGREPI", (ctx, args) => GrepFunc(registry, ctx, args, includeParents: false, ignoreCase: true, wildcard: true));
+
+        registry.Register("REGLATTR", (ctx, args) => RegLattrFunc(registry, ctx, args, includeParents: false));
+        registry.Register("REGLATTRP", (ctx, args) => RegLattrFunc(registry, ctx, args, includeParents: true));
+        registry.Register("REGNATTR", (ctx, args) => RegNattrFunc(registry, ctx, args, includeParents: false));
+        registry.Register("REGNATTRP", (ctx, args) => RegNattrFunc(registry, ctx, args, includeParents: true));
+        registry.Register("REGXATTR", (ctx, args) => RegXattrFunc(registry, ctx, args, includeParents: false));
+        registry.Register("REGXATTRP", (ctx, args) => RegXattrFunc(registry, ctx, args, includeParents: true));
+
+        registry.Register("LSEARCH", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: false, countOnly: false));
+        registry.Register("LSEARCHR", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: true, countOnly: false));
+        registry.Register("NLSEARCH", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: false, countOnly: true));
+        registry.Register("NSEARCH", (ctx, args) => LSearchFunc(registry, ctx, args, reverse: false, countOnly: true));
+        registry.Register("LOCKFILTER", (ctx, args) => LockFilterFunc(registry, ctx, args));
     }
 
     private static string Pcreate(FunctionRegistry registry, EvaluationContext ctx, string[] args)
@@ -1643,5 +1664,221 @@ public static class DbFunctions
         return all
             ? $"{total} {rooms} {exits} {things} {players} {garbage}"
             : $"{total} {rooms} {exits} {things} {players}";
+    }
+
+    public static string GrepFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents, bool ignoreCase, bool wildcard)
+    {
+        if (args.Length < 3 || reg.Database == null) return MushError.NoMatch.Text();
+        var obj = ResolveObj(reg, ctx, args[0]);
+        if (obj == null) return MushError.NoMatch.Text();
+
+        string attrPattern = args[1].Trim();
+        if (string.IsNullOrEmpty(attrPattern)) return MushError.NoSuchAttribute.Text();
+        string needle = args[2];
+        if (string.IsNullOrEmpty(needle)) return string.Empty;
+
+        var looker = reg.Database.GetObject(ctx.Executor);
+        Regex? wildRegex = null;
+        if (wildcard)
+        {
+            string rePat = "^" + Regex.Escape(needle).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+            wildRegex = new Regex(rePat, (ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None) | RegexOptions.Singleline, RegexFunctions.DefaultRegexTimeout);
+        }
+
+        var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var matches = AttributePermissions.EnumerateAttributes(obj, reg.Database, includeParents)
+            .Where(pair => (looker == null || AttributePermissions.CanRead(looker, obj, pair.Entry, pair.Source))
+                && PatternMatcher.Match(attrPattern, pair.Entry.Name, out _)
+                && (wildRegex != null ? wildRegex.IsMatch(pair.Entry.Value) : pair.Entry.Value.Contains(needle, comparison)))
+            .Select(pair => pair.Entry.Name)
+            .OrderBy(n => n, StringComparer.Ordinal);
+
+        return string.Join(" ", matches);
+    }
+
+    private static List<string>? GetRegexMatchingReadableAttrNames(FunctionRegistry reg, EvaluationContext ctx, string objAndPattern, bool includeParents, out string? error)
+    {
+        error = null;
+        if (reg.Database == null) return new List<string>();
+
+        int slash = objAndPattern.IndexOf('/');
+        string objSpec = slash >= 0 ? objAndPattern.Substring(0, slash).Trim() : objAndPattern.Trim();
+        string pattern = slash >= 0 ? objAndPattern.Substring(slash + 1) : ".*";
+        if (string.IsNullOrEmpty(pattern)) pattern = ".*";
+
+        var obj = ResolveObj(reg, ctx, objSpec);
+        if (obj == null) return new List<string>();
+
+        Regex regex;
+        try
+        {
+            regex = new Regex(pattern, RegexOptions.IgnoreCase, RegexFunctions.DefaultRegexTimeout);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            error = MushError.RegexTimeout.Text();
+            return null;
+        }
+        catch
+        {
+            return new List<string>();
+        }
+
+        var looker = reg.Database.GetObject(ctx.Executor);
+        return AttributePermissions.EnumerateAttributes(obj, reg.Database, includeParents)
+            .Where(pair => (looker == null || AttributePermissions.CanRead(looker, obj, pair.Entry, pair.Source))
+                && regex.IsMatch(pair.Entry.Name))
+            .Select(pair => pair.Entry.Name)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public static string RegLattrFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents)
+    {
+        if (args.Length == 0 || reg.Database == null) return string.Empty;
+        if (args.Length > 1 && args[1].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string osep = args.Length > 1 && args[1].Length == 1 ? args[1] : " ";
+
+        var names = GetRegexMatchingReadableAttrNames(reg, ctx, args[0], includeParents, out var error);
+        if (names == null) return error ?? string.Empty;
+        return string.Join(osep, names);
+    }
+
+    public static string RegNattrFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents)
+    {
+        if (args.Length == 0 || reg.Database == null) return "0";
+        var names = GetRegexMatchingReadableAttrNames(reg, ctx, args[0], includeParents, out var error);
+        if (names == null) return error ?? "0";
+        return names.Count.ToString();
+    }
+
+    public static string RegXattrFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents)
+    {
+        if (args.Length < 3 || reg.Database == null) return string.Empty;
+        if (!int.TryParse(args[1].Trim(), out int start) || !int.TryParse(args[2].Trim(), out int count))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (start < 1 || count < 1)
+            return MushError.OutOfRange.Text();
+        if (args.Length > 3 && args[3].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string osep = args.Length > 3 && args[3].Length == 1 ? args[3] : " ";
+
+        var names = GetRegexMatchingReadableAttrNames(reg, ctx, args[0], includeParents, out var error);
+        if (names == null) return error ?? string.Empty;
+        return string.Join(osep, names.Skip(start - 1).Take(count));
+    }
+
+    public static string LSearchFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool reverse, bool countOnly)
+    {
+        if (args.Length == 0 || reg.Database == null) return countOnly ? "0" : string.Empty;
+
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (actor == null) return countOnly ? "0" : MushError.Nothing.Text();
+
+        string ownerToken = args[0].Trim();
+        bool allOwners = string.IsNullOrEmpty(ownerToken) || ownerToken.Equals("all", StringComparison.OrdinalIgnoreCase);
+        MUSHObject? owner = null;
+        if (!allOwners)
+        {
+            owner = ownerToken.Equals("me", StringComparison.OrdinalIgnoreCase)
+                ? actor
+                : ResolveObj(reg, ctx, ownerToken);
+            if (owner == null || owner.Type != ObjectType.Player)
+                return countOnly ? "0" : MushError.Nothing.Text();
+        }
+
+        var stdCriteria = new List<(string Key, string Value)>();
+        var evalCriteria = new List<(ObjectType? TypeFilter, string Expr, bool IsLock)>();
+        int? minDb = null;
+        int? maxDb = null;
+        int? start = null;
+        int? count = null;
+
+        for (int i = 1; i + 1 < args.Length; i += 2)
+        {
+            string cls = args[i].Trim().ToLowerInvariant();
+            string val = args[i + 1];
+            if (cls == "none") continue;
+
+            if (cls == "mindb" && int.TryParse(val.Trim(), out int mn)) { minDb = mn; continue; }
+            if (cls == "maxdb" && int.TryParse(val.Trim(), out int mx)) { maxDb = mx; continue; }
+            if (cls == "start" && int.TryParse(val.Trim(), out int st)) { start = st; continue; }
+            if (cls == "count" && int.TryParse(val.Trim(), out int ct)) { count = ct; continue; }
+
+            if (cls == "eval") { evalCriteria.Add((null, val, false)); continue; }
+            if (cls == "eplayer") { evalCriteria.Add((ObjectType.Player, val, false)); continue; }
+            if (cls == "eroom") { evalCriteria.Add((ObjectType.Room, val, false)); continue; }
+            if (cls == "eexit") { evalCriteria.Add((ObjectType.Exit, val, false)); continue; }
+            if (cls == "ething" || cls == "eobject") { evalCriteria.Add((ObjectType.Thing, val, false)); continue; }
+            if (cls == "elock") { evalCriteria.Add((null, val, true)); continue; }
+
+            stdCriteria.Add((cls, val));
+        }
+
+        bool seeAll = AttributePermissions.CanSeeAll(actor) || actor.HasPower("Search");
+        bool playersArePublic = stdCriteria.Any(c =>
+            (c.Key == "type" && c.Value.Equals("player", StringComparison.OrdinalIgnoreCase)) || c.Key == "players");
+
+        var hits = new List<MUSHObject>();
+        foreach (var obj in reg.Database.GetAllObjects().OrderBy(o => o.Id.Value))
+        {
+            if (obj.Type == ObjectType.Garbage) continue;
+            if (minDb.HasValue && obj.Id.Value < minDb.Value) continue;
+            if (maxDb.HasValue && obj.Id.Value > maxDb.Value) continue;
+            if (owner != null && obj.Owner != owner.Id) continue;
+            if (!seeAll && !(playersArePublic && obj.Type == ObjectType.Player) && !ListenerSearch.CanExamine(actor, obj))
+                continue;
+            if (!SearchCommandHandler.Matches(obj, stdCriteria))
+                continue;
+
+            bool evalOk = true;
+            foreach (var (typeFilter, expr, isLock) in evalCriteria)
+            {
+                if (typeFilter.HasValue && obj.Type != typeFilter.Value) { evalOk = false; break; }
+                if (isLock)
+                {
+                    var key = LockParser.Parse(expr);
+                    if (!key.Evaluate(obj.Id, ctx.Executor, reg.Database)) { evalOk = false; break; }
+                }
+                else if (reg.Evaluator != null)
+                {
+                    string body = expr.Replace("##", obj.Id.ToString());
+                    if (!MushBoolean.IsTrue(reg.Evaluator.Evaluate(body, ctx))) { evalOk = false; break; }
+                }
+            }
+            if (evalOk) hits.Add(obj);
+        }
+
+        if (reverse) hits.Reverse();
+        if (start.HasValue || count.HasValue)
+        {
+            int s = Math.Max(1, start ?? 1);
+            int c = Math.Max(0, count ?? hits.Count);
+            hits = hits.Skip(s - 1).Take(c).ToList();
+        }
+
+        if (countOnly) return hits.Count.ToString();
+        return string.Join(" ", hits.Select(o => o.Id.ToString()));
+    }
+
+    public static string LockFilterFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || reg.Database == null) return string.Empty;
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+
+        var key = LockParser.Parse(args[0]);
+        var tokens = ListFunctions.SplitList(args[1], delim);
+        var kept = new List<string>();
+        foreach (string token in tokens)
+        {
+            var obj = reg.Database.GetObject(ParseDbref(token, ctx));
+            if (obj != null && key.Evaluate(obj.Id, ctx.Executor, reg.Database))
+                kept.Add(token);
+        }
+
+        return string.Join(delim, kept);
     }
 }
