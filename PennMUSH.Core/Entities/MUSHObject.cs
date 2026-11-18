@@ -110,12 +110,19 @@ public class MUSHObject
     }
 
     public AttributeEntry? GetAttribute(string name, ObjectDatabase? db = null)
+        => GetAttributeWithSource(name, db, out _);
+
+    public AttributeEntry? GetAttributeWithSource(string name, ObjectDatabase? db, out MUSHObject? sourceObj)
     {
+        sourceObj = null;
         if (string.IsNullOrWhiteSpace(name))
             return null;
 
         if (_attributes.TryGetValue(name, out var entry))
+        {
+            sourceObj = this;
             return entry;
+        }
 
         if (db == null || _parents.Count == 0)
             return null;
@@ -133,8 +140,11 @@ public class MUSHObject
             if (pObj == null) continue;
 
             var inherited = pObj.GetAttribute(name);
-            if (inherited != null)
+            if (inherited != null && !inherited.Flags.HasFlag(AttributeFlags.Private))
+            {
+                sourceObj = pObj;
                 return inherited;
+            }
 
             foreach (var ancestorRef in pObj.Parents)
             {
