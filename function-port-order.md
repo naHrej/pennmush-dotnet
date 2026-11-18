@@ -11,7 +11,7 @@ Aspace is the exception. The space engine is being redesigned in pennmush-space.
 
 `PennMUSH.Core/MUSHcode/FunctionRegistry.cs` registers 190 names. 164 of those are original names. The other 26 are not original table entries. `insert`, `replace`, `reverse`, and `u` are original aliases registered here before the canonical name (`linsert`, `lreplace`, `flip`, and `ufun`). The rest are this server's own functions: `async`, `attrcnt`, `bgtask`, `caudio`, `cedit`, `columns`, `cron_info`, `cron_list`, `cstyle`, `cwindow`, `exits`, `ifeq`, `inzone`, `lzone`, `mod`, `ordnumber`, `parallel_map`, `regsub`, `rpos`, `secs2time`, `strip`, and `tzoffset`. Those 26 stay. They are not gaps.
 
-362 original names still have no registration. A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The next command block is `@sql`.
+362 original names still have no registration. A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
 ## What already runs
 

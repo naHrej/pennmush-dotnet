@@ -102,6 +102,8 @@ public static class FlagTable
         RegisterPower(new FlagDefinition { Name = "Tport_Anything", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
         RegisterPower(new FlagDefinition { Name = "Tport_Anywhere", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
         RegisterPower(new FlagDefinition { Name = "Can_spoof", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
+        RegisterPower(new FlagDefinition { Name = "Can_HTTP", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
+        RegisterPower(new FlagDefinition { Name = "Sql_Ok", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
 
         // Power aliases
         PowerAliases["@wall"] = "Announce";

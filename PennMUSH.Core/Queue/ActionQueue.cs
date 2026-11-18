@@ -126,7 +126,7 @@ public class ActionQueue
 
         var results = new List<CommandContext>();
         foreach (var entry in ready)
-            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments));
+            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments, entry.Registers));
 
         return results;
     }
@@ -154,7 +154,7 @@ public class ActionQueue
 
         var results = new List<CommandContext>();
         foreach (var entry in chosen)
-            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments));
+            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments, entry.Registers));
         return results;
     }
 

@@ -192,6 +192,14 @@ public static class MushConfigParser
                 config.ChatDatabase = value;
                 break;
 
+            case "sql_database":
+                config.SqlDatabase = value;
+                break;
+
+            case "http_handler":
+                config.HttpHandler = ParseDbref(value, Dbref.Nothing);
+                break;
+
             case "connect_file":
                 config.ConnectFile = value;
                 break;
