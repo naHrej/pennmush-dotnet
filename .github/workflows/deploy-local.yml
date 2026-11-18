@@ -1,0 +1,45 @@
+name: Auto-Build and Deploy Server Locally
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build PennMUSH Server and Hot-Reboot
+    runs-on: [self-hosted, pennmush-dotnet]
+
+    steps:
+      - name: Update local repository
+        shell: powershell
+        run: |
+          Set-Location -Path "C:\Repos\pennmush-dotnet"
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+      - name: Build PennMUSH Server
+        shell: powershell
+        run: |
+          dotnet build "C:\Repos\pennmush-dotnet\PennMUSH.Server\PennMUSH.Server.csproj" -c Debug
+
+      - name: Build SpaceEngine Plugin (if present)
+        shell: powershell
+        run: |
+          $spaceProj = "C:\Repos\pennmush-space\PennMUSH.SpaceEngine\PennMUSH.SpaceEngine.csproj"
+          if (Test-Path $spaceProj) {
+            dotnet build $spaceProj -c Debug
+          }
+
+      - name: Hot-reboot local PennMUSH server
+        shell: powershell
+        run: |
+          try {
+            $response = Invoke-RestMethod -Uri "http://localhost:5119/reboot" -Method Post -TimeoutSec 5 -ErrorAction Stop
+            Write-Host "PennMUSH Server hot-reboot triggered successfully."
+            Write-Host ($response | ConvertTo-Json -Compress)
+          } catch {
+            Write-Host "Local PennMUSH server is not currently reachable at http://localhost:5119. Binaries updated for next server startup."
+          }
