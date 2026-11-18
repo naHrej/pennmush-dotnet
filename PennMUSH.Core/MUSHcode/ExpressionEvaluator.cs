@@ -103,6 +103,44 @@ public class ExpressionEvaluator
                 }
                 functionCheck = false;
             }
+            else if (c == '$' && context.RegexCaptures != null)
+            {
+                if (i + 1 >= expression.Length)
+                {
+                    sb.Append('$');
+                    i += 1;
+                }
+                else if (expression[i + 1] == '$')
+                {
+                    sb.Append('$');
+                    i += 2;
+                }
+                else if (expression[i + 1] == '<')
+                {
+                    int endTag = expression.IndexOf('>', i + 2);
+                    if (endTag != -1)
+                    {
+                        string capName = expression.Substring(i + 2, endTag - (i + 2));
+                        sb.Append(context.GetRegexCapture(capName));
+                        i = endTag + 1;
+                    }
+                    else
+                    {
+                        sb.Append('$');
+                        i += 1;
+                    }
+                }
+                else if (char.IsDigit(expression[i + 1]))
+                {
+                    sb.Append(context.GetRegexCapture(expression[i + 1].ToString()));
+                    i += 2;
+                }
+                else
+                {
+                    sb.Append('$');
+                    i += 1;
+                }
+            }
             else if (c == (char)37) // '%'
             {
                 if (i + 1 >= expression.Length)

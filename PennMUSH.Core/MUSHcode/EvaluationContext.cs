@@ -11,8 +11,9 @@ namespace PennMUSH.Core.MUSHcode
         public Dbref Enactor { get; init; }
         public Dbref Caller { get; init; }
         public Dbref Location { get; init; }
-        public string[] Arguments { get; init; }
+        public string[] Arguments { get; set; }
         public Dictionary<string, string> Registers { get; private set; }
+        public Dictionary<string, string>? RegexCaptures { get; set; }
         public HashSet<string> CallTrail { get; private set; }
         public List<(string Text, int Number)> IterStack { get; private set; } = new();
         public List<string> SwitchStack { get; private set; } = new();
@@ -42,6 +43,22 @@ namespace PennMUSH.Core.MUSHcode
         public void SetRegister(string name, string value) => Registers[name] = value;
 
         public string GetRegister(string name) => Registers.TryGetValue(name, out var val) ? val : string.Empty;
+
+        public string GetRegexCapture(string name)
+            => RegexCaptures != null && RegexCaptures.TryGetValue(name, out var val) ? val : string.Empty;
+
+        public static Dictionary<string, string> BuildRegexCaptures(System.Text.RegularExpressions.Match match)
+        {
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal);
+            for (int i = 0; i < match.Groups.Count; i++)
+                dict[i.ToString()] = match.Groups[i].Value;
+            foreach (System.Text.RegularExpressions.Group g in match.Groups)
+            {
+                if (!string.IsNullOrEmpty(g.Name))
+                    dict[g.Name] = g.Value;
+            }
+            return dict;
+        }
 
         public Dictionary<string, string> CloneRegisters()
             => new(Registers, StringComparer.OrdinalIgnoreCase);
@@ -102,6 +119,7 @@ namespace PennMUSH.Core.MUSHcode
                 CancellationToken = this.CancellationToken,
                 ExecutionDeadline = this.ExecutionDeadline,
                 Registers = new Dictionary<string, string>(Registers, StringComparer.OrdinalIgnoreCase),
+                RegexCaptures = RegexCaptures != null ? new Dictionary<string, string>(RegexCaptures, StringComparer.Ordinal) : null,
                 CallTrail = new HashSet<string>(CallTrail, StringComparer.OrdinalIgnoreCase),
                 IterStack = new List<(string Text, int Number)>(IterStack),
                 SwitchStack = new List<string>(SwitchStack)

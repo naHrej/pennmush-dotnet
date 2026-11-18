@@ -135,18 +135,26 @@ public class FunctionRegistry
         if (_softAliases.TryGetValue(functionName, out var aliased))
             canonical = aliased;
 
-        if (_builtinGates.TryGetValue(canonical, out var gate))
+        return DispatchBuiltin(canonical, context, args);
+    }
+
+    public string DispatchBuiltin(string functionName, EvaluationContext context, string[] args)
+    {
+        if (_builtinGates.TryGetValue(functionName, out var gate))
         {
             string denied = gate.Deny(Database, context);
             if (denied.Length > 0)
                 return denied;
         }
 
-        if (_functions.TryGetValue(canonical, out var func))
+        if (_functions.TryGetValue(functionName, out var func))
             return func(context, args);
 
         return MushError.FunctionNotFound.Text("function", functionName.ToUpperInvariant());
     }
+
+    public bool IsBuiltinNoParse(string name)
+        => _noParseFunctions.Contains(name);
 
     public string InvokeSoft(SoftFunction function, EvaluationContext context, string[] args)
     {
