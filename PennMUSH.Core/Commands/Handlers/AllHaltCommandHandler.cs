@@ -21,12 +21,12 @@ public class AllHaltCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         int count = _queue.AllHalt();
-        context.Notify($"Halted all {count} process(es) in the queue.");
+        context.Notify(Feedback.HaltedAllProcessEsInTheQueue, ("value", $"{count}"));
         return true;
     }
 }

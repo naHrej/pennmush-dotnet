@@ -27,11 +27,11 @@ public class HaltCommandHandler : ICommandHandler
                 var execObj = db.GetObject(context.Executor);
                 if (execObj == null || !execObj.IsWizard)
                 {
-                    context.Notify("Permission denied.");
+                    context.Notify(Feedback.PermissionDenied);
                     return false;
                 }
                 int allHalted = _queue.AllHalt();
-                context.Notify($"Halted all {allHalted} queue entries.");
+                context.Notify(Feedback.HaltedAllQueueEntries, ("value", $"{allHalted}"));
                 return true;
             }
 
@@ -45,18 +45,18 @@ public class HaltCommandHandler : ICommandHandler
         var executorObj = db.GetObject(context.Executor);
         if (targetObj == null || executorObj == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         if (!executorObj.IsWizard && executorObj.Id != targetObj.Id && executorObj.Id != targetObj.Owner)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         int count = _queue.Halt(target);
-        context.Notify($"Halted {count} process(es).");
+        context.Notify(Feedback.HaltedProcessEs, ("value", $"{count}"));
         return true;
     }
 }

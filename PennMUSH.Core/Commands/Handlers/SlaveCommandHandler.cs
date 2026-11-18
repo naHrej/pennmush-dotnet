@@ -11,17 +11,17 @@ public class SlaveCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (context.Switches.Contains("restart"))
         {
-            context.Notify("No such service.");
+            context.Notify(Feedback.NoSuchService);
             return false;
         }
 
-        context.Notify("I'm sorry, Dave, I'm afraid I can't do that.");
+        context.Notify(Feedback.ImSorryDaveImAfraidICantDoThat);
         return true;
     }
 }

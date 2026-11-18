@@ -26,7 +26,7 @@ public class LogCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -34,15 +34,15 @@ public class LogCommandHandler : ICommandHandler
         if (LogSwitches.Has(context, "recall"))
         {
             int.TryParse(LogSwitches.Rest(context), out int lines);
-            context.Notify("Begin log recall.");
+            context.Notify(Feedback.BeginLogRecall);
             foreach (string line in _log.Recall(kind, lines))
                 context.Notify(line);
-            context.Notify("End log recall.");
+            context.Notify(Feedback.EndLogRecall);
             return true;
         }
 
         _log.Append(kind, $"LOG: {actor.Name}(#{actor.Id.Value}{LogSwitches.FlagText(actor)}): {LogSwitches.Rest(context)}");
-        context.Notify("Logged.");
+        context.Notify(Feedback.Logged);
         return true;
     }
 }
@@ -63,7 +63,7 @@ public class LogWipeCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsGod)
         {
-            context.Notify("Only God can do that.");
+            context.Notify(Feedback.OnlyGodCanDoThat);
             return false;
         }
 
@@ -73,7 +73,7 @@ public class LogWipeCommandHandler : ICommandHandler
         if (pass != WizardLog.WipePassword)
         {
             _log.Append(WizardLogKind.Wiz, $"WIZ: {who}: Invalid attempt to wipe the {WizardLog.NameOf(kind)} log, password '{pass}'");
-            context.Notify("Wrong password.");
+            context.Notify(Feedback.WrongPassword);
             return false;
         }
 
@@ -85,7 +85,7 @@ public class LogWipeCommandHandler : ICommandHandler
             _log.Wipe(kind);
 
         _log.Append(WizardLogKind.Err, $"RPT: {WizardLog.NameOf(kind)} log wiped.");
-        context.Notify("Log wiped.");
+        context.Notify(Feedback.LogWiped);
         return true;
     }
 }

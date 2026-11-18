@@ -19,10 +19,10 @@ public class WcheckCommandHandler : ICommandHandler
         {
             if (!actor.IsWizard)
             {
-                context.Notify("You'd better check your wizbit first.");
+                context.Notify(Feedback.YoudBetterCheckYourWizbitFirst);
                 return false;
             }
-            context.Notify("Running database topology warning checks");
+            context.Notify(Feedback.RunningDatabaseTopologyWarningChecks);
             foreach (var obj in db.GetAllObjects())
             {
                 if (obj.Type == ObjectType.Garbage)
@@ -32,7 +32,7 @@ public class WcheckCommandHandler : ICommandHandler
                     continue;
                 Check(context, db, owner, obj);
             }
-            context.Notify("Warning checks complete.");
+            context.Notify(Feedback.WarningChecksComplete);
             return true;
         }
 
@@ -45,7 +45,7 @@ public class WcheckCommandHandler : ICommandHandler
                 if (obj.Type != ObjectType.Garbage && obj.Owner == actor.Id)
                     Check(context, db, actor, obj);
             }
-            context.Notify("@wcheck complete.");
+            context.Notify(Feedback.WcheckComplete);
             return true;
         }
 
@@ -53,27 +53,27 @@ public class WcheckCommandHandler : ICommandHandler
         var match = NearbyMatch.Find(db, actor, name, out bool ambiguous);
         if (ambiguous)
         {
-            context.Notify("I don't know which one you mean.");
+            context.Notify(Feedback.IDontKnowWhichOneYouMean);
             return false;
         }
         if (match == null)
         {
-            context.Notify("I don't see that object.");
+            context.Notify(Feedback.IDontSeeThatObject);
             return false;
         }
         if (!(SeesAll(actor) || actor.Owner == match.Owner))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (match.Type == ObjectType.Garbage)
         {
-            context.Notify("Why would you want to be warned about garbage?");
+            context.Notify(Feedback.WhyWouldYouWantToBeWarnedAboutGarbage);
             return false;
         }
 
         Check(context, db, actor, match);
-        context.Notify("@wcheck complete.");
+        context.Notify(Feedback.WcheckComplete);
         return true;
     }
 
@@ -205,7 +205,7 @@ public class WcheckCommandHandler : ICommandHandler
 
     private static void Complain(CommandContext context, MUSHObject obj, string name, string detail)
     {
-        context.Notify($"Warning '{name}' for {obj.Name}(#{obj.Id.Value}):");
+        context.Notify(Feedback.WarningFor, ("value", $"{name}"), ("value2", $"{obj.Name}"), ("value3", $"{obj.Id.Value}"));
         context.Notify(detail);
     }
 }

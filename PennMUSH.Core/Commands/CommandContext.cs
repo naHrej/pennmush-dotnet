@@ -25,6 +25,11 @@ public class CommandContext
         Notify(message, default, false);
     }
 
+    public void Notify(Feedback message, params (string Name, string Value)[] tokens)
+    {
+        Notify(message.Text(tokens));
+    }
+
     public void Notify(string message, bool escapeHtml)
     {
         TargetedNotifications.Add(new Notification(NotificationScope.Self, message, Executor, EscapeHtml: escapeHtml));

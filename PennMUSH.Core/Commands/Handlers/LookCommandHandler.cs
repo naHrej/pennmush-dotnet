@@ -38,14 +38,14 @@ public class LookCommandHandler : ICommandHandler
         {
             if (!viewer.Location.IsValid)
             {
-                context.Notify("You are nowhere.");
+                context.Notify(Feedback.YouAreNowhere);
                 return false;
             }
 
             var here = db.GetObject(viewer.Location);
             if (here == null)
             {
-                context.Notify("I can't see that here.");
+                context.Notify(Feedback.ICantSeeThatHere);
                 return false;
             }
 
@@ -56,7 +56,7 @@ public class LookCommandHandler : ICommandHandler
         var target = db.MatchObject(context.Executor, context.Arguments);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 

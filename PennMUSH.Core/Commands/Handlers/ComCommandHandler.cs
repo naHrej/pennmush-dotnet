@@ -38,35 +38,35 @@ public class ComCommandHandler : ICommandHandler
     {
         if (!context.RawCommand.Contains('=') || string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: addcom <alias>=<channel>");
+            context.Notify(Feedback.UsageAddcomAliasChannel);
             return false;
         }
         string alias = context.LeftArg.Trim();
         if (!OkAlias(alias))
         {
-            context.Notify("Invalid alias.");
+            context.Notify(Feedback.InvalidAlias);
             return false;
         }
         if (_channels.HasAlias(player, alias))
         {
-            context.Notify("That alias is already in use.");
+            context.Notify(Feedback.ThatAliasIsAlreadyInUse);
             return false;
         }
         var channel = _channels.MatchChannel(context.RightArg, out bool ambiguous);
         if (ambiguous)
         {
-            context.Notify("I don't know which channel you mean.");
+            context.Notify(Feedback.IDontKnowWhichChannelYouMean);
             return false;
         }
         if (channel == null)
         {
-            context.Notify("I don't recognise that channel.");
+            context.Notify(Feedback.IDontRecogniseThatChannel);
             return false;
         }
         if (channel.AddMember(player))
-            context.Notify($"You join channel <{channel.Name}>.");
+            context.Notify(Feedback.YouJoinChannel, ("channel", $"{channel.Name}"));
         _channels.SetAlias(player, alias, channel.Name);
-        context.Notify($"Alias {alias} added for channel <{channel.Name}>.");
+        context.Notify(Feedback.AliasAddedForChannel, ("alias", $"{alias}"), ("channel", $"{channel.Name}"));
         return true;
     }
 
@@ -75,21 +75,21 @@ public class ComCommandHandler : ICommandHandler
         string alias = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
         if (!_channels.RemoveAlias(player, alias, out var channelName) || channelName == null)
         {
-            context.Notify("No such alias.");
+            context.Notify(Feedback.NoSuchAlias);
             return false;
         }
         if (_channels.CountAliases(player, channelName) > 0)
         {
-            context.Notify("Alias removed.");
+            context.Notify(Feedback.AliasRemoved);
             return true;
         }
         var channel = _channels.GetChannel(channelName);
         if (channel != null && channel.RemoveMember(player))
         {
-            context.Notify($"You leave channel <{channel.Name}>.");
+            context.Notify(Feedback.YouLeaveChannel, ("channel", $"{channel.Name}"));
             return true;
         }
-        context.Notify("Alias removed.");
+        context.Notify(Feedback.AliasRemoved);
         return true;
     }
 
@@ -98,43 +98,43 @@ public class ComCommandHandler : ICommandHandler
         string alias = context.LeftArg.Trim();
         if (!_channels.TryGetAlias(player, alias, out var channelName) || channelName == null)
         {
-            context.Notify($"No such alias '{alias}'.");
+            context.Notify(Feedback.NoSuchAlias2, ("alias", $"{alias}"));
             return false;
         }
         var channel = _channels.GetChannel(channelName);
         var member = channel?.GetMember(player);
         if (channel == null || member == null)
         {
-            context.Notify($"You are not on channel <{channelName}>.");
+            context.Notify(Feedback.YouAreNotOnChannel, ("channel", $"{channelName}"));
             return false;
         }
         if (!context.RawCommand.Contains('='))
         {
             if (string.IsNullOrEmpty(member.Title))
-                context.Notify($"You have no title set on <{channel.Name}>.");
+                context.Notify(Feedback.YouHaveNoTitleSetOn, ("value", $"{channel.Name}"));
             else
-                context.Notify($"Your title on <{channel.Name}> is '{member.Title}'.");
+                context.Notify(Feedback.YourTitleOnIs, ("value", $"{channel.Name}"), ("value2", $"{member.Title}"));
             return true;
         }
         string title = context.RightArg;
         if (string.IsNullOrEmpty(title))
         {
             member.Title = string.Empty;
-            context.Notify($"Title cleared for channel <{channel.Name}>.");
+            context.Notify(Feedback.TitleClearedForChannel, ("channel", $"{channel.Name}"));
             return true;
         }
         if (title.Length > MaxTitleLength)
         {
-            context.Notify("Title too long.");
+            context.Notify(Feedback.TitleTooLong);
             return false;
         }
         if (title.Any(ch => ch == '\a' || (char.IsWhiteSpace(ch) && ch != ' ') || char.IsControl(ch)))
         {
-            context.Notify("Invalid character in title.");
+            context.Notify(Feedback.InvalidCharacterInTitle);
             return false;
         }
         member.Title = title;
-        context.Notify($"Title set for channel <{channel.Name}>.");
+        context.Notify(Feedback.TitleSetForChannel, ("channel", $"{channel.Name}"));
         return true;
     }
 
@@ -150,7 +150,7 @@ public class ComCommandHandler : ICommandHandler
             string status = member.IsMuted ? "Off" : "On";
             context.Notify($"{alias,-18} {channel.Name,-30} {status,-8} {member.Title}");
         }
-        context.Notify("-- End of comlist --");
+        context.Notify(Feedback.EndOfComlist);
         return true;
     }
 

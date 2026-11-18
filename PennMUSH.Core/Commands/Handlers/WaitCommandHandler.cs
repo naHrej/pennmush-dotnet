@@ -23,12 +23,12 @@ public class WaitCommandHandler : ICommandHandler
             string sem = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
             if (string.IsNullOrWhiteSpace(sem))
             {
-                context.Notify("Drain what semaphore?");
+                context.Notify(Feedback.DrainWhatSemaphore);
                 return false;
             }
 
             int count = _queue.DrainSemaphore(sem);
-            context.Notify($"Drained {count} process(es) on semaphore '{sem}'.");
+            context.Notify(Feedback.DrainedProcessEsOnSemaphore, ("value", $"{count}"), ("value2", $"{sem}"));
             return true;
         }
 
@@ -37,18 +37,18 @@ public class WaitCommandHandler : ICommandHandler
             string sem = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
             if (string.IsNullOrWhiteSpace(sem))
             {
-                context.Notify("Notify what semaphore?");
+                context.Notify(Feedback.NotifyWhatSemaphore);
                 return false;
             }
 
             int count = _queue.NotifySemaphore(sem);
-            context.Notify($"Notified {count} process(es) on semaphore '{sem}'.");
+            context.Notify(Feedback.NotifiedProcessEsOnSemaphore, ("value", $"{count}"), ("value2", $"{sem}"));
             return true;
         }
 
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("What do you want to wait on?");
+            context.Notify(Feedback.WhatDoYouWantToWaitOn);
             return false;
         }
 
@@ -61,10 +61,10 @@ public class WaitCommandHandler : ICommandHandler
             var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, delay);
             if (entry == null)
             {
-                context.Notify("Queue limit exceeded.");
+                context.Notify(Feedback.QueueLimitExceeded);
                 return false;
             }
-            context.Notify($"Queued with PID {entry.Pid}.");
+            context.Notify(Feedback.QueuedWithPid, ("value", $"{entry.Pid}"));
             return true;
         }
         else
@@ -73,10 +73,10 @@ public class WaitCommandHandler : ICommandHandler
             var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, semaphore: left);
             if (entry == null)
             {
-                context.Notify("Queue limit exceeded.");
+                context.Notify(Feedback.QueueLimitExceeded);
                 return false;
             }
-            context.Notify($"Queued on semaphore '{left}' with PID {entry.Pid}.");
+            context.Notify(Feedback.QueuedOnSemaphoreWithPid, ("value", $"{left}"), ("value2", $"{entry.Pid}"));
             return true;
         }
     }

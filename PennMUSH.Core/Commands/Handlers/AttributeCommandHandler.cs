@@ -32,33 +32,33 @@ public class AttributeCommandHandler : ICommandHandler
         string name = context.LeftArg.Trim().ToUpperInvariant();
         if (name.Length == 0)
         {
-            context.Notify("Which attribute do you mean?");
+            context.Notify(Feedback.WhichAttributeDoYouMean);
             return false;
         }
 
         if (!StandardAttributes.TryParseFlags(context.RightArg.Trim(), out var flags))
         {
-            context.Notify("I don't understand those permissions.");
+            context.Notify(Feedback.IDontUnderstandThosePermissions);
             return false;
         }
 
         bool exists = StandardAttributes.ExistsExact(name);
         if (exists && StandardAttributes.IsInternal(name))
         {
-            context.Notify("That attribute's permissions can not be changed.");
+            context.Notify(Feedback.ThatAttributesPermissionsCanNotBeChanged);
             return false;
         }
 
         if (!exists && !AttributeEntry.IsValidName(name))
         {
-            context.Notify("Invalid attribute name.");
+            context.Notify(Feedback.InvalidAttributeName);
             return false;
         }
 
         StandardAttributes.SetAccess(name, flags, actor.Id);
         if (context.Switches.Contains("retroactive"))
             StandardAttributes.ApplyRetroactive(db, name, StandardAttributes.FlagsOf(name), actor.Id);
-        context.Notify($"{name} -- Attribute permissions now: {StandardAttributes.DescribeFlags(StandardAttributes.FlagsOf(name))}");
+        context.Notify(Feedback.AttributePermissionsNow, ("value", $"{name}"), ("value2", $"{StandardAttributes.DescribeFlags(StandardAttributes.FlagsOf(name))}"));
         return true;
     }
 
@@ -67,24 +67,24 @@ public class AttributeCommandHandler : ICommandHandler
         string name = context.LeftArg.Trim();
         if (name.Length == 0)
         {
-            context.Notify("Which attribute do you mean?");
+            context.Notify(Feedback.WhichAttributeDoYouMean);
             return false;
         }
 
         if (!StandardAttributes.TryLookup(name, out string canonical) || !StandardAttributes.ExistsExact(name.ToUpperInvariant()))
         {
-            context.Notify("That attribute isn't in the attribute table");
+            context.Notify(Feedback.ThatAttributeIsntInTheAttributeTable);
             return false;
         }
 
         Describe(context, canonical);
         int count = StandardAttributes.Delete(name);
         if (count <= 0)
-            context.Notify($"Failed to remove {name.ToUpperInvariant()} from attribute table.");
+            context.Notify(Feedback.FailedToRemoveFromAttributeTable, ("value", $"{name.ToUpperInvariant()}"));
         else if (count == 1)
-            context.Notify($"Removed {canonical} from attribute table.");
+            context.Notify(Feedback.RemovedFromAttributeTable, ("value", $"{canonical}"));
         else
-            context.Notify($"Removed {canonical} and {count - 1} alias(es) from attribute table.");
+            context.Notify(Feedback.RemovedAndAliasEsFromAttributeTable, ("value", $"{canonical}"), ("value2", $"{count - 1}"));
         return count > 0;
     }
 
@@ -94,7 +94,7 @@ public class AttributeCommandHandler : ICommandHandler
         string newName = context.RightArg.Trim();
         if (oldName.Length == 0 || newName.Length == 0)
         {
-            context.Notify("Which attributes do you mean?");
+            context.Notify(Feedback.WhichAttributesDoYouMean);
             return false;
         }
 
@@ -102,24 +102,24 @@ public class AttributeCommandHandler : ICommandHandler
         oldName = oldName.ToUpperInvariant();
         if (!AttributeEntry.IsValidName(newName))
         {
-            context.Notify("Invalid attribute name.");
+            context.Notify(Feedback.InvalidAttributeName);
             return false;
         }
 
         if (StandardAttributes.ExistsExact(newName))
         {
-            context.Notify($"The name {newName} is already used in the attribute table.");
+            context.Notify(Feedback.TheNameIsAlreadyUsedInTheAttributeTable, ("name", $"{newName}"));
             return false;
         }
 
         if (!StandardAttributes.ExistsExact(oldName))
         {
-            context.Notify("That attribute isn't in the attribute table");
+            context.Notify(Feedback.ThatAttributeIsntInTheAttributeTable);
             return false;
         }
 
         StandardAttributes.Rename(oldName, newName);
-        context.Notify($"Renamed {oldName} to {newName} in attribute table.");
+        context.Notify(Feedback.RenamedToInAttributeTable, ("value", $"{oldName}"), ("value2", $"{newName}"));
         return true;
     }
 
@@ -133,7 +133,7 @@ public class AttributeCommandHandler : ICommandHandler
             int space = raw.IndexOf(' ');
             if (space != 1)
             {
-                context.Notify("Delimiter must be one character.");
+                context.Notify(Feedback.DelimiterMustBeOneCharacter);
                 return false;
             }
 
@@ -143,13 +143,13 @@ public class AttributeCommandHandler : ICommandHandler
 
         if (pattern.Length > 0 && !enumList && !StandardAttributes.TryCompileLimit(pattern))
         {
-            context.Notify("Invalid Regular Expression.");
+            context.Notify(Feedback.InvalidRegularExpression);
             return false;
         }
 
         if (raw.Length == 0)
         {
-            context.Notify("Which attribute do you mean?");
+            context.Notify(Feedback.WhichAttributeDoYouMean);
             return false;
         }
 
@@ -165,7 +165,7 @@ public class AttributeCommandHandler : ICommandHandler
 
     private static bool Decompile(CommandContext context)
     {
-        context.Notify("@@ Standard Attributes:");
+        context.Notify(Feedback.StandardAttributes);
         foreach (string line in StandardAttributes.Decompile(context.LeftArg, context.Switches.Contains("retroactive")))
             context.Notify(line);
         return true;
@@ -176,13 +176,13 @@ public class AttributeCommandHandler : ICommandHandler
         string name = context.LeftArg.Trim();
         if (name.Length == 0)
         {
-            context.Notify("Which attribute do you mean?");
+            context.Notify(Feedback.WhichAttributeDoYouMean);
             return false;
         }
 
         if (!StandardAttributes.TryLookup(name, out string canonical))
         {
-            context.Notify("That attribute isn't in the attribute table");
+            context.Notify(Feedback.ThatAttributeIsntInTheAttributeTable);
             return false;
         }
 
@@ -201,7 +201,7 @@ public class AttributeCommandHandler : ICommandHandler
 
     private static bool Deny(CommandContext context)
     {
-        context.Notify("Permission denied.");
+        context.Notify(Feedback.PermissionDenied);
         return false;
     }
 }

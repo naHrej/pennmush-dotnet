@@ -38,13 +38,13 @@ public class RestartCommandHandler : ICommandHandler
         var victim = db.MatchObject(context.Executor, name);
         if (victim == null || victim.Type == ObjectType.Garbage)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         if (actor.Owner != victim.Owner && !CanHaltAny(actor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -61,13 +61,13 @@ public class RestartCommandHandler : ICommandHandler
     {
         if (!CanHaltAny(actor))
         {
-            context.Notify("You do not have the power to restart the world.");
+            context.Notify(Feedback.YouDoNotHaveThePowerToRestartTheWorld);
             return false;
         }
 
         foreach (var player in db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player).ToList())
         {
-            context.NotifyTarget(player.Id, $"Your objects have been globally halted by {actor.Name}");
+            context.NotifyTarget(player.Id, Feedback.YourObjectsHaveBeenGloballyHaltedBy.Text(("value", $"{actor.Name}")));
             Halt(context, db, player);
         }
 
@@ -75,7 +75,7 @@ public class RestartCommandHandler : ICommandHandler
             QueueStartup(db, obj);
 
         foreach (var player in db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player))
-            context.NotifyTarget(player.Id, $"Your objects are being globally restarted by {actor.Name}");
+            context.NotifyTarget(player.Id, Feedback.YourObjectsAreBeingGloballyRestartedBy.Text(("value", $"{actor.Name}")));
         return true;
     }
 
@@ -85,22 +85,22 @@ public class RestartCommandHandler : ICommandHandler
         {
             if (victim.Type == ObjectType.Player)
             {
-                context.Notify($"All objects for {victim.Name} are being restarted.");
-                context.NotifyTarget(victim.Id, $"All of your objects are being restarted by {actor.Name}.");
+                context.Notify(Feedback.AllObjectsForAreBeingRestarted, ("value", $"{victim.Name}"));
+                context.NotifyTarget(victim.Id, Feedback.AllOfYourObjectsAreBeingRestartedBy.Text(("value", $"{actor.Name}")));
             }
             else
             {
                 string ownerName = db.GetObject(victim.Owner)?.Name ?? victim.Owner.ToString();
-                context.Notify($"Restarting: {ownerName}'s {victim.Name}(#{victim.Id.Value})");
-                context.NotifyTarget(victim.Owner, $"Restarting: {victim.Name}(#{victim.Id.Value}), by {actor.Name}");
+                context.Notify(Feedback.RestartingS, ("value", $"{ownerName}"), ("value2", $"{victim.Name}"), ("value3", $"{victim.Id.Value}"));
+                context.NotifyTarget(victim.Owner, Feedback.RestartingBy.Text(("value", $"{victim.Name}"), ("value2", $"{victim.Id.Value}"), ("value3", $"{actor.Name}")));
             }
             return;
         }
 
         if (victim.Id == actor.Id)
-            context.Notify("All of your objects are being restarted.");
+            context.Notify(Feedback.AllOfYourObjectsAreBeingRestarted);
         else
-            context.Notify($"Restarting: {victim.Name}(#{victim.Id.Value})");
+            context.Notify(Feedback.Restarting, ("value", $"{victim.Name}"), ("value2", $"{victim.Id.Value}"));
     }
 
     private void Halt(CommandContext context, ObjectDatabase db, MUSHObject victim)
@@ -115,7 +115,7 @@ public class RestartCommandHandler : ICommandHandler
 
         var owner = db.GetObject(victim.Owner);
         if (owner != null && !owner.HasFlag("QUIET"))
-            context.NotifyTarget(owner.Id, $"Halted: {victim.Name}(#{victim.Id.Value})");
+            context.NotifyTarget(owner.Id, Feedback.HaltedValueValue.Text(("value", $"{victim.Name}"), ("value2", $"{victim.Id.Value}")));
     }
 
     private void QueueOwned(ObjectDatabase db, Dbref owner)

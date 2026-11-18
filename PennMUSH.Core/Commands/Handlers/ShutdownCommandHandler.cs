@@ -24,7 +24,7 @@ public class ShutdownCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -33,16 +33,16 @@ public class ShutdownCommandHandler : ICommandHandler
 
         if (Has(context, "panic") && !actor.IsGod)
         {
-            context.Notify("It takes a God to make me panic.");
+            context.Notify(Feedback.ItTakesAGodToMakeMePanic);
             return false;
         }
 
         string name = AnnouncedName(db, actor);
         if (!TrySave())
-            context.NotifyBroadcast("GAME: ERROR! Database save failed!", wizardOnly: true);
-        context.NotifyBroadcast($"GAME: Shutdown by {name}");
+            context.NotifyBroadcast(Feedback.GameErrorDatabaseSaveFailed.Text(), wizardOnly: true);
+        context.NotifyBroadcast(Feedback.GameShutdownBy.Text(("value", $"{name}")));
         if (Has(context, "panic"))
-            context.NotifyBroadcast("EMERGENCY SHUTDOWN: @shutdown/panic");
+            context.NotifyBroadcast(Feedback.EmergencyShutdownShutdownPanic.Text());
         _stop();
         return true;
     }
@@ -51,7 +51,7 @@ public class ShutdownCommandHandler : ICommandHandler
     {
         if (!TrySave())
         {
-            context.NotifyBroadcast("GAME: Reboot failed.");
+            context.NotifyBroadcast(Feedback.GameRebootFailed.Text());
             return false;
         }
 

@@ -16,7 +16,7 @@ public class ZoneCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("What object do you want to zone?");
+            context.Notify(Feedback.WhatObjectDoYouWantToZone);
             return false;
         }
 
@@ -24,21 +24,21 @@ public class ZoneCommandHandler : ICommandHandler
         var targetObj = db.GetObject(targetRef);
         if (targetObj == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || (!execObj.IsWizard && execObj.Id != targetObj.Owner))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(context.RightArg) || context.RightArg.Equals("none", StringComparison.OrdinalIgnoreCase))
         {
             targetObj.ClearZones();
-            context.Notify("Zone cleared.");
+            context.Notify(Feedback.ZoneCleared);
             return true;
         }
 
@@ -51,7 +51,7 @@ public class ZoneCommandHandler : ICommandHandler
             var zObj = db.GetObject(zRef);
             if (zObj == null)
             {
-                context.Notify($"I can't see zone object {token}.");
+                context.Notify(Feedback.ICantSeeZoneObject, ("object", $"{token}"));
                 return false;
             }
 
@@ -59,7 +59,7 @@ public class ZoneCommandHandler : ICommandHandler
         }
 
         targetObj.SetZones(validZones);
-        context.Notify("Zone set.");
+        context.Notify(Feedback.ZoneSet);
         return true;
     }
 
@@ -150,14 +150,14 @@ public class ChzoneCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("Usage: @chzone <object>=<zone>");
+            context.Notify(Feedback.UsageChzoneObjectZone);
             return false;
         }
 
         var thing = ZoneOperations.Find(db, context.Executor, context.LeftArg);
         if (thing == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
@@ -168,7 +168,7 @@ public class ChzoneCommandHandler : ICommandHandler
             zone = ZoneOperations.Find(db, context.Executor, zoneName);
             if (zone == null)
             {
-                context.Notify("I can't see that zone.");
+                context.Notify(Feedback.ICantSeeThatZone);
                 return false;
             }
         }
@@ -194,19 +194,19 @@ public class ChzoneAllCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @chzoneall <player>=<zone>");
+            context.Notify(Feedback.UsageChzoneallPlayerZone);
             return false;
         }
 
         var owner = db.FindPlayer(context.LeftArg.Trim()) ?? ZoneOperations.Find(db, context.Executor, context.LeftArg);
         if (owner == null || owner.Type != ObjectType.Player)
         {
-            context.Notify("I can't find that player.");
+            context.Notify(Feedback.ICantFindThatPlayer);
             return false;
         }
 
@@ -217,7 +217,7 @@ public class ChzoneAllCommandHandler : ICommandHandler
             zone = ZoneOperations.Find(db, context.Executor, zoneName);
             if (zone == null)
             {
-                context.Notify("I can't see that zone.");
+                context.Notify(Feedback.ICantSeeThatZone);
                 return false;
             }
         }
@@ -234,9 +234,9 @@ public class ChzoneAllCommandHandler : ICommandHandler
         }
 
         if (skipped == 0)
-            context.Notify($"Zone updated on {changed} objects.");
+            context.Notify(Feedback.ZoneUpdatedOnObjects, ("value", $"{changed}"));
         else
-            context.Notify($"Zone updated on {changed} objects. {skipped} were left unchanged.");
+            context.Notify(Feedback.ZoneUpdatedOnObjectsWereLeftUnchanged, ("value", $"{changed}"), ("value2", $"{skipped}"));
         return changed > 0;
     }
 }
@@ -249,33 +249,33 @@ public class ZemitCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @zemit <zone>=<message>");
+            context.Notify(Feedback.UsageZemitZoneMessage);
             return false;
         }
 
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var zone = ZoneOperations.Find(db, context.Executor, context.LeftArg);
         if (zone == null)
         {
-            context.Notify("I can't see that zone.");
+            context.Notify(Feedback.ICantSeeThatZone);
             return false;
         }
         if (!ZoneOperations.Controls(actor, zone))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var rooms = db.GetAllObjects().Where(obj => obj.Type == ObjectType.Room && obj.InZone(zone.Id)).ToList();
         if (rooms.Count == 0)
         {
-            context.Notify("No rooms are in that zone.");
+            context.Notify(Feedback.NoRoomsAreInThatZone);
             return false;
         }
 
@@ -288,7 +288,7 @@ public class ZemitCommandHandler : ICommandHandler
         bool silent = context.Switches.Contains("silent");
         bool hears = actor.Location.IsValid && rooms.Any(room => room.Id == actor.Location);
         if (noisy || (!silent && !hears))
-            context.Notify($"You zemit to {zone.Name}.");
+            context.Notify(Feedback.YouZemitTo, ("value", $"{zone.Name}"));
         return true;
     }
 }

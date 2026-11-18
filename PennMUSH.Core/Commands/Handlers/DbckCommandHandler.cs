@@ -17,13 +17,13 @@ public class DbckCommandHandler : ICommandHandler
             return false;
         if (!actor.IsWizard)
         {
-            context.Notify("Silly mortal, chicks are for kids!");
+            context.Notify(Feedback.SillyMortalChicksAreForKids);
             return false;
         }
 
-        context.Notify("GAME: Performing database consistency check.");
+        context.Notify(Feedback.GamePerformingDatabaseConsistencyCheck);
         Repair(context, db);
-        context.Notify("GAME: Database consistency check complete.");
+        context.Notify(Feedback.GameDatabaseConsistencyCheckComplete);
         return true;
     }
 
@@ -105,7 +105,7 @@ public class DbckCommandHandler : ICommandHandler
                 if (!seen.Add(cursor.Id.Value))
                 {
                     if (warned.Add(obj.Id.Value))
-                        context.NotifyTarget(obj.Owner, $"You own an object in a circular zone chain: {obj.Name}(#{obj.Id.Value})");
+                        context.NotifyTarget(obj.Owner, Feedback.YouOwnAnObjectInACircularZoneChain.Text(("value", $"{obj.Name}"), ("value2", $"{obj.Id.Value}")));
                     break;
                 }
                 if (cursor.Id == obj.Id)
@@ -124,14 +124,14 @@ public class DbckCommandHandler : ICommandHandler
         {
             var zone = db.GetObject(new Dbref(id));
             if (zone != null && zone.Type != ObjectType.Garbage && zone.GetLock(LockType.Zone) == null)
-                context.NotifyTarget(zone.Owner, $"You own an object without a @lock/zone being used as a zone: {zone.Name}(#{zone.Id.Value})");
+                context.NotifyTarget(zone.Owner, Feedback.YouOwnAnObjectWithoutALockZoneBeingUsedAsAZone.Text(("zone", $"{zone.Name}"), ("value", $"{zone.Id.Value}")));
         }
 
         foreach (var room in db.GetAllObjects())
         {
             if (room.Type != ObjectType.Room || room.Id.Value == 0 || room.HasFlag("GOING") || room.HasFlag("FLOATING") || room.Exits.IsValid)
                 continue;
-            context.NotifyTarget(room.Owner, $"You own a disconnected room, {room.Name}(#{room.Id.Value})");
+            context.NotifyTarget(room.Owner, Feedback.YouOwnADisconnectedRoom.Text(("room", $"{room.Name}"), ("value", $"{room.Id.Value}")));
         }
     }
 

@@ -26,7 +26,7 @@ public class SwitchCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
             string name = string.IsNullOrEmpty(context.CommandName) ? "@switch" : context.CommandName;
-            context.Notify($"Usage: {name} <expression>=<pattern>,<action>[,<pattern>,<action>...][,<default>]");
+            context.Notify(Feedback.UsageExpressionPatternActionPatternActionDefault, ("value", $"{name}"));
             return false;
         }
 
@@ -120,7 +120,7 @@ public class DolistCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @dolist <list>=<command>");
+            context.Notify(Feedback.UsageDolistListCommand);
             return false;
         }
 
@@ -168,7 +168,7 @@ public class TriggerCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("Usage: @trigger <obj>/<attr>[=<args>]");
+            context.Notify(Feedback.UsageTriggerObjAttrArgs);
             return false;
         }
 
@@ -176,7 +176,7 @@ public class TriggerCommandHandler : ICommandHandler
         int slash = targetStr.IndexOf('/');
         if (slash == -1)
         {
-            context.Notify("You must specify both an object and attribute: <obj>/<attr>");
+            context.Notify(Feedback.YouMustSpecifyBothAnObjectAndAttributeObjAttr);
             return false;
         }
 
@@ -186,7 +186,7 @@ public class TriggerCommandHandler : ICommandHandler
         var target = ResolveTarget(objRef, context.Executor, db);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -247,7 +247,7 @@ public class ForceCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @force <target>=<command>");
+            context.Notify(Feedback.UsageForceTargetCommand);
             return false;
         }
 
@@ -255,13 +255,13 @@ public class ForceCommandHandler : ICommandHandler
         var target = db.FindObject(context.LeftArg.Trim());
         if (target == null)
         {
-            context.Notify("I can't find that target.");
+            context.Notify(Feedback.ICantFindThatTarget);
             return false;
         }
 
         if (execObj == null || (!execObj.IsWizard && target.Owner != context.Executor && target.Id != context.Executor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -292,7 +292,7 @@ public class IfElseCommandHandler : ICommandHandler
             bool skip = context.CommandName.Equals("@skip", StringComparison.OrdinalIgnoreCase);
             string name = string.IsNullOrEmpty(context.CommandName) ? "@ifelse" : context.CommandName;
             string branches = skip ? "<false_action>[,<true_action>]" : "<true_action>[,<false_action>]";
-            context.Notify($"Usage: {name} <condition>={branches}");
+            context.Notify(Feedback.UsageCondition, ("value", $"{name}"), ("value2", $"{branches}"));
             return false;
         }
 

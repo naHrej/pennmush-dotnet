@@ -13,7 +13,7 @@ public class LinkCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("Link what?");
+            context.Notify(Feedback.LinkWhat);
             return false;
         }
 
@@ -21,20 +21,20 @@ public class LinkCommandHandler : ICommandHandler
         var exitObj = db.GetObject(exitRef);
         if (exitObj == null || exitObj.Type != ObjectType.Exit)
         {
-            context.Notify("I can't see that exit.");
+            context.Notify(Feedback.ICantSeeThatExit);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || (!execObj.IsWizard && execObj.Id != exitObj.Owner))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Link it to what?");
+            context.Notify(Feedback.LinkItToWhat);
             return false;
         }
 
@@ -42,12 +42,12 @@ public class LinkCommandHandler : ICommandHandler
         var destObj = db.GetObject(destRef);
         if (destObj == null)
         {
-            context.Notify("I can't see that destination.");
+            context.Notify(Feedback.ICantSeeThatDestination);
             return false;
         }
 
         db.LinkExit(exitObj.Id, destRef);
-        context.Notify("Linked.");
+        context.Notify(Feedback.Linked);
         return true;
     }
 

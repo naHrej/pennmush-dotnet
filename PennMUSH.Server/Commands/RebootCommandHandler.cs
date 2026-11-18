@@ -21,11 +21,11 @@ public class RebootCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
-        context.Notify("Initiating hot-reboot... All player connections and world simulation state will be preserved.");
+        context.Notify(Feedback.InitiatingHotRebootAllPlayerConnectionsAndWorldSimulationStateWillBePreserved);
         Task.Run(async () =>
         {
             await Task.Delay(200);

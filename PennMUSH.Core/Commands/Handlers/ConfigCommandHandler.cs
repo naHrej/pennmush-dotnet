@@ -33,17 +33,17 @@ public class ConfigCommandHandler : ICommandHandler
         bool save = context.Switches.Contains("save");
         if (!wizard || (save && !god))
         {
-            context.Notify("You can't remake the world in your image.");
+            context.Notify(Feedback.YouCantRemakeTheWorldInYourImage);
             return false;
         }
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("What did you want to set?");
+            context.Notify(Feedback.WhatDidYouWantToSet);
             return false;
         }
         if (!ConfigCatalog.TrySet(_config, context.LeftArg.Trim(), context.RightArg))
         {
-            context.Notify("Couldn't set that option.");
+            context.Notify(Feedback.CouldntSetThatOption);
             return false;
         }
         context.Notify(save
@@ -58,7 +58,7 @@ public class ConfigCommandHandler : ICommandHandler
         bool lower = context.Switches.Contains("lowercase");
         if (type.Length == 0)
         {
-            context.Notify("Use: @config/list <type of options> where type is one of:");
+            context.Notify(Feedback.UseConfigListTypeOfOptionsWhereTypeIsOneOf);
             ShowGroups(context, royalty);
             return true;
         }
@@ -92,7 +92,7 @@ public class ConfigCommandHandler : ICommandHandler
         }
         if (matches.Count == 0)
         {
-            context.Notify("I only know the following types of options:");
+            context.Notify(Feedback.IOnlyKnowTheFollowingTypesOfOptions);
             ShowGroups(context, royalty);
             return false;
         }
@@ -121,13 +121,13 @@ public class ConfigCommandHandler : ICommandHandler
         foreach (var group in ConfigCatalog.Groups)
         {
             if (ConfigCatalog.CanSee(group, royalty))
-                context.Notify($" {group.Name.PadRight(15)} {group.Description}");
+                context.Notify(Feedback.ValueValue2, ("value", $"{group.Name.PadRight(15)}"), ("value2", $"{group.Description}"));
         }
     }
 
     private void Show(CommandContext context, ConfigOption option, bool lower)
     {
         string name = lower ? option.Name.ToLowerInvariant() : option.Name;
-        context.Notify($" {name.PadRight(40)} {option.Read(_config)}");
+        context.Notify(Feedback.ValueValue2, ("value", $"{name.PadRight(40)}"), ("value2", $"{option.Read(_config)}"));
     }
 }

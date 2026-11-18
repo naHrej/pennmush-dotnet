@@ -11,14 +11,14 @@ public class WallCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Broadcast what?");
+            context.Notify(Feedback.BroadcastWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !(execObj.IsWizard || execObj.IsRoyalty))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -32,7 +32,7 @@ public class WallCommandHandler : ICommandHandler
         bool wizOnly = context.CommandName.Equals("@wizwall", StringComparison.OrdinalIgnoreCase) ||
                        context.CommandName.Equals("@rwall", StringComparison.OrdinalIgnoreCase);
 
-        context.NotifyBroadcast($"{prefix} {execObj.Name}: {context.Arguments}", wizardOnly: wizOnly);
+        context.NotifyBroadcast(Feedback.ValueValueValue2.Text(("value", $"{prefix}"), ("value2", $"{execObj.Name}"), ("value3", $"{context.Arguments}")), wizardOnly: wizOnly);
         return true;
     }
 }

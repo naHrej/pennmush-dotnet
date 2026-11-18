@@ -31,14 +31,14 @@ public class MailCommandHandler : ICommandHandler
         {
             if (!int.TryParse(context.Arguments.Trim(), out int num) || num <= 0)
             {
-                context.Notify("Usage: @mail/read <message-number>");
+                context.Notify(Feedback.UsageMailReadMessageNumber);
                 return false;
             }
 
             var msg = _mail.GetMessageByNumber(executor.Id, num);
             if (msg == null)
             {
-                context.Notify($"Message {num} not found.");
+                context.Notify(Feedback.MessageNotFound, ("message", $"{num}"));
                 return false;
             }
 
@@ -46,12 +46,12 @@ public class MailCommandHandler : ICommandHandler
             var senderObj = db.GetObject(msg.Sender);
             string senderName = senderObj != null ? senderObj.Name : msg.Sender.ToString();
 
-            context.Notify("----------------------------------------------------------------");
+            context.Notify(Feedback.Dashes64);
             context.Notify($"Message: {num,-5} From: {senderName,-20} Date: {msg.Timestamp:ddd MMM d HH:mm}");
-            context.Notify($"Subject: {msg.Subject}");
-            context.Notify("----------------------------------------------------------------");
+            context.Notify(Feedback.SubjectValue, ("value", $"{msg.Subject}"));
+            context.Notify(Feedback.Dashes64);
             context.Notify(msg.Body);
-            context.Notify("----------------------------------------------------------------");
+            context.Notify(Feedback.Dashes64);
             return true;
         }
 
@@ -60,16 +60,16 @@ public class MailCommandHandler : ICommandHandler
         {
             if (!int.TryParse(context.Arguments.Trim(), out int num) || num <= 0)
             {
-                context.Notify("Usage: @mail/clear <message-number>");
+                context.Notify(Feedback.UsageMailClearMessageNumber);
                 return false;
             }
 
             if (_mail.MarkCleared(executor.Id, num, cleared: true))
             {
-                context.Notify($"Message {num} marked as cleared.");
+                context.Notify(Feedback.MessageMarkedAsCleared, ("message", $"{num}"));
                 return true;
             }
-            context.Notify($"Message {num} not found.");
+            context.Notify(Feedback.MessageNotFound, ("message", $"{num}"));
             return false;
         }
 
@@ -78,16 +78,16 @@ public class MailCommandHandler : ICommandHandler
         {
             if (!int.TryParse(context.Arguments.Trim(), out int num) || num <= 0)
             {
-                context.Notify("Usage: @mail/unclear <message-number>");
+                context.Notify(Feedback.UsageMailUnclearMessageNumber);
                 return false;
             }
 
             if (_mail.MarkCleared(executor.Id, num, cleared: false))
             {
-                context.Notify($"Message {num} unmarked.");
+                context.Notify(Feedback.MessageUnmarked, ("message", $"{num}"));
                 return true;
             }
-            context.Notify($"Message {num} not found.");
+            context.Notify(Feedback.MessageNotFound, ("message", $"{num}"));
             return false;
         }
 
@@ -95,7 +95,7 @@ public class MailCommandHandler : ICommandHandler
         if (context.Switches.Contains("purge"))
         {
             int purged = _mail.Purge(executor.Id);
-            context.Notify($"{purged} cleared message(s) purged.");
+            context.Notify(Feedback.ClearedMessageSPurged, ("value", $"{purged}"));
             return true;
         }
 
@@ -105,17 +105,17 @@ public class MailCommandHandler : ICommandHandler
             if (string.IsNullOrWhiteSpace(context.Arguments))
             {
                 int curr = _mail.GetCurrentFolder(executor.Id);
-                context.Notify($"Current mail folder is: {curr}");
+                context.Notify(Feedback.CurrentMailFolderIs, ("value", $"{curr}"));
                 return true;
             }
 
             if (int.TryParse(context.Arguments.Trim(), out int f) && f >= 0 && f <= 15)
             {
                 _mail.SetCurrentFolder(executor.Id, f);
-                context.Notify($"Switched to mail folder {f}.");
+                context.Notify(Feedback.SwitchedToMailFolder, ("value", $"{f}"));
                 return true;
             }
-            context.Notify("Folder must be between 0 and 15.");
+            context.Notify(Feedback.FolderMustBeBetween0And15);
             return false;
         }
 
@@ -123,7 +123,7 @@ public class MailCommandHandler : ICommandHandler
         if (context.Switches.Contains("status"))
         {
             var stats = _mail.GetMailStats(executor.Id);
-            context.Notify($"Mail status: {stats.TotalCount} message(s), {stats.UnreadCount} unread, {stats.ClearedCount} cleared.");
+            context.Notify(Feedback.MailStatusMessageSUnreadCleared, ("value", $"{stats.TotalCount}"), ("value2", $"{stats.UnreadCount}"), ("value3", $"{stats.ClearedCount}"));
             return true;
         }
 
@@ -156,7 +156,7 @@ public class MailCommandHandler : ICommandHandler
 
             if (targetObj == null || targetObj.Type != ObjectType.Player)
             {
-                context.Notify($"Player '{context.LeftArg}' not found.");
+                context.Notify(Feedback.PlayerNotFound, ("player", $"{context.LeftArg}"));
                 return false;
             }
 
@@ -171,7 +171,7 @@ public class MailCommandHandler : ICommandHandler
 
             bool urgent = context.Switches.Contains("urgent");
             var sent = _mail.SendMail(executor.Id, targetObj.Id, subject, body, urgent);
-            context.Notify($"Mail sent to {targetObj.Name} (Subject: {sent.Subject}).");
+            context.Notify(Feedback.MailSentToSubject, ("value", $"{targetObj.Name}"), ("value2", $"{sent.Subject}"));
             return true;
         }
 
@@ -181,13 +181,13 @@ public class MailCommandHandler : ICommandHandler
 
         if (messages.Count == 0)
         {
-            context.Notify($"Folder {activeFolder} is empty.");
+            context.Notify(Feedback.FolderIsEmpty, ("value", $"{activeFolder}"));
             return true;
         }
 
-        context.Notify($"--- Mail folder {activeFolder} ({messages.Count} messages) ---");
-        context.Notify("Num Status From                 Date             Subject");
-        context.Notify("----------------------------------------------------------------");
+        context.Notify(Feedback.MailFolderMessages, ("value", $"{activeFolder}"), ("value2", $"{messages.Count}"));
+        context.Notify(Feedback.NumStatusFromDateSubject);
+        context.Notify(Feedback.Dashes64);
         for (int i = 0; i < messages.Count; i++)
         {
             var msg = messages[i];
@@ -197,7 +197,7 @@ public class MailCommandHandler : ICommandHandler
             string dateStr = msg.Timestamp.ToString("MMM dd HH:mm");
             context.Notify($"{i + 1,-3} [{status}]  {sName,-20} {dateStr,-16} {msg.Subject}");
         }
-        context.Notify("----------------------------------------------------------------");
+        context.Notify(Feedback.Dashes64);
 
         return true;
     }
@@ -230,10 +230,10 @@ public class MailCommandHandler : ICommandHandler
                 continue;
             var recipient = db.GetObject(id);
             string who = recipient == null ? id.ToString() : recipient.Name;
-            context.Notify($"Mail sent to {who} (Subject: {sent.Subject}).");
+            context.Notify(Feedback.MailSentToSubject, ("value", $"{who}"), ("value2", $"{sent.Subject}"));
         }
         if (!showMembers)
-            context.Notify($"You sent your message to the '{alias.Name}' alias");
+            context.Notify(Feedback.YouSentYourMessageToTheAlias, ("value", $"{alias.Name}"));
         return true;
     }
 }

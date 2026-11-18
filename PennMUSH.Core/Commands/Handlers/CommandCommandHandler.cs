@@ -12,7 +12,7 @@ public sealed class StubCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
-        context.Notify("This command has not been implemented.");
+        context.Notify(Feedback.ThisCommandHasNotBeenImplemented);
         return true;
     }
 }
@@ -49,7 +49,7 @@ public class CommandCommandHandler : ICommandHandler
         string left = (context.LeftArg.Length > 0 ? context.LeftArg : context.Arguments).Trim();
         if (left.Length == 0)
         {
-            context.Notify("You must specify a command.");
+            context.Notify(Feedback.YouMustSpecifyACommand);
             return false;
         }
 
@@ -58,11 +58,11 @@ public class CommandCommandHandler : ICommandHandler
         {
             if (!actor.IsWizard)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
             if (context.Switches.Contains("noeval"))
-                context.Notify("WARNING: /NOEVAL no longer creates a Noparse command.\n         Use /NOPARSE if that's what you meant.");
+                context.Notify(Feedback.WarningNoevalNoLongerCreatesANoparseCommandUseNoparseIfThatsWhatYou);
             Add(context, left);
             return true;
         }
@@ -71,7 +71,7 @@ public class CommandCommandHandler : ICommandHandler
         {
             if (!actor.IsWizard)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
             Alias(context, left, context.RightArg.Trim(), quiet);
@@ -82,7 +82,7 @@ public class CommandCommandHandler : ICommandHandler
         {
             if (!actor.IsWizard)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
             Clone(context, left, context.RightArg.Trim());
@@ -93,7 +93,7 @@ public class CommandCommandHandler : ICommandHandler
         {
             if (!actor.IsGod)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
             Delete(context, left);
@@ -103,7 +103,7 @@ public class CommandCommandHandler : ICommandHandler
         var lookup = _dispatcher.Table.Lookup(left);
         if (lookup.Status != CommandLookupStatus.Found || lookup.Handler == null || lookup.CanonicalName == null)
         {
-            context.Notify("No such command.");
+            context.Notify(Feedback.NoSuchCommand);
             return false;
         }
 
@@ -117,7 +117,7 @@ public class CommandCommandHandler : ICommandHandler
             {
                 if (canonical.Equals("@command", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Notify("@command is ALWAYS enabled.");
+                    context.Notify(Feedback.CommandIsAlwaysEnabled);
                     facts.Disabled = false;
                 }
                 else
@@ -128,12 +128,12 @@ public class CommandCommandHandler : ICommandHandler
             {
                 if (string.IsNullOrWhiteSpace(context.RightArg))
                 {
-                    context.Notify("How do you want to restrict the command?");
+                    context.Notify(Feedback.HowDoYouWantToRestrictTheCommand);
                     return false;
                 }
                 if (!CommandCatalog.TryRestrictions(context.RightArg, out var names))
                 {
-                    context.Notify("Restrict attempt failed.");
+                    context.Notify(Feedback.RestrictAttemptFailed);
                     return false;
                 }
                 facts.Restrictions = string.Join(" ", names);
@@ -152,12 +152,12 @@ public class CommandCommandHandler : ICommandHandler
         string name = rawName.ToUpperInvariant();
         if (!CommandCatalog.GoodName(name))
         {
-            context.Notify("Bad command name.");
+            context.Notify(Feedback.BadCommandName);
             return;
         }
         if (_dispatcher.Table.ContainsExact(name))
         {
-            context.Notify($"Command {name} already exists.");
+            context.Notify(Feedback.CommandAlreadyExists, ("command", $"{name}"));
             return;
         }
 
@@ -166,7 +166,7 @@ public class CommandCommandHandler : ICommandHandler
         var facts = _dispatcher.Catalog.Facts(name);
         facts.UserAdded = true;
         RememberFlags(context, facts);
-        context.Notify($"Command {name} added.");
+        context.Notify(Feedback.CommandAdded, ("command", $"{name}"));
     }
 
     private void Alias(CommandContext context, string command, string alias, bool quiet)
@@ -174,16 +174,16 @@ public class CommandCommandHandler : ICommandHandler
         string target = alias.ToUpperInvariant();
         if (!CommandCatalog.GoodName(target))
         {
-            context.Notify("I can't alias a command to that!");
+            context.Notify(Feedback.ICantAliasACommandToThat);
             return;
         }
         if (!_dispatcher.Table.ContainsExact(command) || _dispatcher.Table.ContainsExact(target) || !_dispatcher.AddAlias(command, target))
         {
-            context.Notify("Unable to set alias.");
+            context.Notify(Feedback.UnableToSetAlias);
             return;
         }
         if (!quiet)
-            context.Notify("Alias set.");
+            context.Notify(Feedback.AliasSet);
     }
 
     private void Clone(CommandContext context, string original, string clone)
@@ -194,19 +194,19 @@ public class CommandCommandHandler : ICommandHandler
         if (lookup.Status != CommandLookupStatus.Found || lookup.Handler == null || lookup.CanonicalName == null
             || !_dispatcher.Table.ContainsExact(source))
         {
-            context.Notify("No such command.");
+            context.Notify(Feedback.NoSuchCommand);
             return;
         }
         if (!CommandCatalog.GoodName(copy) || _dispatcher.Table.ContainsExact(copy))
         {
-            context.Notify("Bad command name.");
+            context.Notify(Feedback.BadCommandName);
             return;
         }
 
         _dispatcher.Register(new DelegatingCommandHandler(copy, lookup.Handler));
         _dispatcher.Catalog.Copy(lookup.CanonicalName, copy);
         _dispatcher.Catalog.Facts(copy).UserAdded = _dispatcher.Catalog.Facts(lookup.CanonicalName).UserAdded;
-        context.Notify("Command cloned.");
+        context.Notify(Feedback.CommandCloned);
     }
 
     private void Delete(CommandContext context, string rawName)
@@ -214,7 +214,7 @@ public class CommandCommandHandler : ICommandHandler
         string name = rawName.ToUpperInvariant();
         if (!_dispatcher.Table.ContainsExact(name))
         {
-            context.Notify("No such command.");
+            context.Notify(Feedback.NoSuchCommand);
             return;
         }
 
@@ -223,7 +223,7 @@ public class CommandCommandHandler : ICommandHandler
         bool primary = canonical.Equals(name, StringComparison.OrdinalIgnoreCase);
         if (primary && !_dispatcher.Catalog.Facts(canonical).UserAdded)
         {
-            context.Notify("You can't delete built-in commands. @command/disable instead.");
+            context.Notify(Feedback.YouCantDeleteBuiltInCommandsCommandDisableInstead);
             return;
         }
 
@@ -232,9 +232,9 @@ public class CommandCommandHandler : ICommandHandler
         if (primary)
             _dispatcher.Catalog.Forget(canonical);
         if (primary && names > 1)
-            context.Notify($"Removed {name} and aliases from command table.");
+            context.Notify(Feedback.RemovedAndAliasesFromCommandTable, ("value", $"{name}"));
         else
-            context.Notify($"Removed {name} from command table.");
+            context.Notify(Feedback.RemovedFromCommandTable, ("value", $"{name}"));
     }
 
     private static void RememberFlags(CommandContext context, CommandFacts facts)
@@ -255,16 +255,16 @@ public class CommandCommandHandler : ICommandHandler
     {
         var facts = _dispatcher.Catalog.TryFacts(canonical, out var found) ? found : new CommandFacts();
         string state = facts.Disabled ? "Disabled" : "Enabled";
-        context.Notify($"Name       : {handler.Name.ToUpperInvariant()} ({state})");
+        context.Notify(Feedback.NameValueValue, ("name", $"{handler.Name.ToUpperInvariant()}"), ("value", $"{state}"));
         context.Notify($"Flags      : {string.Join(" ", facts.ParseFlags)}");
         context.Notify($"Lock       : {(string.IsNullOrEmpty(facts.Restrictions) ? "1" : facts.Restrictions)}");
-        context.Notify("Switches   :");
+        context.Notify(Feedback.Switches);
         if (facts.ParseFlags.Contains("Eqsplit"))
         {
             string left = string.Join(" ", facts.ParseFlags.Where(flag => flag is "Args" or "Noparse"));
             string right = string.Join(" ", facts.ParseFlags.Where(flag => flag is "RsArgs" or "RsNoparse"));
-            context.Notify($"Leftside   : {left}");
-            context.Notify($"Rightside  : {right}");
+            context.Notify(Feedback.Leftside, ("value", $"{left}"));
+            context.Notify(Feedback.Rightside, ("value", $"{right}"));
         }
     }
 }

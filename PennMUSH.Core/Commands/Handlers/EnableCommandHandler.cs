@@ -21,12 +21,12 @@ public class EnableCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (_enable && actor.HasFlag("GAGGED"))
         {
-            context.Notify("You cannot do that while gagged.");
+            context.Notify(Feedback.YouCannotDoThatWhileGagged);
             return false;
         }
         if (!_config.TrySetSwitch(context.LeftArg, _enable, out string failure))

@@ -38,7 +38,7 @@ public class FlagCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor != null && actor.HasFlag("GAGGED"))
         {
-            context.Notify("You cannot do that while gagged.");
+            context.Notify(Feedback.YouCannotDoThatWhileGagged);
             return false;
         }
 
@@ -81,7 +81,7 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't have enough magic for that.");
+            context.Notify(Feedback.YouDontHaveEnoughMagicForThat);
             return false;
         }
 
@@ -102,7 +102,7 @@ public class FlagCommandHandler : ICommandHandler
         {
             if (fields[0].Length != 1)
             {
-                context.Notify("Flag characters must be single characters.");
+                context.Notify(Feedback.FlagCharactersMustBeSingleCharacters);
                 return false;
             }
 
@@ -120,7 +120,7 @@ public class FlagCommandHandler : ICommandHandler
         var conflict = FlagTable.LetterConflict(letter, type, null);
         if (conflict != null)
         {
-            context.Notify($"Letter conflicts with the flag {conflict.Name}.");
+            context.Notify(Feedback.LetterConflictsWithTheFlag, ("flag", $"{conflict.Name}"));
             return false;
         }
 
@@ -141,20 +141,20 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't have enough magic for that.");
+            context.Notify(Feedback.YouDontHaveEnoughMagicForThat);
             return false;
         }
 
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("No such flag.");
+            context.Notify(Feedback.NoSuchFlag);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("How do you want to restrict that flag?");
+            context.Notify(Feedback.HowDoYouWantToRestrictThatFlag);
             return false;
         }
 
@@ -167,7 +167,7 @@ public class FlagCommandHandler : ICommandHandler
 
         flag.Permissions = perms;
         flag.NegatePermissions = negate;
-        context.Notify($"Permissions on {flag.Name} flag set.");
+        context.Notify(Feedback.PermissionsOnFlagSet, ("value", $"{flag.Name}"));
         return true;
     }
 
@@ -175,20 +175,20 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't have enough magic for that.");
+            context.Notify(Feedback.YouDontHaveEnoughMagicForThat);
             return false;
         }
 
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("No such flag.");
+            context.Notify(Feedback.NoSuchFlag);
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("What type do you want to make that flag?");
+            context.Notify(Feedback.WhatTypeDoYouWantToMakeThatFlag);
             return false;
         }
 
@@ -201,14 +201,14 @@ public class FlagCommandHandler : ICommandHandler
             {
                 if (obj.HasFlag(flag.Name) && !type.HasFlag(obj.Type))
                 {
-                    context.Notify("Objects of other types already have this flag set. Search for them and remove it first.");
+                    context.Notify(Feedback.ObjectsOfOtherTypesAlreadyHaveThisFlagSetSearchForThemAndRemove);
                     return false;
                 }
             }
         }
 
         flag.TargetType = type;
-        context.Notify($"Type of {flag.Name} flag set.");
+        context.Notify(Feedback.TypeOfFlagSet, ("value", $"{flag.Name}"));
         return true;
     }
 
@@ -216,14 +216,14 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't look like God.");
+            context.Notify(Feedback.YouDontLookLikeGod);
             return false;
         }
 
         string alias = context.RightArg.Trim();
         if (alias.Length == 0)
         {
-            context.Notify("You must provide a name for the alias.");
+            context.Notify(Feedback.YouMustProvideANameForTheAlias);
             return false;
         }
 
@@ -233,31 +233,31 @@ public class FlagCommandHandler : ICommandHandler
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("I don't know that flag.");
+            context.Notify(Feedback.IDontKnowThatFlag);
             return false;
         }
 
         if (flag.Permissions.HasFlag(FlagPrivileges.Disabled))
         {
-            context.Notify("That flag is disabled.");
+            context.Notify(Feedback.ThatFlagIsDisabled);
             return false;
         }
 
         if (alias.Length <= 1)
         {
-            context.Notify("Flag aliases must be longer than one character.");
+            context.Notify(Feedback.FlagAliasesMustBeLongerThanOneCharacter);
             return false;
         }
 
         if (alias.Contains(' '))
         {
-            context.Notify("Flag aliases may not contain spaces.");
+            context.Notify(Feedback.FlagAliasesMayNotContainSpaces);
             return false;
         }
 
         if (!PennMUSH.Core.Attributes.AttributeEntry.IsValidName(alias))
         {
-            context.Notify("That's not a valid flag name.");
+            context.Notify(Feedback.ThatsNotAValidFlagName);
             return false;
         }
 
@@ -275,7 +275,7 @@ public class FlagCommandHandler : ICommandHandler
         {
             if (matched == null || !matched.Name.Equals(flag.Name, StringComparison.OrdinalIgnoreCase) || !FlagTable.IsAlias(canonical))
             {
-                context.Notify($"That isn't an alias of the flag {flag.Name}.");
+                context.Notify(Feedback.ThatIsntAnAliasOfTheFlag, ("flag", $"{flag.Name}"));
                 return false;
             }
 
@@ -285,7 +285,7 @@ public class FlagCommandHandler : ICommandHandler
         {
             if (matched != null)
             {
-                context.Notify($"That alias already matches the flag {matched.Name}.");
+                context.Notify(Feedback.ThatAliasAlreadyMatchesTheFlag, ("flag", $"{matched.Name}"));
                 return false;
             }
 
@@ -300,21 +300,21 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't look like God.");
+            context.Notify(Feedback.YouDontLookLikeGod);
             return false;
         }
 
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("I don't know that flag.");
+            context.Notify(Feedback.IDontKnowThatFlag);
             return false;
         }
 
         string raw = context.RightArg.Trim();
         if (raw.Length > 1)
         {
-            context.Notify("Flag characters must be single characters.");
+            context.Notify(Feedback.FlagCharactersMustBeSingleCharacters);
             return false;
         }
 
@@ -322,7 +322,7 @@ public class FlagCommandHandler : ICommandHandler
         var conflict = FlagTable.LetterConflict(letter, flag.TargetType, flag);
         if (conflict != null)
         {
-            context.Notify($"Letter conflicts with the flag {conflict.Name}.");
+            context.Notify(Feedback.LetterConflictsWithTheFlag, ("flag", $"{conflict.Name}"));
             return false;
         }
 
@@ -337,27 +337,27 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't look like God.");
+            context.Notify(Feedback.YouDontLookLikeGod);
             return false;
         }
 
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("I don't know that flag.");
+            context.Notify(Feedback.IDontKnowThatFlag);
             return false;
         }
 
         bool already = flag.Permissions.HasFlag(FlagPrivileges.Disabled);
         if (disable && already)
         {
-            context.Notify("That flag is already disabled.");
+            context.Notify(Feedback.ThatFlagIsAlreadyDisabled);
             return false;
         }
 
         if (!disable && !already)
         {
-            context.Notify("That flag is not disabled.");
+            context.Notify(Feedback.ThatFlagIsNotDisabled);
             return false;
         }
 
@@ -372,20 +372,20 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (!God(actor))
         {
-            context.Notify("You don't look like God.");
+            context.Notify(Feedback.YouDontLookLikeGod);
             return false;
         }
 
         var flag = Find(context.LeftArg);
         if (flag == null)
         {
-            context.Notify("I don't know that flag.");
+            context.Notify(Feedback.IDontKnowThatFlag);
             return false;
         }
 
         if (flag.Permissions.HasFlag(FlagPrivileges.Internal))
         {
-            context.Notify("There are probably easier ways to crash your MUSH.");
+            context.Notify(Feedback.ThereAreProbablyEasierWaysToCrashYourMush);
             return false;
         }
 
@@ -393,7 +393,7 @@ public class FlagCommandHandler : ICommandHandler
             obj.RemoveFlag(flag.Name);
         string name = flag.Name;
         FlagTable.RemoveFlag(flag);
-        context.Notify($"Flag {name} deleted.");
+        context.Notify(Feedback.FlagDeleted, ("flag", $"{name}"));
         return true;
     }
 
@@ -401,13 +401,13 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var flags = FlagTable.Definitions;
-        context.Notify("Flagspace name: FLAG");
-        context.Notify($"Flag count: {flags.Count}");
+        context.Notify(Feedback.FlagspaceNameFlag);
+        context.Notify(Feedback.FlagCount, ("value", $"{flags.Count}"));
         for (int i = 0; i < flags.Count; i++)
             context.Notify($"Flag {i,2}: {flags[i].Name}. Bit position: {i}");
         return true;
@@ -418,7 +418,7 @@ public class FlagCommandHandler : ICommandHandler
         var flag = Find(name);
         if (flag == null || (!God(actor) && flag.Permissions.HasFlag(FlagPrivileges.Disabled)))
         {
-            context.Notify("No such flag.");
+            context.Notify(Feedback.NoSuchFlag);
             return false;
         }
 
@@ -460,7 +460,7 @@ public class FlagCommandHandler : ICommandHandler
 
         if (!PennMUSH.Core.Attributes.AttributeEntry.IsValidName(name))
         {
-            context.Notify("That's not a valid flag name.");
+            context.Notify(Feedback.ThatsNotAValidFlagName);
             return false;
         }
 
@@ -480,7 +480,7 @@ public class FlagCommandHandler : ICommandHandler
             var match = TypeNames.FirstOrDefault(entry => entry.Name.Equals(token, StringComparison.OrdinalIgnoreCase));
             if (match.Name == null)
             {
-                context.Notify("I don't understand the list of types.");
+                context.Notify(Feedback.IDontUnderstandTheListOfTypes);
                 return false;
             }
 
@@ -510,7 +510,7 @@ public class FlagCommandHandler : ICommandHandler
             var match = PermissionNames.FirstOrDefault(entry => entry.Name.Equals(token, StringComparison.OrdinalIgnoreCase));
             if (match.Name == null)
             {
-                context.Notify("I don't understand those permissions.");
+                context.Notify(Feedback.IDontUnderstandThosePermissions);
                 return false;
             }
 
@@ -519,7 +519,7 @@ public class FlagCommandHandler : ICommandHandler
 
         if (perms == FlagPrivileges.None || perms.HasFlag(FlagPrivileges.Internal) || perms.HasFlag(FlagPrivileges.Disabled))
         {
-            context.Notify("I don't understand those permissions.");
+            context.Notify(Feedback.IDontUnderstandThosePermissions);
             return false;
         }
 

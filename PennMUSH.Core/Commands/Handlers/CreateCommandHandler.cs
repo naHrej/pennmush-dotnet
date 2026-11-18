@@ -13,7 +13,7 @@ public class CreateCommandHandler : ICommandHandler
         var obj = db.CreateObject(name, ObjectType.Thing, context.Executor);
 
         if (!context.Switches.Contains("silent"))
-            context.Notify($"Created: {obj.Name} ({obj.Id})");
+            context.Notify(Feedback.CreatedValueValue, ("value", $"{obj.Name}"), ("value2", $"{obj.Id}"));
 
         return true;
     }

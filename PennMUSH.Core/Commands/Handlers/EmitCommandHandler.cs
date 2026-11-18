@@ -54,14 +54,14 @@ public class EmitCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Emit what?");
+            context.Notify(Feedback.EmitWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -79,14 +79,14 @@ public class PemitCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @pemit <target>=<message>");
+            context.Notify(Feedback.UsagePemitTargetMessage);
             return false;
         }
 
         var target = ResolveTarget(context.LeftArg, context.Executor, db);
         if (target == null)
         {
-            context.Notify("I can't find that target.");
+            context.Notify(Feedback.ICantFindThatTarget);
             return false;
         }
 
@@ -107,7 +107,7 @@ public class PemitCommandHandler : ICommandHandler
 
         if (!context.Switches.Contains("silent"))
         {
-            context.Notify($"Message sent to {target.Name}.");
+            context.Notify(Feedback.MessageSentTo, ("value", $"{target.Name}"));
         }
 
         return true;
@@ -134,7 +134,7 @@ public class RemitCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @remit <room>=<message>");
+            context.Notify(Feedback.UsageRemitRoomMessage);
             return false;
         }
 
@@ -148,7 +148,7 @@ public class RemitCommandHandler : ICommandHandler
         var room = db.GetObject(roomRef);
         if (room == null || room.Type != ObjectType.Room)
         {
-            context.Notify("That's not a valid room.");
+            context.Notify(Feedback.ThatsNotAValidRoom);
             return false;
         }
 
@@ -156,7 +156,7 @@ public class RemitCommandHandler : ICommandHandler
         string message = context.RightArg;
         bool spoofable = speaker != null && !SpoofPrefix.Omits(speaker, context.CommandName);
         context.NotifyRoom(room.Id, message, speaker?.Id ?? default, spoofable);
-        context.Notify($"Message sent to {room.Name}.");
+        context.Notify(Feedback.MessageSentTo, ("value", $"{room.Name}"));
         return true;
     }
 }
@@ -169,14 +169,14 @@ public class OemitCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @oemit <target>=<message>");
+            context.Notify(Feedback.UsageOemitTargetMessage);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -198,7 +198,7 @@ public class OemitCommandHandler : ICommandHandler
 
         if (!targetRef.IsValid)
         {
-            context.Notify("I can't find that target.");
+            context.Notify(Feedback.ICantFindThatTarget);
             return false;
         }
 

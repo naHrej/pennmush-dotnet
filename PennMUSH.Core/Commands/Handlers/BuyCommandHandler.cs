@@ -37,12 +37,12 @@ public class BuyCommandHandler : ICommandHandler
         {
             if (!int.TryParse(forWhat.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out price))
             {
-                context.Notify("Buy for WHAT price?");
+                context.Notify(Feedback.BuyForWhatPrice);
                 return false;
             }
             if (price < 0)
             {
-                context.Notify("You can't buy things by taking money.");
+                context.Notify(Feedback.YouCantBuyThingsByTakingMoney);
                 return false;
             }
         }
@@ -54,17 +54,17 @@ public class BuyCommandHandler : ICommandHandler
             vendor = NearbyMatch.Find(db, actor, from.Trim(), out bool ambiguous);
             if (ambiguous)
             {
-                context.Notify("I don't know who you mean!");
+                context.Notify(Feedback.IDontKnowWhoYouMean);
                 return false;
             }
             if (vendor == null || vendor.Type is not (ObjectType.Player or ObjectType.Thing))
             {
-                context.Notify("Buy from whom?");
+                context.Notify(Feedback.BuyFromWhom);
                 return false;
             }
             if (vendor.Id == actor.Id)
             {
-                context.Notify("You can't buy from yourself!");
+                context.Notify(Feedback.YouCantBuyFromYourself);
                 return false;
             }
             named = true;
@@ -74,7 +74,7 @@ public class BuyCommandHandler : ICommandHandler
             vendor = FirstOther(db, actor);
             if (vendor == null)
             {
-                context.Notify("There's nobody here to buy things from.");
+                context.Notify(Feedback.TheresNobodyHereToBuyThingsFrom);
                 return false;
             }
         }
@@ -82,7 +82,7 @@ public class BuyCommandHandler : ICommandHandler
         string item = text.Trim();
         if (item.Length == 0)
         {
-            context.Notify("Buy what?");
+            context.Notify(Feedback.BuyWhat);
             return false;
         }
 
@@ -130,13 +130,13 @@ public class BuyCommandHandler : ICommandHandler
         while (!named && (vendor = Next(db, vendor)) != null && vendor.Id != start.Id);
 
         if (refused != null)
-            context.Notify($"{refused.Name} doesn't want your money.");
+            context.Notify(Feedback.DoesntWantYourMoney, ("value", $"{refused.Name}"));
         else if (price >= 0)
             context.Notify(named ? $"{start.Name} isn't selling that item for that price" : "I can't find that item with that price here.");
         else if (affordable)
             context.Notify(named ? $"{start.Name} isn't selling that item." : "I can't find that item here.");
         else
-            context.Notify("You can't afford that.");
+            context.Notify(Feedback.YouCantAffordThat);
         return false;
     }
 

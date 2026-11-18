@@ -34,7 +34,7 @@ public class TeleportCommandHandler : ICommandHandler
 
         if (string.IsNullOrWhiteSpace(destStr))
         {
-            context.Notify("Where do you want to teleport to?");
+            context.Notify(Feedback.WhereDoYouWantToTeleportTo);
             return false;
         }
 
@@ -46,12 +46,12 @@ public class TeleportCommandHandler : ICommandHandler
 
         if (target == null || dest == null)
         {
-            context.Notify("I can't find that.");
+            context.Notify(Feedback.ICantFindThat);
             return false;
         }
 
         db.MoveObject(target.Id, dest.Id);
-        context.Notify("Teleported.");
+        context.Notify(Feedback.Teleported);
         if (target.Type == ObjectType.Player)
             _lookHandler?.ShowHere(context, db, target.Id, LookKind.Automatic);
         return true;

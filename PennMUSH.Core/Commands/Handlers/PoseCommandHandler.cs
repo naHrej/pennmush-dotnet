@@ -18,7 +18,7 @@ public class PoseCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.Arguments))
         {
-            context.Notify("Pose what?");
+            context.Notify(Feedback.PoseWhat);
             return false;
         }
 

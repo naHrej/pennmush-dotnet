@@ -24,7 +24,7 @@ public class InventoryCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -53,14 +53,14 @@ public class InventoryCommandHandler : ICommandHandler
 
         if (items.Count == 0)
         {
-            context.Notify("You are empty-handed.");
+            context.Notify(Feedback.YouAreEmptyHanded);
         }
         else
         {
-            context.Notify("You are carrying:");
+            context.Notify(Feedback.YouAreCarrying);
             foreach (var item in items)
             {
-                context.Notify($"  {item}");
+                context.Notify(Feedback.Value, ("value", $"{item}"));
             }
         }
 

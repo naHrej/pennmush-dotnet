@@ -26,13 +26,13 @@ public class HttpCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !(actor.IsWizard || actor.HasPower("Can_HTTP")))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("What do you want to query?");
+            context.Notify(Feedback.WhatDoYouWantToQuery);
             return false;
         }
 
@@ -41,26 +41,26 @@ public class HttpCommandHandler : ICommandHandler
         bool delete = context.Switches.Contains("delete");
         if ((post && put) || (post && delete) || (put && delete))
         {
-            context.Notify("You can't make multiple requests at the same time!");
+            context.Notify(Feedback.YouCantMakeMultipleRequestsAtTheSameTime);
             return false;
         }
 
         if (!CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out string objectName, out string attribute))
         {
-            context.Notify("I need to know what attribute to trigger.");
+            context.Notify(Feedback.INeedToKnowWhatAttributeToTrigger);
             return false;
         }
 
         var thing = db.MatchObject(context.Executor, objectName);
         if (thing == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         if (!CopyAttributeCommandHandler.Controls(actor, thing))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -73,12 +73,12 @@ public class HttpCommandHandler : ICommandHandler
         HttpFetchResult result = _fetch.Send(url, method, payload, contentType, userPass);
         if (!result.Ok)
         {
-            context.NotifyTarget(thing.Id, $"Request failed: {result.Error}");
+            context.NotifyTarget(thing.Id, Feedback.RequestFailed.Text(("value", $"{result.Error}")));
             return false;
         }
 
         if (result.Truncated)
-            context.NotifyTarget(thing.Id, "Too much HTTP data received; excess truncated.");
+            context.NotifyTarget(thing.Id, Feedback.TooMuchHttpDataReceivedExcessTruncated.Text());
 
         var stored = thing.GetAttribute(attribute, db);
         if (stored == null || string.IsNullOrEmpty(stored.Value))
@@ -126,17 +126,17 @@ public class RespondCommandHandler : ICommandHandler
     {
         var handler = db.GetObject(_channel.Handler);
         if (handler == null || handler.Type != ObjectType.Player)
-            context.Notify("Invalid http_handler, it should be a player.");
+            context.Notify(Feedback.InvalidHttpHandlerItShouldBeAPlayer);
 
         if (string.IsNullOrEmpty(context.LeftArg))
         {
-            context.Notify("Invalid use of @respond, please check help @respond.");
+            context.Notify(Feedback.InvalidUseOfRespondPleaseCheckHelpRespond);
             return false;
         }
 
         if (HasNonPrintable(context.LeftArg) || HasNonPrintable(context.RightArg))
         {
-            context.Notify("No nonprintable characters allowed in @respond");
+            context.Notify(Feedback.NoNonprintableCharactersAllowedInRespond);
             return false;
         }
 
@@ -144,7 +144,7 @@ public class RespondCommandHandler : ICommandHandler
         bool header = context.Switches.Contains("header");
         if (type && header)
         {
-            context.Notify("Invalid @respond - You can't use more than one switch!");
+            context.Notify(Feedback.InvalidRespondYouCantUseMoreThanOneSwitch);
             return false;
         }
 
@@ -153,7 +153,7 @@ public class RespondCommandHandler : ICommandHandler
         {
             if (context.RightArg.Length > 0)
             {
-                context.Notify("Invalid @respond/type - cannot have arg_right, use {}s");
+                context.Notify(Feedback.InvalidRespondTypeCannotHaveArgRightUseS);
                 return false;
             }
 
@@ -168,26 +168,26 @@ public class RespondCommandHandler : ICommandHandler
         {
             if (context.LeftArg.Length == 0 || context.RightArg.Length == 0)
             {
-                context.Notify("Invalid format, use @respond/header HeaderName=Value.");
+                context.Notify(Feedback.InvalidFormatUseRespondHeaderHeaderNameValue);
                 return false;
             }
 
             if (context.LeftArg.Equals("content-length", StringComparison.OrdinalIgnoreCase))
             {
-                context.Notify("You cannot set Content-Length header.");
+                context.Notify(Feedback.YouCannotSetContentLengthHeader);
                 return false;
             }
 
             if (!IsAscii(context.LeftArg))
             {
-                context.Notify("Invalid HTTP Header name.");
+                context.Notify(Feedback.InvalidHttpHeaderName);
                 return false;
             }
 
             if (reply != null)
                 reply.Headers.Add(context.LeftArg + ": " + context.RightArg);
             else
-                context.NotifyTarget(context.Enactor, $"(HTTP): {context.LeftArg}: {context.RightArg}");
+                context.NotifyTarget(context.Enactor, Feedback.HttpValueValue.Text(("value", $"{context.LeftArg}"), ("value2", $"{context.RightArg}")));
             return true;
         }
 
@@ -197,25 +197,25 @@ public class RespondCommandHandler : ICommandHandler
             || status[3] != ' '
             || !char.IsLetterOrDigit(status[4]))
         {
-            context.Notify("@respond must be 3 digits, space, then text .");
+            context.Notify(Feedback.RespondMustBe3DigitsSpaceThenText);
             return false;
         }
 
         if (context.RightArg.Length > 0)
         {
-            context.Notify("Invalid @respond/type - cannot have arg_right, use {}s");
+            context.Notify(Feedback.InvalidRespondTypeCannotHaveArgRightUseS);
             return false;
         }
 
         if (!IsAscii(status))
         {
-            context.Notify("@respond must be 3 digits, space, then text .");
+            context.Notify(Feedback.RespondMustBe3DigitsSpaceThenText);
             return false;
         }
 
         if (status.Length >= 40)
         {
-            context.Notify("@respond status code too long.");
+            context.Notify(Feedback.RespondStatusCodeTooLong);
             return false;
         }
 

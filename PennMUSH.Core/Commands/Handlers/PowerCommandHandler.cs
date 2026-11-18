@@ -14,7 +14,7 @@ public class PowerCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("What power do you want to set?");
+            context.Notify(Feedback.WhatPowerDoYouWantToSet);
             return false;
         }
 
@@ -22,14 +22,14 @@ public class PowerCommandHandler : ICommandHandler
         var target = db.GetObject(targetRef);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var executorObj = db.GetObject(context.Executor);
         if (executorObj == null || !executorObj.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -39,7 +39,7 @@ public class PowerCommandHandler : ICommandHandler
         var powerDef = FlagTable.FindPower(powerName);
         if (powerDef == null)
         {
-            context.Notify("I don't recognize that power.");
+            context.Notify(Feedback.IDontRecognizeThatPower);
             return false;
         }
 
@@ -48,7 +48,7 @@ public class PowerCommandHandler : ICommandHandler
         else
             target.AddPower(powerDef.Name);
 
-        context.Notify("Set.");
+        context.Notify(Feedback.Set);
         return true;
     }
 

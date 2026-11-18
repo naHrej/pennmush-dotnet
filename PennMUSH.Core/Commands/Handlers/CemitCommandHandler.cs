@@ -29,20 +29,20 @@ public class CemitCommandHandler : ICommandHandler
 
         if (string.IsNullOrEmpty(chName) || string.IsNullOrEmpty(message))
         {
-            context.Notify("Usage: @cemit <channel>=<message>");
+            context.Notify(Feedback.UsageCemitChannelMessage);
             return false;
         }
 
         var ch = _channels.GetChannel(chName);
         if (ch == null)
         {
-            context.Notify($"Channel <{chName}> not found.");
+            context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
             return false;
         }
 
         if (!executor.IsWizard && !executor.IsGod && ch.Owner != executor.Id)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 

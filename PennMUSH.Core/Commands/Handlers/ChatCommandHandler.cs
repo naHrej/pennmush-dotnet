@@ -39,26 +39,26 @@ public class ChatCommandHandler : ICommandHandler
 
         if (string.IsNullOrEmpty(chName) || string.IsNullOrEmpty(message))
         {
-            context.Notify("Usage: @chat <channel>=<message>");
+            context.Notify(Feedback.UsageChatChannelMessage);
             return false;
         }
 
         var ch = _channels.GetChannel(chName);
         if (ch == null || !ch.Visible(executor, db))
         {
-            context.Notify("CHAT: No such channel.");
+            context.Notify(Feedback.ChatNoSuchChannel);
             return false;
         }
 
         if (!ch.Passes("speak", executor.Id, db))
         {
-            context.Notify($"Sorry, you're not allowed to speak on channel <{ch.Name}>.");
+            context.Notify(Feedback.SorryYoureNotAllowedToSpeakOnChannel, ("channel", $"{ch.Name}"));
             return false;
         }
 
         if (!ch.HasMember(executor.Id) && !executor.IsWizard)
         {
-            context.Notify($"You are not on channel <{ch.Name}>.");
+            context.Notify(Feedback.YouAreNotOnChannel, ("channel", $"{ch.Name}"));
             return false;
         }
 

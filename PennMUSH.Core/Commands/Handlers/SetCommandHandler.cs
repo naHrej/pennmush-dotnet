@@ -15,21 +15,21 @@ public class SetCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("What do you want to set?");
+            context.Notify(Feedback.WhatDoYouWantToSet);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, context.LeftArg);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         var executorObj = db.GetObject(context.Executor);
         if (executorObj == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -43,7 +43,7 @@ public class SetCommandHandler : ICommandHandler
             // Permission check: owner or wizard can set attributes
             if (!executorObj.IsWizard && executorObj.Id != target.Owner)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
 
@@ -52,7 +52,7 @@ public class SetCommandHandler : ICommandHandler
                 var written = AttributeWriter.Apply(executorObj, target, attrName, string.IsNullOrEmpty(attrVal) ? null : attrVal);
                 if (written.Ok)
                 {
-                    context.Notify("Set.");
+                    context.Notify(Feedback.Set);
                     return true;
                 }
 
@@ -63,10 +63,10 @@ public class SetCommandHandler : ICommandHandler
             var err = target.SetAttribute(attrName, attrVal, context.Executor, wizardOverride: executorObj.IsWizard);
             if (err == AttributeErrorCode.Okay)
             {
-                context.Notify("Set.");
+                context.Notify(Feedback.Set);
                 return true;
             }
-            context.Notify($"Failed to set attribute: {err}");
+            context.Notify(Feedback.FailedToSetAttribute, ("attribute", $"{err}"));
             return false;
         }
         else
@@ -78,7 +78,7 @@ public class SetCommandHandler : ICommandHandler
             var flagDef = FlagTable.FindFlag(flagName);
             if (flagDef == null)
             {
-                context.Notify("I don't recognize that flag.");
+                context.Notify(Feedback.IDontRecognizeThatFlag);
                 return false;
             }
 
@@ -93,7 +93,7 @@ public class SetCommandHandler : ICommandHandler
             else
                 target.AddFlag(flagDef.Name);
 
-            context.Notify("Set.");
+            context.Notify(Feedback.Set);
             return true;
         }
     }

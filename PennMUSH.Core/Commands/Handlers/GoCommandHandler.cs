@@ -28,14 +28,14 @@ public class GoCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Where do you want to go?");
+            context.Notify(Feedback.WhereDoYouWantToGo);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -52,7 +52,7 @@ public class GoCommandHandler : ICommandHandler
 
         if (exitObj == null)
         {
-            context.Notify("Alas, you cannot go that way.");
+            context.Notify(Feedback.AlasYouCannotGoThatWay);
             return false;
         }
 
@@ -61,14 +61,14 @@ public class GoCommandHandler : ICommandHandler
         var destObj = db.GetObject(destRef);
         if (destObj == null)
         {
-            context.Notify("That exit leads nowhere.");
+            context.Notify(Feedback.ThatExitLeadsNowhere);
             return false;
         }
 
         var here = db.GetObject(execObj.Location);
         if (here != null && !here.EvalLock(LockType.Leave, context.Executor, db))
         {
-            context.Notify("You can't go that way.");
+            context.Notify(Feedback.YouCantGoThatWay);
             return false;
         }
 
@@ -96,7 +96,7 @@ public class GoCommandHandler : ICommandHandler
             if (failAttr != null && !string.IsNullOrWhiteSpace(failAttr.Value))
                 context.Notify(_evaluator != null ? _evaluator.Evaluate(failAttr.Value, lockCtx) : failAttr.Value);
             else
-                context.Notify("You can't go that way.");
+                context.Notify(Feedback.YouCantGoThatWay);
             return false;
         }
 

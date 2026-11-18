@@ -19,14 +19,14 @@ public class PsCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         bool all = context.Switches.Contains("all");
         if (all && !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -36,20 +36,20 @@ public class PsCommandHandler : ICommandHandler
         {
             if (!int.TryParse(arg, out int pid))
             {
-                context.Notify("That is not a valid pid!");
+                context.Notify(Feedback.ThatIsNotAValidPid);
                 return false;
             }
 
             var entry = entries.FirstOrDefault(item => item.Pid == pid);
             if (entry == null)
             {
-                context.Notify("That is not a valid pid!");
+                context.Notify(Feedback.ThatIsNotAValidPid);
                 return false;
             }
 
             if (!actor.IsWizard && entry.Executor != actor.Id)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
 
@@ -62,7 +62,7 @@ public class PsCommandHandler : ICommandHandler
 
         if (context.Switches.Contains("count"))
         {
-            context.Notify($"Queue entries: {entries.Count}");
+            context.Notify(Feedback.QueueEntries, ("value", $"{entries.Count}"));
             return true;
         }
 
@@ -79,7 +79,7 @@ public class PsCommandHandler : ICommandHandler
 
         context.Notify(all ? "Queue for all:" : $"Queue for {actor.Name}:");
         if (entries.Count == 0)
-            context.Notify("(empty)");
+            context.Notify(Feedback.Empty);
         else
         {
             foreach (var entry in entries.OrderBy(item => item.Pid))
@@ -125,7 +125,7 @@ public class KickCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -133,14 +133,14 @@ public class KickCommandHandler : ICommandHandler
         int count = 1;
         if (arg.Length > 0 && (!int.TryParse(arg, out count) || count < 1))
         {
-            context.Notify("Usage: @kick <count>");
+            context.Notify(Feedback.UsageKickCount);
             return false;
         }
 
         var results = _queue.Kick(count, _dispatcher, db);
         if (results.Count == 0)
         {
-            context.Notify("Nothing to kick.");
+            context.Notify(Feedback.NothingToKick);
             return true;
         }
 

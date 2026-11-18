@@ -85,14 +85,14 @@ public class ScanCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.Location.IsValid)
         {
-            context.Notify("Sorry, you are in an invalid location.");
+            context.Notify(Feedback.SorryYouAreInAnInvalidLocation);
             return false;
         }
 
         string command = (context.Arguments ?? string.Empty).Trim();
         if (command.Length == 0)
         {
-            context.Notify("What command do you want to scan for?");
+            context.Notify(Feedback.WhatCommandDoYouWantToScanFor);
             return false;
         }
 
@@ -107,25 +107,25 @@ public class ScanCommandHandler : ICommandHandler
 
         if (room)
         {
-            context.Notify("Matches on contents of this room:");
+            context.Notify(Feedback.MatchesOnContentsOfThisRoom);
             foreach (var item in db.GetContents(actor.Location))
                 Report(context, actor, item, command);
             var here = db.GetObject(actor.Location);
             if (here != null && ListenerSearch.MatchingAttributes(here, command).Count > 0 && ListenerSearch.CanExamine(actor, here))
             {
                 var names = ListenerSearch.MatchingAttributes(here, command);
-                context.Notify($"Matched here: {Label(here)}  [{names.Count}:{FormatNames(names)}]");
+                context.Notify(Feedback.MatchedHere, ("value", $"{Label(here)}"), ("value2", $"{names.Count}"), ("value3", $"{FormatNames(names)}"));
             }
         }
 
         if (self)
         {
-            context.Notify("Matches on carried objects:");
+            context.Notify(Feedback.MatchesOnCarriedObjects);
             foreach (var item in db.GetContents(actor.Id))
                 Report(context, actor, item, command);
             var own = ListenerSearch.MatchingAttributes(actor, command);
             if (own.Count > 0)
-                context.Notify($"Matched self: {Label(actor)}  [{own.Count}:{FormatNames(own)}]");
+                context.Notify(Feedback.MatchedSelf, ("value", $"{Label(actor)}"), ("value2", $"{own.Count}"), ("value3", $"{FormatNames(own)}"));
         }
 
         if (zone)
@@ -133,7 +133,7 @@ public class ScanCommandHandler : ICommandHandler
 
         if (globals && actor.Location != _masterRoom && actor.Zone != _masterRoom && LocationZone(db, actor) != _masterRoom)
         {
-            context.Notify("Matches on objects in the Master Room:");
+            context.Notify(Feedback.MatchesOnObjectsInTheMasterRoom);
             foreach (var item in db.GetContents(_masterRoom))
                 Report(context, actor, item, command);
         }
@@ -186,7 +186,7 @@ public class ScanCommandHandler : ICommandHandler
         var names = ListenerSearch.MatchingAttributes(target, command);
         if (names.Count == 0)
             return;
-        context.Notify($"{Label(target)}  [{names.Count}:{FormatNames(names)}]");
+        context.Notify(Feedback.ValueValueValue, ("value", $"{Label(target)}"), ("value2", $"{names.Count}"), ("value3", $"{FormatNames(names)}"));
     }
 
     private static string FormatNames(List<string> names) => " " + string.Join(" ", names);
@@ -203,13 +203,13 @@ public class SweepCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.Location.IsValid || db.GetObject(actor.Location) == null)
         {
-            context.Notify("Sorry, you are in an invalid location.");
+            context.Notify(Feedback.SorryYouAreInAnInvalidLocation);
             return false;
         }
 
         if (!TryMode(context, out string mode))
         {
-            context.Notify("Invalid parameter.");
+            context.Notify(Feedback.InvalidParameter);
             return false;
         }
 
@@ -221,7 +221,7 @@ public class SweepCommandHandler : ICommandHandler
 
         if (!inventory && !exits)
         {
-            context.Notify("Listening in ROOM:");
+            context.Notify(Feedback.ListeningInRoom);
             ReportPlace(context, db, room, connected, thisRoom: true);
             foreach (var item in db.GetContents(room.Id))
                 ReportPlace(context, db, item, connected, thisRoom: false);
@@ -229,20 +229,20 @@ public class SweepCommandHandler : ICommandHandler
 
         if (!connected && !inventory && room.Type == ObjectType.Room)
         {
-            context.Notify("Listening EXITS:");
+            context.Notify(Feedback.ListeningExits);
             if (room.HasFlag("AUDIBLE"))
             {
                 foreach (var exit in db.GetExits(room.Id))
                 {
                     if (exit.HasFlag("AUDIBLE"))
-                        context.Notify($"{exit.Name} [broadcasting].");
+                        context.Notify(Feedback.Broadcasting, ("value", $"{exit.Name}"));
                 }
             }
         }
 
         if (!here && !exits)
         {
-            context.Notify("Listening in your INVENTORY:");
+            context.Notify(Feedback.ListeningInYourInventory);
             foreach (var item in db.GetContents(actor.Id))
                 ReportPlace(context, db, item, connected, thisRoom: false);
         }
@@ -288,7 +288,7 @@ public class SweepCommandHandler : ICommandHandler
             if (!ConnectedListener(db, obj))
                 return;
             if (obj.Type == ObjectType.Player)
-                context.Notify($"{obj.Name} is listening.");
+                context.Notify(Feedback.IsListening, ("value", $"{obj.Name}"));
             else
             {
                 var owner = db.GetObject(obj.Owner);
@@ -302,7 +302,7 @@ public class SweepCommandHandler : ICommandHandler
         {
             string where = thisRoom ? " (this room)" : string.Empty;
             string online = db.IsConnected(obj.Id) ? " (connected)" : string.Empty;
-            context.Notify($"{obj.Name}{where} [speech].{online}");
+            context.Notify(Feedback.ValueValueSpeechValue, ("value", $"{obj.Name}"), ("value2", $"{where}"), ("value3", $"{online}"));
         }
         if (obj.Attributes.Any(attr => ListenerSearch.IsCommand(attr.Value)))
             context.Notify($"{obj.Name}{(thisRoom ? " (this room)" : string.Empty)} [commands].");
@@ -338,14 +338,14 @@ public class WithCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: with <object>=<command>");
+            context.Notify(Feedback.UsageWithObjectCommand);
             return false;
         }
 
         var target = Find(db, actor, context.LeftArg.Trim());
         if (target == null)
         {
-            context.Notify("I don't see that here.");
+            context.Notify(Feedback.IDontSeeThatHere);
             return false;
         }
 
@@ -356,18 +356,18 @@ public class WithCommandHandler : ICommandHandler
             {
                 if (target.Id != _masterRoom && target.Id != actor.Zone)
                 {
-                    context.Notify("I don't see that here.");
+                    context.Notify(Feedback.IDontSeeThatHere);
                     return false;
                 }
                 if (target.Id == actor.Zone && target.Type != ObjectType.Room)
                 {
-                    context.Notify("Make room! Make room!");
+                    context.Notify(Feedback.MakeRoomMakeRoom);
                     return false;
                 }
             }
             else if (target.Id != actor.Zone || target.Type == ObjectType.Room)
             {
-                context.Notify("I don't see that here.");
+                context.Notify(Feedback.IDontSeeThatHere);
                 return false;
             }
         }
@@ -377,7 +377,7 @@ public class WithCommandHandler : ICommandHandler
         {
             if (!ListenerSearch.TryFirst(target, command, out string action, out var captures))
             {
-                context.Notify("No matching command.");
+                context.Notify(Feedback.NoMatchingCommand);
                 return false;
             }
             Run(context, db, target, action, captures);
@@ -386,7 +386,7 @@ public class WithCommandHandler : ICommandHandler
 
         if (target.Type != ObjectType.Room && target.Id != actor.Location)
         {
-            context.Notify("Make room! Make room!");
+            context.Notify(Feedback.MakeRoomMakeRoom);
             return false;
         }
 
@@ -399,7 +399,7 @@ public class WithCommandHandler : ICommandHandler
             Run(context, db, item, action, captures);
         }
         if (!any)
-            context.Notify("No matching command.");
+            context.Notify(Feedback.NoMatchingCommand);
         return any;
     }
 
@@ -458,7 +458,7 @@ public class SearchCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -477,7 +477,7 @@ public class SearchCommandHandler : ICommandHandler
                 : FindPlayer(db, ownerToken);
             if (owner == null || owner.Type != ObjectType.Player)
             {
-                context.Notify("I can't find that player.");
+                context.Notify(Feedback.ICantFindThatPlayer);
                 return false;
             }
         }
@@ -516,7 +516,7 @@ public class SearchCommandHandler : ICommandHandler
         hits = hits.Skip(start - 1).Take(Math.Max(0, count)).ToList();
         if (hits.Count == 0)
         {
-            context.Notify("Nothing found.");
+            context.Notify(Feedback.NothingFound);
             return true;
         }
 
@@ -741,6 +741,6 @@ public class SearchCommandHandler : ICommandHandler
             return;
         context.Notify(header);
         foreach (var obj in list)
-            context.Notify($"{obj.Name} (#{obj.Id.Value})");
+            context.Notify(Feedback.ValueValue3, ("value", $"{obj.Name}"), ("value2", $"{obj.Id.Value}"));
     }
 }

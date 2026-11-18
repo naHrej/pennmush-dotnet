@@ -51,7 +51,7 @@ public class HideCommandHandler : ICommandHandler
             return false;
         if (!SessionAccess.CanHide(actor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -65,19 +65,19 @@ public class HideCommandHandler : ICommandHandler
             : SessionAccess.FindPlayer(db, context.Executor, target);
         if (player == null || player.Type != ObjectType.Player)
         {
-            context.Notify("I can't find that player.");
+            context.Notify(Feedback.ICantFindThatPlayer);
             return false;
         }
         if (player.Id != actor.Id && !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         var sessions = _sessions.List().Where(session => session.LoggedIn && session.PlayerId == player.Id).ToList();
         if (sessions.Count == 0)
         {
-            context.Notify("That player is not online.");
+            context.Notify(Feedback.ThatPlayerIsNotOnline);
             return false;
         }
 
@@ -100,12 +100,12 @@ public class HideCommandHandler : ICommandHandler
         }
         if (!session.LoggedIn)
         {
-            context.Notify("Noone is connected to that descriptor.");
+            context.Notify(Feedback.NooneIsConnectedToThatDescriptor);
             return false;
         }
         if (session.PlayerId != actor.Id && !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -163,7 +163,7 @@ public class BootCommandHandler : ICommandHandler
             victim = SessionAccess.FindPlayer(db, context.Executor, context.Arguments.Trim());
             if (victim == null || victim.Type != ObjectType.Player)
             {
-                context.Notify("No such connected player.");
+                context.Notify(Feedback.NoSuchConnectedPlayer);
                 return false;
             }
             if (victim.Id == actor.Id)
@@ -172,12 +172,12 @@ public class BootCommandHandler : ICommandHandler
 
         if (victim!.IsGod && !actor.IsGod)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
         if (!self && !SessionAccess.CanBoot(actor))
         {
-            context.Notify("You can't boot other people!");
+            context.Notify(Feedback.YouCantBootOtherPeople);
             return false;
         }
 
@@ -200,7 +200,7 @@ public class BootCommandHandler : ICommandHandler
         }
 
         if (!self && !context.Switches.Contains("silent"))
-            context.NotifyTarget(victim.Id, "You are politely shown to the door.");
+            context.NotifyTarget(victim.Id, Feedback.YouArePolitelyShownToTheDoor.Text());
         foreach (var session in sessions)
             _sessions.Disconnect(session.Descriptor);
 
@@ -212,7 +212,7 @@ public class BootCommandHandler : ICommandHandler
         }
         else
         {
-            context.Notify($"You booted {victim.Name} off!");
+            context.Notify(Feedback.YouBootedOff, ("value", $"{victim.Name}"));
         }
         return true;
     }
@@ -221,7 +221,7 @@ public class BootCommandHandler : ICommandHandler
     {
         if (!int.TryParse(context.Arguments.Trim(), out int descriptor))
         {
-            context.Notify("Invalid port.");
+            context.Notify(Feedback.InvalidPort);
             return false;
         }
 
@@ -235,28 +235,28 @@ public class BootCommandHandler : ICommandHandler
         }
         if (_sessions.SourceDescriptor == descriptor)
         {
-            context.Notify("If you want to quit, use QUIT.");
+            context.Notify(Feedback.IfYouWantToQuitUseQuit);
             return false;
         }
 
         var victim = session.LoggedIn ? db.GetObject(session.PlayerId) : null;
         if (victim != null && victim.IsGod && !actor.IsGod)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (victim != null)
         {
             if (!context.Switches.Contains("silent"))
-                context.NotifyTarget(victim.Id, "You are politely shown to the door.");
+                context.NotifyTarget(victim.Id, Feedback.YouArePolitelyShownToTheDoor.Text());
             context.Notify(victim.Id == actor.Id
                 ? "You boot a duplicate self."
                 : $"You booted {victim.Name} off!");
         }
         else
         {
-            context.Notify($"You booted unconnected port {descriptor}!");
+            context.Notify(Feedback.YouBootedUnconnectedPort, ("value", $"{descriptor}"));
         }
 
         _sessions.Disconnect(descriptor);
@@ -282,18 +282,18 @@ public class PollCommandHandler : ICommandHandler
         bool clear = context.Switches.Contains("clear");
         if (string.IsNullOrWhiteSpace(context.Arguments) && !clear)
         {
-            context.Notify($"The current poll is: {_sessions.Poll}");
+            context.Notify(Feedback.TheCurrentPollIs, ("value", $"{_sessions.Poll}"));
             return true;
         }
         if (!SessionAccess.CanChangePoll(actor))
         {
-            context.Notify("Who do you think you are, Gallup?");
+            context.Notify(Feedback.WhoDoYouThinkYouAreGallup);
             return false;
         }
         if (clear)
         {
             _sessions.Poll = "Doing";
-            context.Notify("Poll reset.");
+            context.Notify(Feedback.PollReset);
             return true;
         }
 
