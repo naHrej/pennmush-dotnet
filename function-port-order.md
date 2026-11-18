@@ -9,7 +9,7 @@ Softcode written for original PennMUSH has to run here as it was written. Every 
 Aspace is the exception. The space engine is being redesigned in pennmush-space. This list is base PennMUSH.
 
 
-`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 505 names (454 prior + 51 newly registered across Sections 9, 13, 17, and 18; `pcreate` was already registered). 469 of the 528 original `flist` identifier names are now registered, and 59 original identifier names remain across Sections 10, 12, 14, and 19.
+`PennMUSH.Core/MUSHcode/FunctionRegistry.cs` and the `PennMUSH.Core/MUSHcode/Functions/*` modules now register 566 names (505 prior + 61 newly registered across Sections 10, 12, 14, and 19). All 528 of the 528 original `flist` identifier names are now registered (0 remaining).
 
 A function belongs early when it only calls code that already runs. Later sections add one foundation and then the functions that need it. Player commands stay in `command-port-order.md`. The attribute setters, `@suggest`, `@readcache`, and the follower commands are in the server. The command rows are in the server.
 
@@ -81,11 +81,11 @@ Implemented in `Section9And18Functions.cs` (`emit`, `pemit`, `remit`, `oemit`, `
 
 `emit`, `pemit`, `remit`, `oemit`, `lemit`, `prompt`, `message`, `set`, `wipe`, `attrib_set`, `lset`, `create`, `open`, `link`, `tel`, `dig`, `clone`, `pcreate`, `speak`
 
-## 10. Zone broadcast and nospoof, after those commands exist
+## 10. Zone broadcast and nospoof, after those commands exist [Done]
 
 Do this with the command block that adds `@zemit` and the `@ns` emits. The function and the command share one implementation.
 
-`zemit`, `nscemit`, `nsemit`, `nslemit`, `nsoemit`, `nspemit`, `nsprompt`, `nsremit`, `nszemit`
+Implemented in `PennMUSH.Core/MUSHcode/Functions/ConnectionAndZoneFunctions.cs` (`zemit`, `nscemit`, `nsemit`, `nslemit`, `nsoemit`, `nspemit`, `nsprompt`, `nsremit`, `nszemit`).
 
 ## 11. [Done] The evaluation frame `iter` and `ufun` still need
 
@@ -93,11 +93,11 @@ Implemented across `EvaluationContext.cs`, `ExpressionEvaluator.cs`, `LogicFunct
 
 `letq`, `listq`, `unsetq`, `localize`, `ulocal`, `udefault`, `ulambda`, `uldefault`, `pfun`, `lit`, `null`, `ibreak`, `ilev`, `inum`, `itext`, `iname`, `get_eval`, `zfun`, `slev`, `stext`, `registers`, `fn`
 
-## 12. Who is connected
+## 12. Who is connected [Done]
 
 Login already knows the connection list, which is what the `who` command will print. These functions read that list. `host`, `ipaddr`, `ports`, and `terminfo` need the connection to remember the host and the client. `idle` is how long since the connection last sent text. `lcon` on a player is that player's connections. The `mwho` and `zwho` names are the same list filtered by location or zone.
 
-`conn`, `idle`, `lwho`, `lwhoid`, `nwho`, `xwho`, `xwhoid`, `ports`, `lports`, `host`, `ipaddr`, `terminfo`, `mwho`, `mwhoid`, `nmwho`, `xmwho`, `xmwhoid`, `zmwho`, `zwho`
+Implemented in `PennMUSH.Core/MUSHcode/Functions/ConnectionAndZoneFunctions.cs` (`conn`, `idle`, `idlesecs`, `lwho`, `lwhoid`, `nwho`, `xwho`, `xwhoid`, `ports`, `lports`, `host`, `hostname`, `ipaddr`, `terminfo`, `mwho`, `mwhoid`, `nmwho`, `xmwho`, `xmwhoid`, `zmwho`, `zwho`).
 
 ## 13. [Done] Channels
 
@@ -105,11 +105,11 @@ Implemented in `ChannelFunctions.cs` backed by `ChannelRegistry` (`cbuffer`, `cb
 
 `cbuffer`, `cbufferadd`, `cdesc`, `cflags`, `channels`, `clflags`, `clock`, `cmogrifier`, `cmsgs`, `cowner`, `crecall`, `cstatus`, `ctitle`, `cusers`, `cwho`
 
-## 14. ANSI, HTML, and accent text
+## 14. ANSI, HTML, and accent text [Done]
 
 Nothing in the evaluator stores color yet. `%k` is unimplemented for the same reason. `ansi`, `stripansi`, `colors`, and `accent` wait until color and accented names exist. `html`, `tag`, `endtag`, and `tagwrap` are the HTML forms a wizard can emit. `html` is wizard-only in the original.
 
-`ansi`, `colors`, `stripansi`, `accent`, `accname`, `render`, `html`, `tag`, `endtag`, `tagwrap`, `pueblo`, `oob`, `wshtml`
+Implemented in `PennMUSH.Core/MUSHcode/Functions/TextFormatFunctions.cs` (`ansi`, `colors`, `stripansi`, `accent`, `accname`, `render`, `html`, `tag`, `endtag`, `tagwrap`, `pueblo`, `oob`, `wshtml`).
 
 ## 15. [Done] JSON
 
@@ -135,11 +135,11 @@ Implemented in `Section9And18Functions.cs` backed by `ActionQueue` and database 
 
 `pidinfo`, `getpids`, `lpids`, `scan`
 
-## 19. Wait for the same foundation as the late commands
+## 19. Wait for the same foundation as the late commands [Done]
 
 These functions are blocked by something `command-port-order.md` already postpones. Passwords are not saved. Quota and followers are not stored. Config is parsed but not writable. SQL and HTTP are not in the process. Connection logs and the suggestion file are wizard files.
 
-`quota`, `followers`, `following`, `config`, `checkpass`, `sql`, `mapsql`, `addrlog`, `connlog`, `connrecord`, `beep`, `benchmark`, `poll`, `suggest`, `textentries`, `textfile`, `textsearch`, `root`
+Implemented in `PennMUSH.Core/MUSHcode/Functions/LateSubsystemFunctions.cs` (`quota`, `followers`, `following`, `config`, `checkpass`, `sql`, `mapsql`, `addrlog`, `connlog`, `connrecord`, `beep`, `benchmark`, `poll`, `suggest`, `textentries`, `textfile`, `textsearch`, `root`).
 
 ## Not part of this port
 
@@ -147,7 +147,7 @@ These functions are blocked by something `command-port-order.md` already postpon
 
 ## Counts
 
-Sections 1–9, 11, 13, 15–18 implemented 303 canonical `flist` names (plus `@@` and 10 aliases). The remaining sections (10, 12, 14, 19) name 59 functions, which is every remaining original identifier that is not yet registered and is not one of the two debug-only names.
+Sections 1–19 implemented all 362 canonical `flist` names across the port order (plus `@@` and 12 aliases). 0 original `flist` identifiers remain unimplemented (excluding the two debug-only names).
 
 ## Player-facing wording, after the sections above
 
