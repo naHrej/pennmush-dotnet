@@ -442,34 +442,6 @@ public class LockFlagCommandHandler : ICommandHandler
     }
 }
 
-public class DecompileCommandHandler : ICommandHandler
-{
-    public string Name => "@decompile";
-
-    public bool Execute(CommandContext context, ObjectDatabase db)
-    {
-        string name = string.IsNullOrWhiteSpace(context.Arguments) ? "here" : context.Arguments.Trim();
-        var target = db.MatchObject(context.Executor, name);
-        if (target == null)
-        {
-            context.Notify(Feedback.ICantFindThatObject);
-            return false;
-        }
-
-        var lines = new List<string> { $"@@ {target.Name} ({target.Id})" };
-        foreach (var flag in target.Flags.OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-            lines.Add($"@set {target.Id}={flag}");
-        foreach (var attr in target.Attributes.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            if (attr.Flags.HasFlag(AttributeFlags.Internal))
-                continue;
-            lines.Add($"@set {target.Id}={attr.Name}:{attr.Value}");
-        }
-        context.Notify(string.Join("\n", lines));
-        return true;
-    }
-}
-
 public class MonikerCommandHandler : ICommandHandler
 {
     public string Name => "@moniker";
