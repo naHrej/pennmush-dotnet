@@ -2,6 +2,7 @@ namespace PennMUSH.Core.MUSHcode.Functions;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using PennMUSH.Core.Queue;
 
@@ -16,6 +17,7 @@ public static class ListFunctions
         registry.Register("LAST", (ctx, args) => Last(args));
         registry.Register("WORDS", (ctx, args) => Words(args));
         registry.Register("MATCH", (ctx, args) => Match(args));
+        registry.Register("ELEMENT", (ctx, args) => Match(args));
         registry.Register("MATCHALL", (ctx, args) => MatchAll(args));
         registry.Register("GRAB", (ctx, args) => Grab(args));
         registry.Register("GRABALL", (ctx, args) => GrabAll(args));
@@ -24,28 +26,38 @@ public static class ListFunctions
         registry.Register("INDEX", (ctx, args) => Index(args));
         registry.Register("ITEMS", (ctx, args) => Items(args));
         registry.Register("ELEMENTS", (ctx, args) => Elements(args));
+        registry.Register("LINSERT", (ctx, args) => Insert(args));
         registry.Register("INSERT", (ctx, args) => Insert(args));
+        registry.Register("LREPLACE", (ctx, args) => Replace(args));
         registry.Register("REPLACE", (ctx, args) => Replace(args));
         registry.Register("LDELETE", (ctx, args) => LDelete(args));
         registry.Register("REMOVE", (ctx, args) => Remove(args));
         registry.Register("REVWORDS", (ctx, args) => RevWords(args));
-        registry.Register("REVERSE", (ctx, args) => RevWords(args));
         registry.Register("UNIQUE", (ctx, args) => Unique(args));
         registry.Register("SHUFFLE", (ctx, args) => Shuffle(args));
         registry.Register("SORT", (ctx, args) => Sort(args));
         registry.Register("SORTBY", (ctx, args) => SortBy(registry, ctx, args));
+        registry.Register("SORTKEY", (ctx, args) => SortKey(registry, ctx, args));
         registry.Register("SETUNION", (ctx, args) => SetUnion(args));
         registry.Register("SETINTER", (ctx, args) => SetInter(args));
         registry.Register("SETDIFF", (ctx, args) => SetDiff(args));
+        registry.Register("SETSYMDIFF", (ctx, args) => SetSymDiff(args));
         registry.Register("LNUM", (ctx, args) => LNum(args));
-        registry.Register("ITER", (ctx, args) => Iter(registry, ctx, args));
+        registry.Register("ITER", (ctx, args) => Iter(registry, ctx, args), noParse: true);
+        registry.Register("PARSE", (ctx, args) => Iter(registry, ctx, args), noParse: true);
         registry.Register("MAP", (ctx, args) => Map(registry, ctx, args));
         registry.Register("FILTER", (ctx, args) => Filter(registry, ctx, args));
         registry.Register("FOLD", (ctx, args) => Fold(registry, ctx, args));
         registry.Register("ITEMIZE", (ctx, args) => Itemize(args));
+        registry.Register("ELIST", (ctx, args) => EList(args));
         registry.Register("SPLICE", (ctx, args) => Splice(args));
         registry.Register("STEP", (ctx, args) => Step(args));
         registry.Register("MUNGE", (ctx, args) => Munge(registry, ctx, args));
+        registry.Register("MIX", (ctx, args) => Mix(registry, ctx, args));
+        registry.Register("WORDPOS", (ctx, args) => WordPos(args));
+        registry.Register("RANDWORD", (ctx, args) => RandWord(args));
+        registry.Register("PICKRAND", (ctx, args) => RandWord(args));
+        registry.Register("RANDEXTRACT", (ctx, args) => RandExtract(args));
     }
 
     public static List<string> SplitList(string input, string delim = " ")
@@ -232,36 +244,66 @@ public static class ListFunctions
     public static string Insert(string[] args)
     {
         if (args.Length < 3) return string.Empty;
-        string delim = args.Length > 3 ? args[3] : " ";
+        if (args.Length > 3 && args[3].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string delim = args.Length > 3 && args[3].Length == 1 ? args[3] : " ";
         var list = SplitList(args[0], delim);
         if (!int.TryParse(args[1].Trim(), out int pos)) return args[0];
-        string word = args[2];
 
-        int index = pos <= 1 ? 0 : (pos > list.Count ? list.Count : pos - 1);
-        list.Insert(index, word);
+        int mapped = pos < 0 ? (list.Count + pos + 2) : pos;
+        if (mapped < 1 || mapped > list.Count + 1) return args[0];
+        list.Insert(mapped - 1, args[2]);
         return string.Join(delim, list);
     }
 
     public static string Replace(string[] args)
     {
         if (args.Length < 3) return string.Empty;
-        string delim = args.Length > 3 ? args[3] : " ";
-        var list = SplitList(args[0], delim);
-        if (!int.TryParse(args[1].Trim(), out int pos) || pos < 1 || pos > list.Count) return args[0];
+        if (args.Length > 3 && args[3].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string inDelim = args.Length > 3 && args[3].Length == 1 ? args[3] : " ";
+        string outDelim = args.Length > 4 ? args[4] : inDelim;
+        var list = SplitList(args[0], inDelim);
 
-        list[pos - 1] = args[2];
-        return string.Join(delim, list);
+        foreach (string token in SplitList(args[1], " "))
+        {
+            if (int.TryParse(token.Trim(), out int pos))
+            {
+                int mapped = pos < 0 ? (list.Count + pos + 1) : pos;
+                if (mapped >= 1 && mapped <= list.Count)
+                    list[mapped - 1] = args[2];
+            }
+        }
+        return string.Join(outDelim, list);
     }
 
     public static string LDelete(string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string delim = args.Length > 2 ? args[2] : " ";
-        var list = SplitList(args[0], delim);
-        if (!int.TryParse(args[1].Trim(), out int pos) || pos < 1 || pos > list.Count) return args[0];
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string inDelim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        string outDelim = args.Length > 3 ? args[3] : inDelim;
+        var list = SplitList(args[0], inDelim);
 
-        list.RemoveAt(pos - 1);
-        return string.Join(delim, list);
+        var removed = new bool[list.Count];
+        foreach (string token in SplitList(args[1], " "))
+        {
+            if (int.TryParse(token.Trim(), out int pos))
+            {
+                int mapped = pos < 0 ? (list.Count + pos + 1) : pos;
+                if (mapped >= 1 && mapped <= list.Count)
+                    removed[mapped - 1] = true;
+            }
+        }
+
+        var result = new List<string>(list.Count);
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (!removed[i])
+                result.Add(list[i]);
+        }
+        return string.Join(outDelim, result);
     }
 
     public static string Remove(string[] args)
@@ -616,5 +658,283 @@ public static class ListFunctions
         }
 
         return string.Join(delim, results);
+    }
+
+    private static bool IsKnownSortType(string type)
+        => type.Trim().ToLowerInvariant() is "a" or "i" or "n" or "f" or "d";
+
+    private static int CompareBySortType(string a, string b, string sortType, bool autoNumeric)
+    {
+        switch (sortType)
+        {
+            case "n":
+            case "f":
+                double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out double da);
+                double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out double db);
+                return da.CompareTo(db);
+            case "d":
+                int drefA = ParseDbrefNum(a);
+                int drefB = ParseDbrefNum(b);
+                return drefA.CompareTo(drefB);
+            case "a":
+                return StringComparer.Ordinal.Compare(a, b);
+            case "i":
+                return StringComparer.OrdinalIgnoreCase.Compare(a, b);
+            default:
+                if (autoNumeric
+                    && double.TryParse(a, NumberStyles.Float, CultureInfo.InvariantCulture, out double na)
+                    && double.TryParse(b, NumberStyles.Float, CultureInfo.InvariantCulture, out double nb))
+                {
+                    return na.CompareTo(nb);
+                }
+                return StringComparer.OrdinalIgnoreCase.Compare(a, b);
+        }
+    }
+
+    private static int ParseDbrefNum(string s)
+    {
+        s = s.Trim();
+        if (s.StartsWith('#')) s = s.Substring(1);
+        int colon = s.IndexOf(':');
+        if (colon >= 0) s = s.Substring(0, colon);
+        return int.TryParse(s, out int val) ? val : -1;
+    }
+
+    public static string SetSymDiff(string[] args)
+    {
+        if (args.Length < 2) return string.Empty;
+        if (string.IsNullOrEmpty(args[0]) && string.IsNullOrEmpty(args[1])) return string.Empty;
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        string sortType = "";
+        string osep = delim;
+        if (args.Length == 4)
+        {
+            if (IsKnownSortType(args[3]))
+                sortType = args[3].Trim().ToLowerInvariant();
+            else
+                osep = args[3];
+        }
+        else if (args.Length >= 5)
+        {
+            if (IsKnownSortType(args[3]))
+                sortType = args[3].Trim().ToLowerInvariant();
+            osep = args[4];
+        }
+
+        var l1 = SplitList(args[0], delim);
+        var l2 = SplitList(args[1], delim);
+        var set1 = new HashSet<string>(l1, StringComparer.OrdinalIgnoreCase);
+        var set2 = new HashSet<string>(l2, StringComparer.OrdinalIgnoreCase);
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        foreach (string item in l1.Where(x => !set2.Contains(x)).Concat(l2.Where(x => !set1.Contains(x))))
+        {
+            if (seen.Add(item))
+                result.Add(item);
+        }
+
+        if (result.Count > 1)
+        {
+            bool allNumeric = result.All(x => double.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out _));
+            result.Sort((a, b) => CompareBySortType(a, b, sortType, allNumeric));
+        }
+
+        return string.Join(osep, result);
+    }
+
+    public static string SortKey(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || string.IsNullOrEmpty(args[0]) || string.IsNullOrEmpty(args[1]))
+            return string.Empty;
+        if (args.Length > 3 && args[3].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 3 && args[3].Length == 1 ? args[3] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
+        string sortType = args.Length > 2 ? args[2].Trim().ToLowerInvariant() : "";
+
+        var items = SplitList(args[1], delim);
+        if (items.Count == 0) return string.Empty;
+
+        var pairs = new List<(string Item, string Key)>(items.Count);
+        foreach (string item in items)
+            pairs.Add((item, DbFunctions.Ufun(reg, ctx, [args[0], item])));
+
+        bool allNumeric = pairs.All(p => double.TryParse(p.Key, NumberStyles.Float, CultureInfo.InvariantCulture, out _));
+        var sorted = pairs
+            .Select((pair, idx) => (pair.Item, pair.Key, idx))
+            .OrderBy(x => x, Comparer<(string Item, string Key, int idx)>.Create((a, b) =>
+            {
+                int cmp = CompareBySortType(a.Key, b.Key, sortType, allNumeric);
+                return cmp != 0 ? cmp : a.idx.CompareTo(b.idx);
+            }))
+            .Select(x => x.Item);
+
+        return string.Join(osep, sorted);
+    }
+
+    public static string WordPos(string[] args)
+    {
+        if (args.Length < 2 || !int.TryParse(args[1].Trim(), out int charPos))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        char sep = args.Length > 2 && args[2].Length == 1 ? args[2][0] : ' ';
+        string s = args[0];
+        if (charPos <= 0 || charPos > s.Length)
+            return MushError.Nothing.Text();
+
+        int tp = charPos - 1;
+        int cur = 0;
+        int wordNum = 1;
+
+        while (cur < s.Length)
+        {
+            if (sep == ' ')
+            {
+                while (cur < s.Length && s[cur] == ' ') cur++;
+                if (cur >= s.Length) break;
+            }
+
+            int end;
+            while (cur < s.Length && s[cur] != sep) cur++;
+            end = cur;
+
+            if (tp < end)
+                return wordNum.ToString();
+
+            wordNum++;
+            if (cur < s.Length && s[cur] == sep)
+                cur++;
+        }
+
+        return wordNum.ToString();
+    }
+
+    public static string RandWord(string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        if (args.Length > 1 && args[1].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 1 && args[1].Length == 1 ? args[1] : " ";
+        var list = SplitList(args[0], delim);
+        if (list.Count == 0) return string.Empty;
+        return list[_random.Next(list.Count)];
+    }
+
+    public static string RandExtract(string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+
+        int count = 1;
+        if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
+        {
+            if (!int.TryParse(args[1].Trim(), out count))
+                return MushError.ArgumentMustBeInteger.Text();
+            if (count < 1) return string.Empty;
+        }
+
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        char mode = args.Length > 3 && args[3].Trim().Length > 0 ? args[3].Trim()[0] : 'R';
+        string osep = args.Length > 4 ? args[4] : delim;
+
+        var list = SplitList(args[0], delim);
+        if (list.Count == 0) return string.Empty;
+
+        var result = new List<string>();
+        if (mode is 'D' or 'd')
+        {
+            for (int i = 0; i < count; i++)
+                result.Add(list[_random.Next(list.Count)]);
+        }
+        else if (mode == 'L' || mode == 'l')
+        {
+            int take = Math.Min(count, list.Count);
+            int maxStart = mode == 'L' ? Math.Max(0, list.Count - take) : list.Count - 1;
+            int start = _random.Next(maxStart + 1);
+            for (int i = 0; i < take && start + i < list.Count; i++)
+                result.Add(list[start + i]);
+        }
+        else
+        {
+            var pool = new List<string>(list);
+            int take = Math.Min(count, pool.Count);
+            for (int i = 0; i < take; i++)
+            {
+                int idx = _random.Next(pool.Count);
+                result.Add(pool[idx]);
+                pool.RemoveAt(idx);
+            }
+        }
+
+        return string.Join(osep, result);
+    }
+
+    public static string Mix(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 3) return string.Empty;
+
+        string delim = " ";
+        int listCount;
+        if (args.Length > 3)
+        {
+            if (args[^1].Length > 1)
+                return MushError.SeparatorMustBeOneCharacter.Text();
+            delim = args[^1].Length == 1 ? args[^1] : " ";
+            listCount = args.Length - 2;
+        }
+        else
+        {
+            listCount = 2;
+        }
+
+        var lists = new List<List<string>>(listCount);
+        int maxCount = 0;
+        for (int i = 0; i < listCount; i++)
+        {
+            var split = SplitList(args[i + 1], delim);
+            lists.Add(split);
+            if (split.Count > maxCount) maxCount = split.Count;
+        }
+
+        var results = new List<string>(maxCount);
+        for (int i = 0; i < maxCount; i++)
+        {
+            var uargs = new string[listCount + 1];
+            uargs[0] = args[0];
+            for (int l = 0; l < listCount; l++)
+                uargs[l + 1] = i < lists[l].Count ? lists[l][i] : string.Empty;
+            results.Add(DbFunctions.Ufun(reg, ctx, uargs));
+        }
+
+        return string.Join(delim, results);
+    }
+
+    public static string EList(string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        string conj = args.Length > 1 ? args[1] : "and";
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        string osep = args.Length > 3 ? args[3] : " ";
+        string punc = args.Length > 4 ? args[4] : ",";
+
+        var list = SplitList(args[0], delim);
+        if (list.Count == 0) return string.Empty;
+        if (list.Count == 1) return list[0];
+        if (list.Count == 2) return $"{list[0]}{osep}{conj}{osep}{list[1]}";
+
+        return string.Join($"{punc}{osep}", list.Take(list.Count - 1)) + $"{punc}{osep}{conj}{osep}" + list[^1];
     }
 }
