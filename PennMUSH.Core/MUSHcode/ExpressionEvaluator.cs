@@ -15,6 +15,7 @@ public class ExpressionEvaluator
     private readonly ObjectDatabase? _database;
 
     public Func<string, bool>? IsKnownFunction { get; set; }
+    public Func<string, bool>? IsNoParseFunction { get; set; }
 
     public ExpressionEvaluator(FunctionDispatcher? functionDispatcher = null, ObjectDatabase? database = null)
     {
@@ -231,7 +232,9 @@ public class ExpressionEvaluator
         string[] parsedArgs = SplitArguments(rawArgs);
         // iter() replaces ## and #@ before the action runs. The action
         // must still contain those tokens when Iter receives it.
-        bool rawArguments = funcName.Equals("iter", StringComparison.OrdinalIgnoreCase);
+        bool rawArguments = (IsNoParseFunction != null && IsNoParseFunction(funcName))
+            || funcName.Equals("iter", StringComparison.OrdinalIgnoreCase)
+            || funcName.Equals("parse", StringComparison.OrdinalIgnoreCase);
         string[] evaluatedArgs = new string[parsedArgs.Length];
         for (int a = 0; a < parsedArgs.Length; a++)
             evaluatedArgs[a] = rawArguments ? parsedArgs[a] : Evaluate(parsedArgs[a], context);

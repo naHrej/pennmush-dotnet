@@ -13,7 +13,7 @@ public class NameCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("You must specify a target and a new name.");
+            context.Notify(Feedback.YouMustSpecifyATargetAndANewName);
             return false;
         }
 
@@ -21,12 +21,12 @@ public class NameCommandHandler : ICommandHandler
         var target = db.GetObject(targetRef);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         target.Name = context.RightArg.Trim();
-        context.Notify("Name set.");
+        context.Notify(Feedback.NameSet);
         return true;
     }
 

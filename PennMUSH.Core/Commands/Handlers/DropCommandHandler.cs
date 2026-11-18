@@ -14,14 +14,14 @@ public class DropCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Drop what?");
+            context.Notify(Feedback.DropWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -29,26 +29,26 @@ public class DropCommandHandler : ICommandHandler
         var targetObj = db.FindInContents(context.Executor, targetName);
         if (targetObj == null)
         {
-            context.Notify("You don't have that.");
+            context.Notify(Feedback.YouDontHaveThat);
             return false;
         }
 
         if (!targetObj.EvalLock(LockType.Drop, context.Executor, db))
         {
-            context.Notify("You can't seem to get rid of that.");
+            context.Notify(Feedback.YouCantSeemToGetRidOfThat);
             return false;
         }
 
         var here = db.GetObject(execObj.Location);
         if (here != null && here.Type == ObjectType.Room && !here.EvalLock(LockType.Drop, context.Executor, db))
         {
-            context.Notify("You can't seem to drop things here.");
+            context.Notify(Feedback.YouCantSeemToDropThingsHere);
             return false;
         }
 
         db.MoveObject(targetObj.Id, execObj.Location);
-        context.Notify("Dropped.");
-        context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} drops {targetObj.Name}.");
+        context.Notify(Feedback.Dropped);
+        context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueDropsValue.Text(("value", $"{execObj.Name}"), ("value2", $"{targetObj.Name}")));
         return true;
     }
 }

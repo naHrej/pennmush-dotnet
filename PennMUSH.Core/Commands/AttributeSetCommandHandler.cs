@@ -14,26 +14,26 @@ public static class AttributeSetCommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return true;
         }
 
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("I don't see that here.");
+            context.Notify(Feedback.IDontSeeThatHere);
             return true;
         }
 
         var target = db.MatchObject(context.Executor, context.LeftArg);
         if (target == null)
         {
-            context.Notify("I don't see that here.");
+            context.Notify(Feedback.IDontSeeThatHere);
             return true;
         }
 
         if (!Controls(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return true;
         }
 

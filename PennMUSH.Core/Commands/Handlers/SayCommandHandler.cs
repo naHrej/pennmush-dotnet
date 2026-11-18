@@ -19,7 +19,7 @@ public class SayCommandHandler : ICommandHandler
     {
         if (string.IsNullOrEmpty(context.Arguments))
         {
-            context.Notify("Say what?");
+            context.Notify(Feedback.SayWhat);
             return false;
         }
 
@@ -36,13 +36,13 @@ public class SayCommandHandler : ICommandHandler
 
         message = SpeechMod.Apply(db, _evaluator, context.Executor, message, "\"");
 
-        context.Notify($"You say, \"{message}\"");
+        context.Notify(Feedback.YouSayValue, ("value", $"{message}"));
 
         var execObj = db.GetObject(context.Executor);
         if (execObj != null && execObj.Location.IsValid)
         {
             string name = execObj.Name;
-            context.NotifyExcept(execObj.Location, context.Executor, $"{name} says, \"{message}\"");
+            context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueSaysValue.Text(("value", $"{name}"), ("value2", $"{message}")));
         }
 
         return true;

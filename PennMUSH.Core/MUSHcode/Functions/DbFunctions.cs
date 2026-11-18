@@ -1,8 +1,10 @@
 namespace PennMUSH.Core.MUSHcode.Functions;
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.Types;
 using PennMUSH.Core.Entities;
@@ -18,6 +20,11 @@ public static class DbFunctions
     {
         registry.Register("NAME", (ctx, args) => Name(registry, ctx, args));
         registry.Register("NAMEFORMAT", (ctx, args) => NameFormat(registry, ctx, args));
+        registry.Register("NAMELIST", (ctx, args) => NameListFunc(registry, ctx, args));
+        registry.Register("NAMEGRAB", (ctx, args) => NameGrabFunc(registry, ctx, args, all: false));
+        registry.Register("NAMEGRABALL", (ctx, args) => NameGrabFunc(registry, ctx, args, all: true));
+        registry.Register("FUNCTIONS", (ctx, args) => FunctionsFunc(registry, ctx, args));
+        registry.Register("LIST", (ctx, args) => ListFunc(registry, ctx, args));
         registry.Register("GET", (ctx, args) => Get(registry, ctx, args));
         registry.Register("HASATTR", (ctx, args) => HasAttr(registry, ctx, args));
         registry.Register("LOC", (ctx, args) => Loc(registry, ctx, args));
@@ -624,5 +631,206 @@ public static class DbFunctions
         if (targetObj == null) return "0";
 
         return targetObj.EvalLock(lockName, whoRef, reg.Database) ? "1" : "0";
+    }
+
+    public static string NameListFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || reg.Database == null) return string.Empty;
+
+        MUSHObject? errObj = null;
+        string? errAttrName = null;
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            string spec = args[1].Trim();
+            int slash = spec.IndexOf('/');
+            if (slash >= 0)
+            {
+                string objSpec = spec.Substring(0, slash).Trim();
+                errAttrName = spec.Substring(slash + 1).Trim();
+                errObj = reg.Database.GetObject(ParseDbref(objSpec, ctx))
+                    ?? reg.Database.MatchObject(ctx.Executor, objSpec);
+            }
+            else
+            {
+                errObj = reg.Database.GetObject(ctx.Executor);
+                errAttrName = spec;
+            }
+
+            if (errObj == null) return MushError.NoMatch.Text();
+            if (string.IsNullOrEmpty(errAttrName) || errObj.GetAttribute(errAttrName, reg.Database) == null)
+                return MushError.NoSuchAttribute.Text();
+        }
+
+        string[] tokens = args[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var results = new List<string>(tokens.Length);
+        foreach (string raw in tokens)
+        {
+            string lookup = raw.StartsWith('*') ? raw.Substring(1) : raw;
+            MUSHObject? player = lookup.Equals("me", StringComparison.OrdinalIgnoreCase)
+                ? reg.Database.GetObject(ctx.Executor) is { Type: ObjectType.Player } meObj ? meObj : null
+                : reg.Database.FindPlayer(lookup);
+
+            if (player != null)
+            {
+                results.Add(player.Id.ToString());
+            }
+            else if (errObj != null && errAttrName != null)
+            {
+                string fallback = Ufun(reg, ctx, [$"{errObj.Id}/{errAttrName}", raw, MushError.Nothing.Text()]);
+                if (!string.IsNullOrEmpty(fallback))
+                    results.Add(fallback);
+            }
+            else
+            {
+                results.Add(MushError.Nothing.Text());
+            }
+        }
+
+        return string.Join(" ", results);
+    }
+
+    public static string NameGrabFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool all)
+    {
+        if (args.Length < 2 || reg.Database == null) return string.Empty;
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        string target = args[1].Trim();
+        var tokens = ListFunctions.SplitList(args[0], delim);
+
+        if (all)
+        {
+            var matched = new List<string>();
+            foreach (string token in tokens)
+            {
+                var obj = reg.Database.GetObject(ParseDbref(token, ctx));
+                if (obj == null) continue;
+
+                if (string.Equals(token.Trim(), target, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(obj.Id.ToString(), target, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(obj.Name, target, StringComparison.OrdinalIgnoreCase) ||
+                    MatchesWordPrefix(obj.Name, target))
+                {
+                    matched.Add(token);
+                }
+            }
+            return string.Join(delim, matched);
+        }
+
+        string? exactMatch = null;
+        string? prefixMatch = null;
+        foreach (string token in tokens)
+        {
+            var obj = reg.Database.GetObject(ParseDbref(token, ctx));
+            if (obj == null) continue;
+
+            if (string.Equals(token.Trim(), target, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(obj.Id.ToString(), target, StringComparison.OrdinalIgnoreCase))
+            {
+                return token;
+            }
+
+            if (exactMatch == null && string.Equals(obj.Name, target, StringComparison.OrdinalIgnoreCase))
+                exactMatch = token;
+            else if (prefixMatch == null && MatchesWordPrefix(obj.Name, target))
+                prefixMatch = token;
+        }
+
+        return exactMatch ?? prefixMatch ?? string.Empty;
+    }
+
+    private static bool MatchesWordPrefix(string objName, string target)
+    {
+        if (string.IsNullOrEmpty(target)) return false;
+        if (objName.StartsWith(target, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var words = objName.Split([' ', ';'], StringSplitOptions.RemoveEmptyEntries);
+        foreach (string word in words)
+        {
+            if (word.StartsWith(target, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    public static string FunctionsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        string which = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0])
+            ? args[0].Trim().ToLowerInvariant()
+            : "all";
+
+        if (which == "builtin")
+        {
+            return string.Join(" ", reg.Names
+                .Select(n => n.ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        if (which == "local")
+        {
+            return string.Join(" ", reg.ListSoft()
+                .Select(f => f.Name.ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        if (which == "all")
+        {
+            return string.Join(" ", reg.Names
+                .Concat(reg.ListSoft().Select(f => f.Name))
+                .Select(n => n.ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        return MushError.Nothing.Text();
+    }
+
+    public static string ListFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            return MushError.Nothing.Text();
+
+        string type = args[0].Trim().ToLowerInvariant();
+        string which = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : string.Empty;
+
+        if (args.Length == 1 && type is "builtin" or "local" or "all")
+            return FunctionsFunc(reg, ctx, [type]);
+
+        if (type.StartsWith('@') && "@functions".StartsWith(type, StringComparison.Ordinal))
+            return FunctionsFunc(reg, ctx, ["local"]);
+
+        if ("functions".StartsWith(type, StringComparison.Ordinal))
+            return FunctionsFunc(reg, ctx, [string.IsNullOrEmpty(which) ? "all" : which]);
+
+        if ("attribs".StartsWith(type, StringComparison.Ordinal) ||
+            "attributes".StartsWith(type, StringComparison.Ordinal))
+        {
+            return string.Join(" ", StandardAttributes.CanonicalNames()
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        if ("flags".StartsWith(type, StringComparison.Ordinal))
+        {
+            return string.Join(" ", FlagTable.Definitions
+                .Select(d => d.Name)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        if ("powers".StartsWith(type, StringComparison.Ordinal))
+        {
+            return string.Join(" ", FlagTable.PowerNames
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        }
+
+        if ("locks".StartsWith(type, StringComparison.Ordinal))
+        {
+            return "Basic Enter Use Zone Page Tport Teleport Speech Listen Command Parent Link Leave Drop Give From Receive Pay Chown Chzone Forward Control Dropto Destroy Interact Mail Follow Examine";
+        }
+
+        return MushError.Nothing.Text();
     }
 }

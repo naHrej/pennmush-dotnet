@@ -37,25 +37,25 @@ public class FollowCommandHandler : ICommandHandler
         bool offline = leader.Type == ObjectType.Player && _connected != null && !_connected(leader.Id);
         if (!actor.Location.IsValid || offline || !FollowerList.CanSee(actor, leader, room))
         {
-            context.Notify("You don't see that here.");
+            context.Notify(Feedback.YouDontSeeThatHere);
             return false;
         }
 
         if (leader.Type != ObjectType.Player && leader.Type != ObjectType.Thing)
         {
-            context.Notify("You can only follow players and things.");
+            context.Notify(Feedback.YouCanOnlyFollowPlayersAndThings);
             return false;
         }
 
         if (leader.Id == actor.Id)
         {
-            context.Notify("You chase your tail for a while and feel silly.");
+            context.Notify(Feedback.YouChaseYourTailForAWhileAndFeelSilly);
             return false;
         }
 
         if (FollowerList.IsFollowing(actor, leader.Id))
         {
-            context.Notify($"You're already following {leader.Name}.");
+            context.Notify(Feedback.YoureAlreadyFollowing, ("value", $"{leader.Name}"));
             return false;
         }
 
@@ -66,7 +66,7 @@ public class FollowCommandHandler : ICommandHandler
         }
 
         FollowerList.Add(leader, actor);
-        context.NotifyTarget(leader.Id, $"{actor.Name} begins following you.");
+        context.NotifyTarget(leader.Id, Feedback.BeginsFollowingYou.Text(("value", $"{actor.Name}")));
         context.Notify(FollowerList.Spoken(leader, "FOLLOW", $"You begin following {leader.Name}."));
         FollowerList.TellOthers(context, db, actor, leader, "OFOLLOW");
         return true;
@@ -86,7 +86,7 @@ public class UnfollowCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
             FollowerList.ClearFollowing(actor, db, context, true);
-            context.Notify("You stop following anyone.");
+            context.Notify(Feedback.YouStopFollowingAnyone);
             return true;
         }
 
@@ -98,7 +98,7 @@ public class UnfollowCommandHandler : ICommandHandler
 
         if (!FollowerList.IsFollowing(actor, leader.Id))
         {
-            context.Notify($"You're not following {leader.Name}.");
+            context.Notify(Feedback.YoureNotFollowing, ("value", $"{leader.Name}"));
             return false;
         }
 
@@ -110,7 +110,7 @@ public class UnfollowCommandHandler : ICommandHandler
     {
         FollowerList.Delete(leader, follower);
         context.NotifyTarget(follower.Id, FollowerList.Spoken(leader, "UNFOLLOW", $"You stop following {leader.Name}."));
-        context.NotifyTarget(leader.Id, $"{follower.Name} stops following you.");
+        context.NotifyTarget(leader.Id, Feedback.StopsFollowingYou.Text(("value", $"{follower.Name}")));
     }
 }
 
@@ -127,13 +127,13 @@ public class DismissCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
             FollowerList.ClearFollowers(actor, db, context, true);
-            context.Notify("You dismiss all your followers.");
+            context.Notify(Feedback.YouDismissAllYourFollowers);
             return true;
         }
 
         if (!FollowerList.TryMatch(db, actor, context.Arguments, false, out var follower, out _))
         {
-            context.Notify("I don't recognize who you want to dismiss.");
+            context.Notify(Feedback.IDontRecognizeWhoYouWantToDismiss);
             return false;
         }
 
@@ -162,13 +162,13 @@ public class DesertCommandHandler : ICommandHandler
         {
             FollowerList.ClearFollowers(actor, db, context, true);
             FollowerList.ClearFollowing(actor, db, context, true);
-            context.Notify("You desert everyone you're leading or following.");
+            context.Notify(Feedback.YouDesertEveryoneYoureLeadingOrFollowing);
             return true;
         }
 
         if (!FollowerList.TryMatch(db, actor, context.Arguments, false, out var who, out _) || who == null)
         {
-            context.Notify("I don't recognize who you want to desert.");
+            context.Notify(Feedback.IDontRecognizeWhoYouWantToDesert);
             return false;
         }
 
@@ -176,7 +176,7 @@ public class DesertCommandHandler : ICommandHandler
         bool follows = FollowerList.IsFollowing(actor, who.Id);
         if (!leads && !follows)
         {
-            context.Notify($"{who.Name} isn't following you, nor vice versa.");
+            context.Notify(Feedback.IsntFollowingYouNorViceVersa, ("value", $"{who.Name}"));
             return false;
         }
 

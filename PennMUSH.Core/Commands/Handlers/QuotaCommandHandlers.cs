@@ -78,24 +78,24 @@ internal static class QuotaRules
             return false;
         if (!TryResolve(db, actor, context.LeftArg, out var who))
         {
-            context.Notify("No such player.");
+            context.Notify(Feedback.NoSuchPlayer);
             return false;
         }
         if (!CanSee(actor, who))
         {
-            context.Notify("You can't look at someone else's quota.");
+            context.Notify(Feedback.YouCantLookAtSomeoneElsesQuota);
             return false;
         }
 
         int owned = Owned(db, who.Id);
         if (Unlimited(who, db) || !useQuota)
         {
-            context.Notify($"Objects: {owned}   Limit: UNLIMITED");
+            context.Notify(Feedback.ObjectsLimitUnlimited, ("value", $"{owned}"));
             return true;
         }
 
         int remaining = Remaining(db, who, startingQuota);
-        context.Notify($"Objects: {owned}   Limit: {owned + remaining}");
+        context.Notify(Feedback.ObjectsLimit, ("value", $"{owned}"), ("value2", $"{owned + remaining}"));
         return true;
     }
 
@@ -106,32 +106,32 @@ internal static class QuotaRules
             return false;
         if (!TryResolve(db, actor, context.LeftArg, out var who))
         {
-            context.Notify("No such player.");
+            context.Notify(Feedback.NoSuchPlayer);
             return false;
         }
         if (!actor.IsWizard)
         {
-            context.Notify("Only wizards may change a quota.");
+            context.Notify(Feedback.OnlyWizardsMayChangeAQuota);
             return false;
         }
         if (!CanSee(actor, who))
         {
-            context.Notify("You can't look at someone else's quota.");
+            context.Notify(Feedback.YouCantLookAtSomeoneElsesQuota);
             return false;
         }
 
         int owned = Owned(db, who.Id);
         if (Unlimited(who, db) || !useQuota)
         {
-            context.Notify($"Objects: {owned}   Limit: UNLIMITED");
+            context.Notify(Feedback.ObjectsLimitUnlimited, ("value", $"{owned}"));
             return true;
         }
 
         if (string.IsNullOrEmpty(context.RightArg.Trim()))
         {
             int current = Remaining(db, who, startingQuota);
-            context.Notify($"Objects: {owned}   Limit: {owned + current}");
-            context.Notify("What do you want to set the quota to?");
+            context.Notify(Feedback.ObjectsLimit, ("value", $"{owned}"), ("value2", $"{owned + current}"));
+            context.Notify(Feedback.WhatDoYouWantToSetTheQuotaTo);
             return false;
         }
 
@@ -142,7 +142,7 @@ internal static class QuotaRules
         if (limit < owned)
             limit = owned;
         Store(who, limit - owned);
-        context.Notify($"Objects: {owned}   Limit: {limit}");
+        context.Notify(Feedback.ObjectsLimit, ("value", $"{owned}"), ("value2", $"{limit}"));
         return true;
     }
 
@@ -151,7 +151,7 @@ internal static class QuotaRules
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsGod)
         {
-            context.Notify("Who do you think you are, GOD?");
+            context.Notify(Feedback.WhoDoYouThinkYouAreGod);
             return false;
         }
 
@@ -161,12 +161,12 @@ internal static class QuotaRules
         {
             if (!int.TryParse(arg, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out limit))
             {
-                context.Notify("You can only set quotas to a number.");
+                context.Notify(Feedback.YouCanOnlySetQuotasToANumber);
                 return false;
             }
             if (limit < 0)
             {
-                context.Notify("You can only set quotas to a positive number.");
+                context.Notify(Feedback.YouCanOnlySetQuotasToAPositiveNumber);
                 return false;
             }
         }
@@ -180,22 +180,22 @@ internal static class QuotaRules
             if (Unlimited(who, db))
             {
                 if (!quiet)
-                    context.Notify($"{who.Name}: Objects: {owned}   Limit: UNLIMITED");
+                    context.Notify(Feedback.ObjectsLimitUnlimited2, ("value", $"{who.Name}"), ("value2", $"{owned}"));
                 continue;
             }
             if (!quiet)
             {
                 int oldRemaining = Remaining(db, who, startingQuota);
-                context.Notify($"{who.Name}: Objects: {owned}   Limit: {oldRemaining}");
+                context.Notify(Feedback.ObjectsLimit2, ("value", $"{who.Name}"), ("value2", $"{owned}"), ("value3", $"{oldRemaining}"));
             }
             if (limit != -1)
                 Store(who, limit <= owned ? 0 : limit - owned);
         }
 
         if (limit == -1)
-            context.Notify("Quotas not changed.");
+            context.Notify(Feedback.QuotasNotChanged);
         else
-            context.Notify($"All quotas changed to {limit}.");
+            context.Notify(Feedback.AllQuotasChangedTo, ("value", $"{limit}"));
         return true;
     }
 

@@ -26,23 +26,23 @@ public class SuggestCommandHandler : ICommandHandler
     {
         if (!wizard)
         {
-            context.Notify("Your suggestion is not welcome.");
+            context.Notify(Feedback.YourSuggestionIsNotWelcome);
             return false;
         }
 
         if (string.IsNullOrEmpty(context.LeftArg) || string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("What did you want to add?");
+            context.Notify(Feedback.WhatDidYouWantToAdd);
             return false;
         }
 
         if (_vocabulary.Add(context.LeftArg, context.RightArg))
         {
-            context.Notify("Suggestion vocabulary word added.");
+            context.Notify(Feedback.SuggestionVocabularyWordAdded);
             return true;
         }
 
-        context.Notify("Unable to add word.");
+        context.Notify(Feedback.UnableToAddWord);
         return false;
     }
 
@@ -50,33 +50,33 @@ public class SuggestCommandHandler : ICommandHandler
     {
         if (!wizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         if (string.IsNullOrEmpty(context.LeftArg) || string.IsNullOrEmpty(context.RightArg))
         {
-            context.Notify("What did you want to delete?");
+            context.Notify(Feedback.WhatDidYouWantToDelete);
             return false;
         }
 
         if (_vocabulary.Delete(context.LeftArg, context.RightArg))
         {
-            context.Notify("Suggestion vocabulary word deleted.");
+            context.Notify(Feedback.SuggestionVocabularyWordDeleted);
             return true;
         }
 
-        context.Notify("Unable to delete word.");
+        context.Notify(Feedback.UnableToDeleteWord);
         return false;
     }
 
     private bool List(CommandContext context)
     {
-        context.Notify("Vocabulary suggestion categories:");
+        context.Notify(Feedback.VocabularySuggestionCategories);
         var categories = _vocabulary.Categories();
         if (categories.Count == 0)
         {
-            context.Notify("None found.");
+            context.Notify(Feedback.NoneFound);
             return true;
         }
 

@@ -28,7 +28,7 @@ public class CronCommandHandler : ICommandHandler
         // Permissions: Wizard or Royalty to manage cron jobs
         if (!executor.IsWizard && !executor.IsGod && !executor.HasFlag("ROYALTY"))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -41,7 +41,7 @@ public class CronCommandHandler : ICommandHandler
             int comma = right.IndexOf(',');
             if (string.IsNullOrEmpty(id) || comma <= 0)
             {
-                context.Notify("Usage: @cron/add <id>=<cron_expression>,<command_or_target/attr>");
+                context.Notify(Feedback.UsageCronAddIdCronExpressionCommandOrTargetAttr);
                 return false;
             }
 
@@ -71,7 +71,7 @@ public class CronCommandHandler : ICommandHandler
                 return true;
             }
 
-            context.Notify($"Error creating cron job: {error}");
+            context.Notify(Feedback.ErrorCreatingCronJob, ("job", $"{error}"));
             return false;
         }
 
@@ -81,10 +81,10 @@ public class CronCommandHandler : ICommandHandler
             string id = context.Arguments.Trim();
             if (_scheduler.DeleteJob(id))
             {
-                context.Notify($"Cron job '{id}' deleted.");
+                context.Notify(Feedback.CronJobDeleted, ("job", $"{id}"));
                 return true;
             }
-            context.Notify($"Cron job '{id}' not found.");
+            context.Notify(Feedback.CronJobNotFound, ("job", $"{id}"));
             return false;
         }
 
@@ -94,10 +94,10 @@ public class CronCommandHandler : ICommandHandler
             string id = context.Arguments.Trim();
             if (_scheduler.PauseJob(id))
             {
-                context.Notify($"Cron job '{id}' paused.");
+                context.Notify(Feedback.CronJobPaused, ("job", $"{id}"));
                 return true;
             }
-            context.Notify($"Cron job '{id}' not found.");
+            context.Notify(Feedback.CronJobNotFound, ("job", $"{id}"));
             return false;
         }
 
@@ -111,7 +111,7 @@ public class CronCommandHandler : ICommandHandler
                 context.Notify($"Cron job '{id}' resumed. Next run at: {job.NextRun:yyyy-MM-dd HH:mm:ss} UTC.");
                 return true;
             }
-            context.Notify($"Cron job '{id}' not found.");
+            context.Notify(Feedback.CronJobNotFound, ("job", $"{id}"));
             return false;
         }
 
@@ -122,13 +122,13 @@ public class CronCommandHandler : ICommandHandler
             var job = _scheduler.GetJob(id);
             if (job == null)
             {
-                context.Notify($"Cron job '{id}' not found.");
+                context.Notify(Feedback.CronJobNotFound, ("job", $"{id}"));
                 return false;
             }
 
             _queue.Enqueue(job.Target, job.Creator, job.Command);
             job.LastRun = DateTimeOffset.UtcNow;
-            context.Notify($"Triggered cron job '{id}' immediately.");
+            context.Notify(Feedback.TriggeredCronJobImmediately, ("job", $"{id}"));
             return true;
         }
 
@@ -136,19 +136,19 @@ public class CronCommandHandler : ICommandHandler
         var jobs = _scheduler.GetAllJobs();
         if (jobs.Count == 0)
         {
-            context.Notify("No cron jobs configured.");
+            context.Notify(Feedback.NoCronJobsConfigured);
             return true;
         }
 
-        context.Notify("Job ID          Schedule        Status  Target Next Run (UTC)");
-        context.Notify("----------------------------------------------------------------------");
+        context.Notify(Feedback.JobIdScheduleStatusTargetNextRunUtc);
+        context.Notify(Feedback.Dashes70);
         foreach (var job in jobs)
         {
             string status = job.IsPaused ? "PAUSED" : "ACTIVE";
             string next = job.IsPaused ? "---" : job.NextRun.ToString("yyyy-MM-dd HH:mm");
             context.Notify($"{job.Id,-15} {job.Expression,-15} {status,-7} {job.Target,-6} {next}");
         }
-        context.Notify("----------------------------------------------------------------------");
+        context.Notify(Feedback.Dashes70);
 
         return true;
     }

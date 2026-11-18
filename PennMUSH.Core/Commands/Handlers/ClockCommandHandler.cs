@@ -23,7 +23,7 @@ public class ClockCommandHandler : ICommandHandler
         string? kind = Kind(context);
         if (kind == null)
         {
-            context.Notify("You must specify a type of lock!");
+            context.Notify(Feedback.YouMustSpecifyATypeOfLock);
             return false;
         }
 
@@ -31,12 +31,12 @@ public class ClockCommandHandler : ICommandHandler
         var channel = _channels.GetChannel(name);
         if (channel == null)
         {
-            context.Notify("CHAT: I don't recognize that channel.");
+            context.Notify(Feedback.ChatIDontRecognizeThatChannel);
             return false;
         }
         if (!channel.CanModify(actor, db))
         {
-            context.Notify($"CHAT: Channel <{channel.Name}> resists.");
+            context.Notify(Feedback.ChatChannelResists, ("channel", $"{channel.Name}"));
             return false;
         }
 
@@ -44,17 +44,17 @@ public class ClockCommandHandler : ICommandHandler
         if (key.Length == 0)
         {
             channel.ClearLock(kind);
-            context.Notify($"CHAT: {Label(kind)} on <{channel.Name}> reset.");
+            context.Notify(Feedback.ChatOnReset, ("value", $"{Label(kind)}"), ("value2", $"{channel.Name}"));
             return true;
         }
         if (!Understands(key))
         {
-            context.Notify("CHAT: I don't understand that key.");
+            context.Notify(Feedback.ChatIDontUnderstandThatKey);
             return false;
         }
 
         channel.SetLock(kind, key, LockParser.Parse(key));
-        context.Notify($"CHAT: {Label(kind)} on <{channel.Name}> set.");
+        context.Notify(Feedback.ChatOnSet, ("value", $"{Label(kind)}"), ("value2", $"{channel.Name}"));
         return true;
     }
 

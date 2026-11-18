@@ -27,7 +27,7 @@ public class PcreateCommandHandler : ICommandHandler
             return false;
         if (string.IsNullOrWhiteSpace(context.LeftArg) || !context.Arguments.Contains('='))
         {
-            context.Notify("Usage: @pcreate <name>=<password>");
+            context.Notify(Feedback.UsagePcreateNamePassword);
             return false;
         }
 

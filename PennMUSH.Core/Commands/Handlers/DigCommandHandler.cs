@@ -20,20 +20,20 @@ public class DigCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg))
         {
-            context.Notify("Dig what?");
+            context.Notify(Feedback.DigWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         string roomName = context.LeftArg.Trim();
         var newRoom = db.CreateObject(roomName, ObjectType.Room, context.Executor);
-        context.Notify($"{newRoom.Name} created with room number {newRoom.Id}.");
+        context.Notify(Feedback.CreatedWithRoomNumber, ("value", $"{newRoom.Name}"), ("value2", $"{newRoom.Id}"));
 
         // Parse optional exits: RightArg = "<exit_to>[,<exit_back>]"
         if (!string.IsNullOrWhiteSpace(context.RightArg))
@@ -53,7 +53,7 @@ public class DigCommandHandler : ICommandHandler
                 var exitToObj = db.CreateObject(exitTo, ObjectType.Exit, context.Executor);
                 db.AttachExit(execObj.Location, exitToObj.Id);
                 db.LinkExit(exitToObj.Id, newRoom.Id);
-                context.Notify($"Opening exit {exitTo} to {newRoom.Id}.");
+                context.Notify(Feedback.OpeningExitTo, ("exit", $"{exitTo}"), ("value", $"{newRoom.Id}"));
             }
 
             if (!string.IsNullOrWhiteSpace(exitBack) && execObj.Location.IsValid)
@@ -61,7 +61,7 @@ public class DigCommandHandler : ICommandHandler
                 var exitBackObj = db.CreateObject(exitBack, ObjectType.Exit, context.Executor);
                 db.AttachExit(newRoom.Id, exitBackObj.Id);
                 db.LinkExit(exitBackObj.Id, execObj.Location);
-                context.Notify($"Opening exit {exitBack} to {execObj.Location}.");
+                context.Notify(Feedback.OpeningExitTo, ("exit", $"{exitBack}"), ("value", $"{execObj.Location}"));
             }
         }
 
@@ -69,7 +69,7 @@ public class DigCommandHandler : ICommandHandler
         if (context.Switches.Contains("teleport") || context.Switches.Contains("tel"))
         {
             db.MoveObject(context.Executor, newRoom.Id);
-            context.Notify($"Teleported to {newRoom.Name}.");
+            context.Notify(Feedback.TeleportedTo, ("value", $"{newRoom.Name}"));
             _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         }
 

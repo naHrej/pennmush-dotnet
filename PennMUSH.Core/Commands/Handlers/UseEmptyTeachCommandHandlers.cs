@@ -26,14 +26,14 @@ public class UseCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Use what?");
+            context.Notify(Feedback.UseWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -41,7 +41,7 @@ public class UseCommandHandler : ICommandHandler
         var thing = db.FindInContents(execObj.Location, name) ?? db.FindInContents(context.Executor, name);
         if (thing == null || thing.Type != ObjectType.Thing)
         {
-            context.Notify("I don't see that here.");
+            context.Notify(Feedback.IDontSeeThatHere);
             return false;
         }
 
@@ -85,14 +85,14 @@ public class EmptyCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Empty what?");
+            context.Notify(Feedback.EmptyWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -105,7 +105,7 @@ public class EmptyCommandHandler : ICommandHandler
 
         if (target == null || (target.Type != ObjectType.Thing && target.Type != ObjectType.Player))
         {
-            context.Notify("I don't see that here.");
+            context.Notify(Feedback.IDontSeeThatHere);
             return false;
         }
 
@@ -113,14 +113,14 @@ public class EmptyCommandHandler : ICommandHandler
         bool here = target.Location == execObj.Location;
         if (!held && !here)
         {
-            context.Notify("You can't empty that from here.");
+            context.Notify(Feedback.YouCantEmptyThatFromHere);
             return false;
         }
 
         bool controls = execObj.IsWizard || target.Owner == context.Executor || target.Id == context.Executor;
         if (!controls && !target.EvalLock(LockType.Enter, context.Executor, db))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -158,7 +158,7 @@ public class EmptyCommandHandler : ICommandHandler
 
         string noun = removed == 1 ? "object" : "objects";
         string count = removed == 0 ? "nothing" : $"{removed} {noun}";
-        context.Notify($"You remove {count} from {target.Name}.");
+        context.Notify(Feedback.YouRemoveFrom, ("value", $"{count}"), ("value2", $"{target.Name}"));
         return removed > 0;
     }
 }
@@ -176,28 +176,28 @@ public class TeachCommandHandler : ICommandHandler
         string command = context.Arguments.Trim();
         if (command.Length == 0)
         {
-            context.Notify("What command do you want to teach?");
+            context.Notify(Feedback.WhatCommandDoYouWantToTeach);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
         var here = db.GetObject(execObj.Location);
         if (here != null && !here.EvalLock(LockType.Speech, context.Executor, db))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
-        context.NotifyRoom(execObj.Location, $"{execObj.Name} types --> {command}");
+        context.NotifyRoom(execObj.Location, Feedback.ValueTypesValue.Text(("value", $"{execObj.Name}"), ("value2", $"{command}")));
         if (_queue.Enqueue(context.Executor, context.Enactor, command) == null)
         {
-            context.Notify("Queue is full.");
+            context.Notify(Feedback.QueueIsFull);
             return false;
         }
 

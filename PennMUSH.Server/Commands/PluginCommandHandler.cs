@@ -22,7 +22,7 @@ public class PluginCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -30,19 +30,19 @@ public class PluginCommandHandler : ICommandHandler
         {
             if (string.IsNullOrWhiteSpace(context.Arguments))
             {
-                context.Notify("Usage: @plugin/load <assembly_path>");
+                context.Notify(Feedback.UsagePluginLoadAssemblyPath);
                 return false;
             }
 
             try
             {
                 var record = _extensionManager.LoadExtension(context.Arguments.Trim());
-                context.Notify($"Successfully loaded plugin '{record.Name}' v{record.Version} by {record.Author}.");
+                context.Notify(Feedback.SuccessfullyLoadedPluginVBy, ("value", $"{record.Name}"), ("value2", $"{record.Version}"), ("value3", $"{record.Author}"));
                 return true;
             }
             catch (Exception ex)
             {
-                context.Notify($"Failed to load plugin: {ex.Message}");
+                context.Notify(Feedback.FailedToLoadPlugin, ("value", $"{ex.Message}"));
                 return false;
             }
         }
@@ -51,19 +51,19 @@ public class PluginCommandHandler : ICommandHandler
         {
             if (string.IsNullOrWhiteSpace(context.Arguments))
             {
-                context.Notify("Usage: @plugin/unload <plugin_name>");
+                context.Notify(Feedback.UsagePluginUnloadPluginName);
                 return false;
             }
 
             string name = context.Arguments.Trim();
             if (_extensionManager.UnloadExtension(name))
             {
-                context.Notify($"Plugin '{name}' has been unloaded.");
+                context.Notify(Feedback.PluginHasBeenUnloaded, ("value", $"{name}"));
                 return true;
             }
             else
             {
-                context.Notify($"Plugin '{name}' is not currently loaded.");
+                context.Notify(Feedback.PluginIsNotCurrentlyLoaded, ("value", $"{name}"));
                 return false;
             }
         }
@@ -72,7 +72,7 @@ public class PluginCommandHandler : ICommandHandler
         {
             if (string.IsNullOrWhiteSpace(context.Arguments))
             {
-                context.Notify("Usage: @plugin/reload <plugin_name>");
+                context.Notify(Feedback.UsagePluginReloadPluginName);
                 return false;
             }
 
@@ -80,12 +80,12 @@ public class PluginCommandHandler : ICommandHandler
             try
             {
                 var record = _extensionManager.ReloadExtension(name);
-                context.Notify($"Successfully reloaded plugin '{record.Name}' v{record.Version}.");
+                context.Notify(Feedback.SuccessfullyReloadedPluginV, ("value", $"{record.Name}"), ("value2", $"{record.Version}"));
                 return true;
             }
             catch (Exception ex)
             {
-                context.Notify($"Failed to reload plugin: {ex.Message}");
+                context.Notify(Feedback.FailedToReloadPlugin, ("value", $"{ex.Message}"));
                 return false;
             }
         }
@@ -94,7 +94,7 @@ public class PluginCommandHandler : ICommandHandler
         var plugins = _extensionManager.LoadedExtensions;
         if (plugins.Count == 0)
         {
-            context.Notify("No external plugins are currently loaded.");
+            context.Notify(Feedback.NoExternalPluginsAreCurrentlyLoaded);
             return true;
         }
 

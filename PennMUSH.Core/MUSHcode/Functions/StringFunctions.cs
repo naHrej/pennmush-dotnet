@@ -2,9 +2,11 @@ namespace PennMUSH.Core.MUSHcode.Functions;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using PennMUSH.Core.Queue;
 
 public static class StringFunctions
 {
@@ -17,8 +19,12 @@ public static class StringFunctions
         registry.Register("STRLEN", Strlen);
         registry.Register("MID", Mid);
         registry.Register("TRIM", Trim);
+        registry.Register("TRIMPENN", TrimPenn);
+        registry.Register("TRIMTINY", TrimTiny);
         registry.Register("UCSTR", Ucstr);
+        registry.Register("UCSTR2", Ucstr);
         registry.Register("LCSTR", Lcstr);
+        registry.Register("LCSTR2", Lcstr);
         registry.Register("REPEAT", Repeat);
         registry.Register("COMP", Comp);
         registry.Register("EDIT", Edit);
@@ -27,8 +33,26 @@ public static class StringFunctions
         registry.Register("CENTER", Center);
         registry.Register("BEFORE", Before);
         registry.Register("AFTER", After);
+        registry.Register("POS", Pos);
         registry.Register("LPOS", LPos);
         registry.Register("RPOS", RPos);
+        registry.Register("LEFT", Left);
+        registry.Register("RIGHT", Right);
+        registry.Register("SQUISH", Squish);
+        registry.Register("BRACKETS", Brackets);
+        registry.Register("ALIGN", Align);
+        registry.Register("LALIGN", LAlign);
+        registry.Register("TR", Tr);
+        registry.Register("STRINSERT", StrInsert);
+        registry.Register("STRDELETE", StrDelete);
+        registry.Register("DELETE", StrDelete);
+        registry.Register("STRREPLACE", StrReplace);
+        registry.Register("STRIPACCENTS", StripAccents);
+        registry.Register("DECOMPOSE", Decompose);
+        registry.Register("STRMATCH", StrMatch);
+        registry.Register("MERGE", Merge);
+        registry.Register("FLIP", Flip);
+        registry.Register("REVERSE", Flip);
         registry.Register("CHR", Chr);
         registry.Register("ORD", Ord);
         registry.Register("CAPSTR", Capstr);
@@ -39,6 +63,7 @@ public static class StringFunctions
         registry.Register("SPACE", Space);
         registry.Register("SCRAMBLE", Scramble);
         registry.Register("SPELLNUM", SpellNum);
+        registry.Register("ORDINAL", Ordinal);
         registry.Register("ORDNUMBER", OrdNumber);
         registry.Register("ALPHAMAX", AlphaMax);
         registry.Register("ALPHAMIN", AlphaMin);
@@ -49,6 +74,8 @@ public static class StringFunctions
         registry.Register("SECURE", Secure);
         registry.Register("ESCAPE", Escape);
         registry.Register("SOUNDEX", Soundex);
+        registry.Register("SOUNDSLIKE", SoundsLike);
+        registry.Register("SOUNDLIKE", SoundsLike);
     }
 
     public static string Cat(EvaluationContext ctx, string[] args)
@@ -82,9 +109,33 @@ public static class StringFunctions
     }
 
     public static string Trim(EvaluationContext ctx, string[] args)
+        => TrimPenn(ctx, args);
+
+    public static string TrimPenn(EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return string.Empty;
-        return args[0].Trim();
+        string chars = args.Length > 1 ? args[1] : "";
+        string style = args.Length > 2 ? args[2] : "";
+        return ApplyTrim(args[0], chars, style);
+    }
+
+    public static string TrimTiny(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return string.Empty;
+        string style = args.Length > 1 ? args[1] : "";
+        string chars = args.Length > 2 ? args[2] : "";
+        return ApplyTrim(args[0], chars, style);
+    }
+
+    private static string ApplyTrim(string input, string chars, string style)
+    {
+        char[] toTrim = string.IsNullOrEmpty(chars) ? new[] { ' ' } : chars.ToCharArray();
+        string s = style.Trim().ToLowerInvariant();
+        if (s.StartsWith('l'))
+            return input.TrimStart(toTrim);
+        if (s.StartsWith('r'))
+            return input.TrimEnd(toTrim);
+        return input.Trim(toTrim);
     }
 
     public static string Ucstr(EvaluationContext ctx, string[] args)
@@ -524,9 +575,32 @@ public static class StringFunctions
 
     public static string Soundex(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0])) return "0000";
-        string word = Regex.Replace(args[0].ToUpperInvariant(), @"[^A-Z]", "");
+        if (args.Length == 0) return "0000";
+        string type = args.Length >= 2 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim().ToLowerInvariant() : "soundex";
+        if (type != "soundex" && type != "phone")
+            return MushError.UnknownHashType.Text();
+        return ComputeSoundHash(args[0], type);
+    }
+
+    public static string SoundsLike(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return "0";
+        string type = args.Length >= 3 && !string.IsNullOrWhiteSpace(args[2]) ? args[2].Trim().ToLowerInvariant() : "soundex";
+        if (type != "soundex" && type != "phone")
+            return MushError.UnknownHashType.Text();
+        return string.Equals(ComputeSoundHash(args[0], type), ComputeSoundHash(args[1], type), StringComparison.Ordinal) ? "1" : "0";
+    }
+
+    private static string ComputeSoundHash(string input, string type)
+        => type == "phone" ? ComputePhoneHash(input) : ComputeSoundex(input);
+
+    private static string ComputeSoundex(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return "0000";
+        string word = Regex.Replace(input.ToUpperInvariant(), @"[^A-Z]", "");
         if (string.IsNullOrEmpty(word)) return "0000";
+        if (word.StartsWith("PH", StringComparison.Ordinal))
+            word = "F" + word.Substring(2);
 
         var sb = new StringBuilder();
         sb.Append(word[0]);
@@ -536,13 +610,49 @@ public static class StringFunctions
         {
             char code = GetSoundexCode(word[i]);
             if (code != '0' && code != prevCode)
-            {
                 sb.Append(code);
-            }
             prevCode = code;
         }
 
         while (sb.Length < 4) sb.Append('0');
+        return sb.ToString();
+    }
+
+    private static string ComputePhoneHash(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        string w = Regex.Replace(input.ToUpperInvariant(), @"[^A-Z]", "");
+        if (string.IsNullOrEmpty(w)) return string.Empty;
+
+        w = w.Replace("PH", "F", StringComparison.Ordinal)
+             .Replace("KN", "N", StringComparison.Ordinal)
+             .Replace("WR", "R", StringComparison.Ordinal)
+             .Replace("QU", "KW", StringComparison.Ordinal)
+             .Replace('X', 'S');
+
+        var sb = new StringBuilder();
+        char last = '\0';
+        for (int i = 0; i < w.Length; i++)
+        {
+            char c = w[i] switch
+            {
+                'A' or 'E' or 'I' or 'O' or 'U' or 'Y' => 'A',
+                'B' or 'P' => 'B',
+                'C' or 'K' or 'Q' => 'K',
+                'D' or 'T' => 'T',
+                'F' or 'V' => 'F',
+                'G' or 'J' => 'J',
+                'S' or 'Z' => 'S',
+                'M' or 'N' => 'M',
+                _ => w[i]
+            };
+            if (i > 0 && c == 'A') continue;
+            if (c != last)
+            {
+                sb.Append(c);
+                last = c;
+            }
+        }
         return sb.ToString();
     }
 
@@ -558,5 +668,676 @@ public static class StringFunctions
             'R' => '6',
             _ => '0'
         };
+    }
+
+    public static string Flip(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        char[] arr = args[0].ToCharArray();
+        Array.Reverse(arr);
+        return new string(arr);
+    }
+
+    public static string Pos(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return MushError.Nothing.Text();
+        int idx = args[1].IndexOf(args[0], StringComparison.Ordinal);
+        return idx >= 0 ? (idx + 1).ToString() : MushError.Nothing.Text();
+    }
+
+    public static string Left(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || !int.TryParse(args[1].Trim(), out int len))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (len < 0) return MushError.OutOfRange.Text();
+        return len >= args[0].Length ? args[0] : args[0].Substring(0, len);
+    }
+
+    public static string Right(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || !int.TryParse(args[1].Trim(), out int len))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (len < 0) return MushError.OutOfRange.Text();
+        return len >= args[0].Length ? args[0] : args[0].Substring(args[0].Length - len, len);
+    }
+
+    public static string Squish(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        if (args.Length > 1 && args[1].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        char sep = args.Length > 1 && args[1].Length == 1 ? args[1][0] : ' ';
+
+        var sb = new StringBuilder(args[0].Length);
+        bool inSep = true;
+        foreach (char c in args[0])
+        {
+            if (c == sep)
+            {
+                if (!inSep)
+                {
+                    sb.Append(sep);
+                    inSep = true;
+                }
+            }
+            else
+            {
+                sb.Append(c);
+                inSep = false;
+            }
+        }
+        if (sb.Length > 0 && sb[^1] == sep)
+            sb.Length--;
+        return sb.ToString();
+    }
+
+    public static string Brackets(EvaluationContext ctx, string[] args)
+    {
+        string text = args.Length > 0 ? args[0] : string.Empty;
+        int lbrack = 0, rbrack = 0, lparen = 0, rparen = 0, lcurl = 0, rcurl = 0;
+        foreach (char c in text)
+        {
+            switch (c)
+            {
+                case '[': lbrack++; break;
+                case ']': rbrack++; break;
+                case '(': lparen++; break;
+                case ')': rparen++; break;
+                case '{': lcurl++; break;
+                case '}': rcurl++; break;
+            }
+        }
+        return $"{lbrack} {rbrack} {lparen} {rparen} {lcurl} {rcurl}";
+    }
+
+    public static string StrInsert(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 3 || !int.TryParse(args[1].Trim(), out int pos))
+            return MushError.ArgumentsMustBeIntegers.Text();
+        if (pos < 0) return MushError.OutOfRange.Text();
+        if (pos >= args[0].Length) return args[0] + args[2];
+        return args[0].Insert(pos, args[2]);
+    }
+
+    public static string StrDelete(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 3 || !int.TryParse(args[1].Trim(), out int pos) || !int.TryParse(args[2].Trim(), out int count))
+            return MushError.ArgumentsMustBeIntegers.Text();
+        if (pos < 0) return MushError.OutOfRange.Text();
+        if (pos >= args[0].Length || count == 0) return args[0];
+
+        if (count < 0)
+        {
+            int end = pos + 1;
+            int start = Math.Max(0, pos + count + 1);
+            return args[0].Remove(start, end - start);
+        }
+
+        int len = Math.Min(count, args[0].Length - pos);
+        return args[0].Remove(pos, len);
+    }
+
+    public static string StrReplace(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 4 || !int.TryParse(args[1].Trim(), out int pos) || !int.TryParse(args[2].Trim(), out int len))
+            return MushError.ArgumentsMustBeIntegers.Text();
+        if (pos < 0 || len < 0) return MushError.OutOfRange.Text();
+        if (pos > args[0].Length) return args[0];
+
+        int rem = Math.Min(len, args[0].Length - pos);
+        return args[0].Remove(pos, rem).Insert(pos, args[3]);
+    }
+
+    public static string Tr(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 3) return string.Empty;
+        if (!TryExpandTrChars(args[1], out string fromChars) || !TryExpandTrChars(args[2], out string toChars))
+            return MushError.TrCannotAcceptNonprintingChars.Text();
+        if (fromChars.Length != toChars.Length)
+            return MushError.StringLengthsMustBeEqual.Text();
+
+        var map = new Dictionary<char, char>();
+        for (int i = 0; i < fromChars.Length; i++)
+            map[fromChars[i]] = toChars[i];
+
+        var sb = new StringBuilder(args[0].Length);
+        foreach (char c in args[0])
+            sb.Append(map.TryGetValue(c, out char repl) ? repl : c);
+        return sb.ToString();
+    }
+
+    private static bool TryExpandTrChars(string spec, out string expanded)
+    {
+        var sb = new StringBuilder();
+        for (int i = 0; i < spec.Length; i++)
+        {
+            char c = spec[i];
+            if ((c < 32 && c != '\n') || c == 127)
+            {
+                expanded = string.Empty;
+                return false;
+            }
+
+            if (i + 2 < spec.Length && spec[i + 1] == '-')
+            {
+                char end = spec[i + 2];
+                if ((end < 32 && end != '\n') || end == 127)
+                {
+                    expanded = string.Empty;
+                    return false;
+                }
+
+                if (c <= end)
+                {
+                    for (char cur = c; cur <= end; cur++)
+                        sb.Append(cur);
+                }
+                else
+                {
+                    for (char cur = c; cur >= end; cur--)
+                        sb.Append(cur);
+                }
+                i += 2;
+            }
+            else
+            {
+                sb.Append(c);
+            }
+        }
+        expanded = sb.ToString();
+        return true;
+    }
+
+    public static string StripAccents(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        string s = args[0]
+            .Replace("ß", "ss", StringComparison.Ordinal)
+            .Replace("æ", "ae", StringComparison.Ordinal)
+            .Replace("Æ", "AE", StringComparison.Ordinal)
+            .Replace("ø", "o", StringComparison.Ordinal)
+            .Replace("Ø", "O", StringComparison.Ordinal)
+            .Replace("ð", "d", StringComparison.Ordinal)
+            .Replace("Ð", "D", StringComparison.Ordinal)
+            .Replace("þ", "th", StringComparison.Ordinal)
+            .Replace("Þ", "TH", StringComparison.Ordinal)
+            .Replace("ł", "l", StringComparison.Ordinal)
+            .Replace("Ł", "L", StringComparison.Ordinal);
+
+        string normalized = s.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+        foreach (char c in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    public static string Decompose(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        var sb = new StringBuilder(args[0].Length * 2);
+        foreach (char c in args[0])
+        {
+            switch (c)
+            {
+                case '\\': sb.Append(@"\\"); break;
+                case '%': sb.Append("%%"); break;
+                case '\r': break;
+                case '\n': sb.Append("%r"); break;
+                case '\t': sb.Append("%t"); break;
+                case ' ': sb.Append("%b"); break;
+                case '[': sb.Append(@"\["); break;
+                case ']': sb.Append(@"\]"); break;
+                case '{': sb.Append(@"\{"); break;
+                case '}': sb.Append(@"\}"); break;
+                case '(': sb.Append(@"\("); break;
+                case ')': sb.Append(@"\)"); break;
+                case ',': sb.Append(@"\,"); break;
+                case ';': sb.Append(@"\;"); break;
+                case '$': sb.Append(@"\$"); break;
+                case '^': sb.Append(@"\^"); break;
+                default: sb.Append(c); break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    public static string StrMatch(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return "0";
+        string input = args[0];
+        string pattern = args[1];
+        bool matched = (string.IsNullOrEmpty(input) && string.IsNullOrEmpty(pattern))
+            || PatternMatcher.Match(pattern, input, out var captures);
+
+        string[] capArray = matched && (pattern.Contains('*') || pattern.Contains('?'))
+            ? (PatternMatcher.Match(pattern, input, out var c) ? c : Array.Empty<string>())
+            : Array.Empty<string>();
+
+        var errSb = new StringBuilder();
+        if (matched && args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]))
+        {
+            var regNames = args[2].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < regNames.Length; i++)
+            {
+                string rName = regNames[i];
+                if (rName == "-") continue;
+                if (!IsValidRegisterName(rName))
+                {
+                    errSb.Append(MushError.RegisterNameInvalid.Text());
+                    continue;
+                }
+                string val = i < capArray.Length ? capArray[i] : string.Empty;
+                ctx.SetRegister(rName, val);
+            }
+        }
+
+        return (matched ? "1" : "0") + errSb;
+    }
+
+    private static bool IsValidRegisterName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        foreach (char c in name)
+        {
+            if (!char.IsLetterOrDigit(c) && c != '_')
+                return false;
+        }
+        return true;
+    }
+
+    public static string Merge(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 3) return string.Empty;
+        if (args[0].Length != args[1].Length)
+            return MushError.StringLengthsMustBeEqual.Text();
+
+        string matchChars = string.IsNullOrEmpty(args[2]) ? " " : args[2];
+        var sb = new StringBuilder(args[0].Length);
+        for (int i = 0; i < args[0].Length; i++)
+        {
+            char c1 = args[0][i];
+            sb.Append(matchChars.Contains(c1, StringComparison.Ordinal) ? args[1][i] : c1);
+        }
+        return sb.ToString();
+    }
+
+    public static string Ordinal(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            return MushError.ArgumentMustBeInteger.Text();
+
+        string raw = args[0].Trim();
+        if (raw.Contains('.'))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (!long.TryParse(raw, out long num))
+            return MushError.ArgumentMustBeNumber.Text();
+
+        if (num == 0) return "zeroth";
+        string spelled = SpellNum(ctx, new[] { raw });
+        return OrdinalizeSpelled(spelled);
+    }
+
+    private static string OrdinalizeSpelled(string spelled)
+    {
+        (string suffix, string replacement)[] irregular =
+        {
+            ("one", "first"), ("two", "second"), ("three", "third"), ("four", "fourth"),
+            ("five", "fifth"), ("six", "sixth"), ("seven", "seventh"), ("eight", "eighth"),
+            ("nine", "ninth"), ("twelve", "twelfth")
+        };
+
+        foreach (var (suf, rep) in irregular)
+        {
+            if (spelled.EndsWith(suf, StringComparison.OrdinalIgnoreCase))
+                return spelled.Substring(0, spelled.Length - suf.Length) + rep;
+        }
+        if (spelled.EndsWith('y'))
+            return spelled.Substring(0, spelled.Length - 1) + "ieth";
+        return spelled + "th";
+    }
+
+    private enum AlignMode { Left, Right, Center, Full, WpFull }
+
+    private sealed class AlignColumn
+    {
+        public AlignMode Mode;
+        public int Width;
+        public bool Repeat;
+        public bool CoalesceLeft;
+        public bool CoalesceRight;
+        public bool NoFill;
+        public bool TruncEach;
+        public bool TruncAll;
+        public bool NoColSep;
+        public string Text = string.Empty;
+        public int Pos;
+    }
+
+    public static string Align(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0) return MushError.NotEnoughColumnsForAlign.Text();
+        if (!TryParseAlignColumns(args[0], out var cols, out string parseError))
+            return parseError;
+
+        int n = cols.Count;
+        if (args.Length < n + 1 || args.Length > n + 4)
+            return MushError.InvalidNumberOfArgumentsToAlign.Text();
+
+        char filler = ' ';
+        if (args.Length >= n + 2)
+        {
+            if (args[n + 1].Length > 1) return MushError.FillerMustBeOneCharacter.Text();
+            if (args[n + 1].Length == 1) filler = args[n + 1][0];
+        }
+
+        string fieldSep = args.Length >= n + 3 ? args[n + 2] : " ";
+        string lineSep = args.Length >= n + 4 ? args[n + 3] : "\n";
+
+        for (int i = 0; i < n; i++)
+            cols[i].Text = args[i + 1].Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        return RenderAlignedColumns(cols, filler, fieldSep, lineSep);
+    }
+
+    public static string LAlign(EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return MushError.InvalidNumberOfArgumentsToAlign.Text();
+        if (!TryParseAlignColumns(args[0], out var cols, out string parseError))
+            return parseError;
+
+        if (args.Length > 2 && args[2].Length > 1)
+            return MushError.SeparatorMustBeOneCharacter.Text();
+        string delim = args.Length > 2 && args[2].Length == 1 ? args[2] : " ";
+        var items = ListFunctions.SplitList(args[1], delim);
+        if (items.Count != cols.Count)
+            return MushError.InvalidNumberOfArgumentsToAlign.Text();
+
+        char filler = ' ';
+        if (args.Length > 3)
+        {
+            if (args[3].Length > 1) return MushError.FillerMustBeOneCharacter.Text();
+            if (args[3].Length == 1) filler = args[3][0];
+        }
+
+        string fieldSep = args.Length > 4 ? args[4] : " ";
+        string lineSep = args.Length > 5 ? args[5] : "\n";
+
+        for (int i = 0; i < cols.Count; i++)
+            cols[i].Text = items[i].Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        return RenderAlignedColumns(cols, filler, fieldSep, lineSep);
+    }
+
+    private static bool TryParseAlignColumns(string spec, out List<AlignColumn> cols, out string error)
+    {
+        cols = new List<AlignColumn>();
+        error = string.Empty;
+        int i = 0;
+        int totalWidth = 0;
+
+        while (i < spec.Length)
+        {
+            while (i < spec.Length && char.IsWhiteSpace(spec[i])) i++;
+            if (i >= spec.Length) break;
+
+            var col = new AlignColumn { Mode = AlignMode.Left };
+            if (spec[i] == '>') { col.Mode = AlignMode.Right; i++; }
+            else if (spec[i] == '-') { col.Mode = AlignMode.Center; i++; }
+            else if (spec[i] == '<') { col.Mode = AlignMode.Left; i++; }
+            else if (spec[i] == '_') { col.Mode = AlignMode.Full; i++; }
+            else if (spec[i] == '=') { col.Mode = AlignMode.WpFull; i++; }
+            else if (!char.IsDigit(spec[i]))
+            {
+                error = MushError.InvalidAlignString.Text();
+                return false;
+            }
+
+            int widthStart = i;
+            while (i < spec.Length && char.IsDigit(spec[i])) i++;
+            if (i == widthStart || !int.TryParse(spec.AsSpan(widthStart, i - widthStart), out int w) || w <= 0)
+            {
+                error = MushError.InvalidAlignString.Text();
+                return false;
+            }
+            if (w > 8192)
+            {
+                error = MushError.CannotHaveColumnsThatLarge.Text();
+                return false;
+            }
+            col.Width = w;
+            totalWidth += w;
+            if (totalWidth > 8192)
+            {
+                error = MushError.CannotHaveColumnsThatLarge.Text();
+                return false;
+            }
+
+            while (i < spec.Length && !char.IsWhiteSpace(spec[i]))
+            {
+                switch (spec[i])
+                {
+                    case '.': col.Repeat = true; break;
+                    case '`': col.CoalesceLeft = true; break;
+                    case '\'': col.CoalesceRight = true; break;
+                    case '$': col.NoFill = true; break;
+                    case 'x': col.TruncEach = true; break;
+                    case 'X': col.TruncAll = true; break;
+                    case '#': col.NoColSep = true; break;
+                    case '(':
+                        int close = spec.IndexOf(')', i + 1);
+                        if (close < 0)
+                        {
+                            error = MushError.InvalidAlignString.Text();
+                            return false;
+                        }
+                        i = close;
+                        break;
+                }
+                i++;
+            }
+
+            cols.Add(col);
+            if (cols.Count > 30)
+            {
+                error = MushError.TooManyColumnsForAlign.Text();
+                return false;
+            }
+        }
+
+        if (cols.Count == 0)
+        {
+            error = MushError.NotEnoughColumnsForAlign.Text();
+            return false;
+        }
+        return true;
+    }
+
+    private static string RenderAlignedColumns(List<AlignColumn> cols, char filler, string fieldSep, string lineSep)
+    {
+        var output = new StringBuilder();
+        int lineNum = 0;
+
+        while (true)
+        {
+            var widths = cols.Select(c => c.Width).ToArray();
+            var line = new StringBuilder();
+            int colsDone = 0;
+            bool needSep = false;
+
+            for (int i = 0; i < cols.Count; i++)
+            {
+                var col = cols[i];
+                if (widths[i] <= 0)
+                {
+                    colsDone++;
+                    continue;
+                }
+
+                int nextActive = -1;
+                for (int j = i + 1; j < cols.Count; j++)
+                {
+                    if (widths[j] > 0) { nextActive = j; break; }
+                }
+
+                if (nextActive >= 0 && !cols[nextActive].Repeat && cols[nextActive].CoalesceLeft && cols[nextActive].Pos >= cols[nextActive].Text.Length)
+                {
+                    widths[i] += widths[nextActive] + fieldSep.Length;
+                    widths[nextActive] = 0;
+                    if (cols[nextActive].NoFill) col.NoFill = true;
+                    if (cols[nextActive].NoColSep) col.NoColSep = true;
+                }
+
+                if (col.Pos >= col.Text.Length)
+                {
+                    if (col.Repeat && col.Text.Length > 0)
+                    {
+                        col.Pos = 0;
+                        colsDone++;
+                    }
+                    else
+                    {
+                        if (col.CoalesceRight && nextActive >= 0)
+                        {
+                            widths[nextActive] += widths[i] + fieldSep.Length;
+                            widths[i] = 0;
+                            colsDone++;
+                            continue;
+                        }
+                        if (needSep && fieldSep.Length > 0) line.Append(fieldSep);
+                        needSep = !col.NoColSep;
+                        if (!col.NoFill) line.Append(filler, widths[i]);
+                        colsDone++;
+                        continue;
+                    }
+                }
+                else if (col.Repeat)
+                {
+                    colsDone++;
+                }
+
+                string seg = TakeAlignSegment(col, widths[i], out bool skipLeadingSpaces);
+                if (skipLeadingSpaces)
+                {
+                    while (col.Pos < col.Text.Length && col.Text[col.Pos] != '\n' && char.IsWhiteSpace(col.Text[col.Pos]))
+                        col.Pos++;
+                }
+
+                if (needSep && fieldSep.Length > 0) line.Append(fieldSep);
+                needSep = !col.NoColSep;
+                FormatAlignSegment(line, seg, col.Mode, widths[i], filler, col.NoFill);
+            }
+
+            if (colsDone == cols.Count) break;
+            if (lineNum > 0 && lineSep.Length > 0) output.Append(lineSep);
+            output.Append(line);
+            lineNum++;
+        }
+
+        return output.ToString();
+    }
+
+    private static string TakeAlignSegment(AlignColumn col, int width, out bool skipSpaces)
+    {
+        string text = col.Text;
+        int start = col.Pos;
+        int len = 0;
+        int lastSpace = -1;
+        skipSpaces = false;
+
+        int cur = start;
+        while (len < width && cur < text.Length && text[cur] != '\n')
+        {
+            if (char.IsWhiteSpace(text[cur])) lastSpace = cur;
+            cur++;
+            len++;
+        }
+        if (cur < text.Length && char.IsWhiteSpace(text[cur]) && text[cur] != '\n')
+            lastSpace = cur;
+
+        if (cur >= text.Length)
+        {
+            col.Pos = cur;
+            return text.Substring(start, len);
+        }
+
+        if (text[cur] == '\n')
+        {
+            col.Pos = col.TruncAll ? text.Length : cur + 1;
+            return text.Substring(start, len);
+        }
+
+        if (lastSpace >= start && !col.TruncAll && !col.TruncEach)
+        {
+            int end = lastSpace;
+            while (end >= start && char.IsWhiteSpace(text[end])) end--;
+            int segLen = Math.Max(0, end - start + 1);
+            col.Pos = lastSpace;
+            skipSpaces = true;
+            return text.Substring(start, segLen);
+        }
+
+        if (col.TruncAll)
+        {
+            col.Pos = text.Length;
+        }
+        else if (col.TruncEach)
+        {
+            int nl = text.IndexOf('\n', cur);
+            col.Pos = nl < 0 ? text.Length : nl + 1;
+        }
+        else
+        {
+            col.Pos = cur;
+        }
+        return text.Substring(start, len);
+    }
+
+    private static void FormatAlignSegment(StringBuilder line, string seg, AlignMode mode, int width, char filler, bool noFill)
+    {
+        int pad = Math.Max(0, width - seg.Length);
+        switch (mode)
+        {
+            case AlignMode.Right:
+                if (seg.Length > 0 || !noFill) line.Append(filler, pad);
+                line.Append(seg);
+                break;
+            case AlignMode.Center:
+                int leftPad = pad >> 1;
+                line.Append(filler, leftPad);
+                line.Append(seg);
+                if (!noFill) line.Append(filler, (pad >> 1) + (pad & 1));
+                break;
+            case AlignMode.Full:
+            case AlignMode.WpFull:
+                bool isWp = mode == AlignMode.WpFull;
+                int numSpaces = seg.Count(c => char.IsWhiteSpace(c));
+                if (pad > 0 && numSpaces > 0 && (!isWp || (width / pad) >= 2))
+                {
+                    int extra = pad / numSpaces;
+                    int rem = pad % numSpaces;
+                    int seen = 0;
+                    foreach (char c in seg)
+                    {
+                        line.Append(c);
+                        if (char.IsWhiteSpace(c))
+                        {
+                            int add = extra + (seen < rem ? 1 : 0);
+                            line.Append(c, add);
+                            seen++;
+                        }
+                    }
+                    return;
+                }
+                line.Append(seg);
+                if (!noFill) line.Append(filler, pad);
+                break;
+            default:
+                line.Append(seg);
+                if (!noFill) line.Append(filler, pad);
+                break;
+        }
     }
 }

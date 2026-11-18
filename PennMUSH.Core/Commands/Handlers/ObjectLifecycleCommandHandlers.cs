@@ -17,7 +17,7 @@ public class DestroyCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Destroy what?");
+            context.Notify(Feedback.DestroyWhat);
             return false;
         }
 
@@ -25,19 +25,19 @@ public class DestroyCommandHandler : ICommandHandler
         var target = ResolveTarget(context.Arguments.Trim(), context.Executor, db);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
         if (target.Id.Value <= 2)
         {
-            context.Notify("You cannot destroy fundamental system objects (#0, #1, #2).");
+            context.Notify(Feedback.YouCannotDestroyFundamentalSystemObjects012);
             return false;
         }
 
         if (execObj == null || (!execObj.IsWizard && target.Owner != context.Executor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -45,7 +45,7 @@ public class DestroyCommandHandler : ICommandHandler
             || context.Switches.Contains("override");
         if (target.HasFlag("SAFE") && !overrideSafe)
         {
-            context.Notify("That object is set SAFE.");
+            context.Notify(Feedback.ThatObjectIsSetSafe);
             return false;
         }
 
@@ -54,12 +54,12 @@ public class DestroyCommandHandler : ICommandHandler
             string name = target.Name;
             var id = target.Id;
             Free(db, target);
-            context.Notify($"{name} ({id}) has been destroyed.");
+            context.Notify(Feedback.HasBeenDestroyed, ("value", $"{name}"), ("value2", $"{id}"));
             return true;
         }
 
         target.AddFlag("GOING");
-        context.Notify($"The wrecking ball comes for {target.Name} ({target.Id}).");
+        context.Notify(Feedback.TheWreckingBallComesFor, ("value", $"{target.Name}"), ("value2", $"{target.Id}"));
         return true;
     }
 
@@ -103,7 +103,7 @@ public class PurgeCommandHandler : ICommandHandler
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsWizard)
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -129,7 +129,7 @@ public class UndestroyCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Undestroy what?");
+            context.Notify(Feedback.UndestroyWhat);
             return false;
         }
 
@@ -137,19 +137,19 @@ public class UndestroyCommandHandler : ICommandHandler
         var target = ResolveTarget(context.Arguments.Trim(), context.Executor, db);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
         if (actor == null || (!actor.IsWizard && target.Owner != context.Executor))
         {
-            context.Notify("Alas, your efforts of mercy are in vain.");
+            context.Notify(Feedback.AlasYourEffortsOfMercyAreInVain);
             return false;
         }
 
         if (target.Type == ObjectType.Garbage || !target.RemoveFlag("GOING"))
         {
-            context.Notify("That can't be undestroyed.");
+            context.Notify(Feedback.ThatCantBeUndestroyed);
             return false;
         }
 
@@ -157,12 +157,12 @@ public class UndestroyCommandHandler : ICommandHandler
         var owner = db.GetObject(target.Owner);
         if (owner != null && owner.Id != context.Executor)
         {
-            context.NotifyTarget(owner.Id, $"Your {spared}");
-            context.Notify($"{owner.Name}'s {spared}");
+            context.NotifyTarget(owner.Id, Feedback.YourValue.Text(("value", $"{spared}")));
+            context.Notify(Feedback.ValueSValue, ("value", $"{owner.Name}"), ("value2", $"{spared}"));
         }
         else
         {
-            context.Notify($"Your {spared}");
+            context.Notify(Feedback.YourValue, ("value", $"{spared}"));
         }
 
         return true;
@@ -189,14 +189,14 @@ public class CloneCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Clone what?");
+            context.Notify(Feedback.CloneWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -206,13 +206,13 @@ public class CloneCommandHandler : ICommandHandler
 
         if (target == null)
         {
-            context.Notify("I can't find that to clone.");
+            context.Notify(Feedback.ICantFindThatToClone);
             return false;
         }
 
         if (target.Type == ObjectType.Player)
         {
-            context.Notify("You cannot clone players.");
+            context.Notify(Feedback.YouCannotClonePlayers);
             return false;
         }
 
@@ -232,8 +232,8 @@ public class CloneCommandHandler : ICommandHandler
         foreach (var l in target.Locks)
             clone.SetLock(l.Type, l.Key, context.Executor, l.Flags);
 
-        context.Notify($"Cloned: {clone.Name} ({clone.Id}).");
-        context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} creates {clone.Name}.");
+        context.Notify(Feedback.ClonedValueValue, ("value", $"{clone.Name}"), ("value2", $"{clone.Id}"));
+        context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueCreatesValue.Text(("value", $"{execObj.Name}"), ("value2", $"{clone.Name}")));
         return true;
     }
 }
@@ -246,7 +246,7 @@ public class ChownCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @chown <object>=<player>");
+            context.Notify(Feedback.UsageChownObjectPlayer);
             return false;
         }
 
@@ -254,25 +254,25 @@ public class ChownCommandHandler : ICommandHandler
         var target = db.FindObject(context.LeftArg.Trim());
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
         var newOwner = db.FindPlayer(context.RightArg.Trim());
         if (newOwner == null)
         {
-            context.Notify("I can't find that player.");
+            context.Notify(Feedback.ICantFindThatPlayer);
             return false;
         }
 
         if (execObj == null || (!execObj.IsWizard && target.Owner != context.Executor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         target.Owner = newOwner.Id;
-        context.Notify($"Owner of {target.Name} ({target.Id}) changed to {newOwner.Name}.");
+        context.Notify(Feedback.OwnerOfChangedTo, ("value", $"{target.Name}"), ("value2", $"{target.Id}"), ("value3", $"{newOwner.Name}"));
         return true;
     }
 }
@@ -285,7 +285,7 @@ public class WipeCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Usage: @wipe <object>[/<pattern>]");
+            context.Notify(Feedback.UsageWipeObjectPattern);
             return false;
         }
 
@@ -303,7 +303,7 @@ public class WipeCommandHandler : ICommandHandler
         var target = db.FindObject(objStr);
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -317,7 +317,7 @@ public class WipeCommandHandler : ICommandHandler
             target.ClearAttribute(attr);
         }
 
-        context.Notify($"Wiped {toWipe.Count} attribute(s) on {target.Name}.");
+        context.Notify(Feedback.WipedAttributeSOn, ("value", $"{toWipe.Count}"), ("value2", $"{target.Name}"));
         return true;
     }
 }
@@ -330,14 +330,14 @@ public class LockCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: @lock[/<type>] <object>=<key>");
+            context.Notify(Feedback.UsageLockTypeObjectKey);
             return false;
         }
 
         var target = db.FindObject(context.LeftArg.Trim());
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
@@ -345,7 +345,7 @@ public class LockCommandHandler : ICommandHandler
         var lockNode = LockParser.Parse(context.RightArg.Trim());
 
         target.SetLock(lockType, lockNode, context.Executor);
-        context.Notify($"Locked ({lockType}) on {target.Name}.");
+        context.Notify(Feedback.LockedOn, ("value", $"{lockType}"), ("value2", $"{target.Name}"));
         return true;
     }
 }
@@ -358,25 +358,25 @@ public class UnlockCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Usage: @unlock[/<type>] <object>");
+            context.Notify(Feedback.UsageUnlockTypeObject);
             return false;
         }
 
         var target = db.FindObject(context.Arguments.Trim());
         if (target == null)
         {
-            context.Notify("I can't find that object.");
+            context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
         string lockType = LockCommands.LockCommandType(context);
         if (target.ClearLock(lockType))
         {
-            context.Notify($"Unlocked ({lockType}) on {target.Name}.");
+            context.Notify(Feedback.UnlockedOn, ("value", $"{lockType}"), ("value2", $"{target.Name}"));
             return true;
         }
 
-        context.Notify($"No such lock ({lockType}) set.");
+        context.Notify(Feedback.NoSuchLockSet, ("lock", $"{lockType}"));
         return false;
     }
 }
@@ -417,7 +417,7 @@ public class ScoreCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null) return false;
 
-        context.Notify($"You have {execObj.Pennies} pennies.");
+        context.Notify(Feedback.YouHavePennies, ("value", $"{execObj.Pennies}"));
         return true;
     }
 }
@@ -439,7 +439,7 @@ public class DoingCommandHandler : ICommandHandler
         }
 
         execObj.SetAttribute("DOING", context.Arguments.Trim(), context.Executor);
-        context.Notify($"DOING set to: {context.Arguments.Trim()}");
+        context.Notify(Feedback.DoingSetTo, ("value", $"{context.Arguments.Trim()}"));
         return true;
     }
 }
@@ -450,9 +450,9 @@ public class VersionCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
-        context.Notify("PennMUSH .NET (C# 13 / .NET 10)");
-        context.Notify("Modern virtual world engine with C3 DAG inheritance, async softcode, and cron scheduler.");
-        context.Notify("Feature-parity reimplementation of PennMUSH 1.8+.");
+        context.Notify(Feedback.PennMUSHNetC13Net10);
+        context.Notify(Feedback.ModernVirtualWorldEngineWithC3DagInheritanceAsyncSoftcodeAndCronScheduler);
+        context.Notify(Feedback.FeatureParityReimplementationOfPennMUSH18);
         return true;
     }
 }

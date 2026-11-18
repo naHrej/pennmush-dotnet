@@ -22,7 +22,7 @@ public class HookCommandHandler : ICommandHandler
             return false;
         if (!actor.IsWizard && !actor.HasPower("HOOK"))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -32,7 +32,7 @@ public class HookCommandHandler : ICommandHandler
         if ((inplace || inline || context.Switches.Contains("nobreak") || context.Switches.Contains("localize") || context.Switches.Contains("clearregs"))
             && slot is not (HookSlot.Override or HookSlot.Extend))
         {
-            context.Notify("You can only use /inplace and /inline with /override or /extend.");
+            context.Notify(Feedback.YouCanOnlyUseInplaceAndInlineWithOverrideOrExtend);
             return false;
         }
 
@@ -44,7 +44,7 @@ public class HookCommandHandler : ICommandHandler
 
         if (slot == null)
         {
-            context.Notify("You must give a switch for @hook.");
+            context.Notify(Feedback.YouMustGiveASwitchForHook);
             return false;
         }
 
@@ -52,14 +52,14 @@ public class HookCommandHandler : ICommandHandler
         var lookup = _dispatcher.Table.Lookup(command);
         if (lookup.Status != CommandLookupStatus.Found || lookup.CanonicalName == null)
         {
-            context.Notify("No such command.");
+            context.Notify(Feedback.NoSuchCommand);
             return false;
         }
 
         if (lookup.CanonicalName.Equals("@password", StringComparison.OrdinalIgnoreCase)
             || lookup.CanonicalName.Equals("@newpassword", StringComparison.OrdinalIgnoreCase))
         {
-            context.Notify("Hooks not allowed with that command.");
+            context.Notify(Feedback.HooksNotAllowedWithThatCommand);
             return false;
         }
 
@@ -68,7 +68,7 @@ public class HookCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.RightArg))
         {
             facts.Hooks.Remove(slot.Value);
-            context.Notify($"Hook removed from {shown}.");
+            context.Notify(Feedback.HookRemovedFrom, ("value", $"{shown}"));
             return true;
         }
 
@@ -87,14 +87,14 @@ public class HookCommandHandler : ICommandHandler
 
         if (!string.IsNullOrWhiteSpace(attr) && !AttributeEntry.IsValidName(attr))
         {
-            context.Notify("You must give both an object and attribute.");
+            context.Notify(Feedback.YouMustGiveBothAnObjectAndAttribute);
             return false;
         }
 
         var match = NearbyMatch.Find(db, actor, objectName.Trim(), out bool ambiguous);
         if (match == null || ambiguous || match.Type == ObjectType.Garbage)
         {
-            context.Notify("Invalid hook object.");
+            context.Notify(Feedback.InvalidHookObject);
             return false;
         }
 
@@ -108,7 +108,7 @@ public class HookCommandHandler : ICommandHandler
             Localize = context.Switches.Contains("localize"),
             ClearRegs = context.Switches.Contains("clearregs")
         };
-        context.Notify($"Hook set for {shown}.");
+        context.Notify(Feedback.HookSetFor, ("value", $"{shown}"));
         return true;
     }
 
@@ -119,7 +119,7 @@ public class HookCommandHandler : ICommandHandler
             var names = _dispatcher.Catalog.HookedCommands().Select(name => name.ToUpperInvariant()).Distinct().ToList();
             if (names.Count == 0)
             {
-                context.Notify("There are no hooks currently set.");
+                context.Notify(Feedback.ThereAreNoHooksCurrentlySet);
                 return;
             }
             string list = names.Count == 1
@@ -132,13 +132,13 @@ public class HookCommandHandler : ICommandHandler
         var lookup = _dispatcher.Table.Lookup(command);
         if (lookup.Status != CommandLookupStatus.Found || lookup.CanonicalName == null)
         {
-            context.Notify("No such command.");
+            context.Notify(Feedback.NoSuchCommand);
             return;
         }
 
         if (!_dispatcher.Catalog.TryFacts(lookup.CanonicalName, out var facts))
         {
-            context.Notify("That command has no hooks.");
+            context.Notify(Feedback.ThatCommandHasNoHooks);
             return;
         }
 
@@ -153,10 +153,10 @@ public class HookCommandHandler : ICommandHandler
             count++;
             string extra = slot is HookSlot.Override or HookSlot.Extend ? hook.InplaceText() : "";
             string attr = hook.Attribute ?? "";
-            context.Notify($"@hook/{slot.ToString().ToLowerInvariant()}{extra}: #{hook.Object.Value}/{attr}");
+            context.Notify(Feedback.HookValueValueValueValue, ("value", $"{slot.ToString().ToLowerInvariant()}"), ("value2", $"{extra}"), ("value3", $"{hook.Object.Value}"), ("value4", $"{attr}"));
         }
         if (count == 0)
-            context.Notify("That command has no hooks.");
+            context.Notify(Feedback.ThatCommandHasNoHooks);
     }
 
     private static HookSlot? Slot(CommandContext context)

@@ -174,13 +174,13 @@ public class VerbCommandHandler : ICommandHandler
         var victim = db.MatchObject(context.Executor, context.LeftArg);
         if (victim == null || victim.Type == ObjectType.Garbage)
         {
-            context.Notify("What was the victim of the verb?");
+            context.Notify(Feedback.WhatWasTheVictimOfTheVerb);
             return false;
         }
 
         if (!context.Arguments.Contains('='))
         {
-            context.Notify("What do you want to do with the verb?");
+            context.Notify(Feedback.WhatDoYouWantToDoWithTheVerb);
             return false;
         }
 
@@ -190,21 +190,21 @@ public class VerbCommandHandler : ICommandHandler
 
         if (parts.Count == 0 || parts[0].Length == 0)
         {
-            context.Notify("What do you want to do with the verb?");
+            context.Notify(Feedback.WhatDoYouWantToDoWithTheVerb);
             return false;
         }
 
         var actor = db.MatchObject(context.Executor, parts[0]);
         if (actor == null || actor.Type == ObjectType.Garbage)
         {
-            context.Notify("What do you want to do the verb?");
+            context.Notify(Feedback.WhatDoYouWantToDoTheVerb);
             return false;
         }
 
         var enactor = db.GetObject(context.Enactor) ?? executor;
         if (!Allows(executor, enactor, victim, actor))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 

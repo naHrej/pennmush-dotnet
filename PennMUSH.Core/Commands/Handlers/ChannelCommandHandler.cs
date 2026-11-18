@@ -25,23 +25,23 @@ public class ChannelCommandHandler : ICommandHandler
         {
             if (!executor.IsWizard && !executor.IsGod)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
 
             string chName = context.LeftArg.Trim();
             if (string.IsNullOrWhiteSpace(chName))
             {
-                context.Notify("You must specify a channel name.");
+                context.Notify(Feedback.YouMustSpecifyAChannelName);
                 return false;
             }
 
             if (_channels.CreateChannel(chName, executor.Id))
             {
-                context.Notify($"Channel <{chName}> created.");
+                context.Notify(Feedback.ChannelCreated, ("channel", $"{chName}"));
                 return true;
             }
-            context.Notify($"Could not create channel <{chName}>. It may already exist.");
+            context.Notify(Feedback.CouldNotCreateChannelItMayAlreadyExist, ("channel", $"{chName}"));
             return false;
         }
 
@@ -51,19 +51,19 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             if (!executor.IsWizard && !executor.IsGod && ch.Owner != executor.Id)
             {
-                context.Notify("Permission denied.");
+                context.Notify(Feedback.PermissionDenied);
                 return false;
             }
 
             if (_channels.DeleteChannel(chName))
             {
-                context.Notify($"Channel <{chName}> deleted.");
+                context.Notify(Feedback.ChannelDeleted, ("channel", $"{chName}"));
                 return true;
             }
             return false;
@@ -75,33 +75,33 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             if (!ch.Visible(executor, db))
             {
-                context.Notify("CHAT: I don't recognize that channel.");
+                context.Notify(Feedback.ChatIDontRecognizeThatChannel);
                 return false;
             }
 
             if (!ch.Passes("join", executor.Id, db))
             {
                 if (executor.IsWizard)
-                    context.Notify("CHAT: Warning: You don't meet channel join permissions! (joining anyway)");
+                    context.Notify(Feedback.ChatWarningYouDontMeetChannelJoinPermissionsJoiningAnyway);
                 else
                 {
-                    context.Notify("Permission to join denied.");
+                    context.Notify(Feedback.PermissionToJoinDenied);
                     return false;
                 }
             }
 
             if (ch.AddMember(executor.Id))
             {
-                context.Notify($"You join channel <{ch.Name}>.");
+                context.Notify(Feedback.YouJoinChannel, ("channel", $"{ch.Name}"));
                 return true;
             }
-            context.Notify($"You are already on channel <{ch.Name}>.");
+            context.Notify(Feedback.YouAreAlreadyOnChannel, ("channel", $"{ch.Name}"));
             return false;
         }
 
@@ -111,16 +111,16 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             if (ch.RemoveMember(executor.Id))
             {
-                context.Notify($"You leave channel <{ch.Name}>.");
+                context.Notify(Feedback.YouLeaveChannel, ("channel", $"{ch.Name}"));
                 return true;
             }
-            context.Notify($"You are not on channel <{ch.Name}>.");
+            context.Notify(Feedback.YouAreNotOnChannel, ("channel", $"{ch.Name}"));
             return false;
         }
 
@@ -130,17 +130,17 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             if (!ch.Visible(executor, db))
             {
-                context.Notify("CHAT: I don't recognize that channel.");
+                context.Notify(Feedback.ChatIDontRecognizeThatChannel);
                 return false;
             }
 
-            context.Notify($"Members on <{ch.Name}>:");
+            context.Notify(Feedback.MembersOn, ("value", $"{ch.Name}"));
             foreach (var member in ch.Members)
             {
                 if (member.PlayerId != executor.Id && ch.Owner != executor.Id && !executor.IsWizard && ch.Passes("hide", member.PlayerId, db) && ch.HasLock("hide"))
@@ -148,7 +148,7 @@ public class ChannelCommandHandler : ICommandHandler
                 var p = db.GetObject(member.PlayerId);
                 string pName = p != null ? p.Name : member.PlayerId.ToString();
                 string title = !string.IsNullOrEmpty(member.Title) ? $" [{member.Title}]" : "";
-                context.Notify($"  {pName}{title}");
+                context.Notify(Feedback.ValueValue, ("value", $"{pName}"), ("value2", $"{title}"));
             }
             return true;
         }
@@ -160,19 +160,19 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             var member = ch.GetMember(executor.Id);
             if (member == null)
             {
-                context.Notify($"You are not on channel <{ch.Name}>.");
+                context.Notify(Feedback.YouAreNotOnChannel, ("channel", $"{ch.Name}"));
                 return false;
             }
 
             member.Title = title;
-            context.Notify($"Title for channel <{ch.Name}> set to: {title}");
+            context.Notify(Feedback.TitleForChannelSetTo, ("channel", $"{ch.Name}"), ("value", $"{title}"));
             return true;
         }
 
@@ -186,18 +186,18 @@ public class ChannelCommandHandler : ICommandHandler
             var ch = _channels.GetChannel(chName);
             if (ch == null)
             {
-                context.Notify($"Channel <{chName}> not found.");
+                context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));
                 return false;
             }
 
             if (!ch.HasMember(executor.Id) && !executor.IsWizard)
             {
-                context.Notify($"You are not on channel <{ch.Name}>.");
+                context.Notify(Feedback.YouAreNotOnChannel, ("channel", $"{ch.Name}"));
                 return false;
             }
 
             var messages = ch.GetRecentMessages(count);
-            context.Notify($"--- Recall buffer for <{ch.Name}> ---");
+            context.Notify(Feedback.RecallBufferFor, ("value", $"{ch.Name}"));
             foreach (var msg in messages)
             {
                 context.Notify(msg.Text);
@@ -210,12 +210,12 @@ public class ChannelCommandHandler : ICommandHandler
         var allChannels = _channels.GetAllChannels();
         if (allChannels.Count == 0)
         {
-            context.Notify("No channels exist.");
+            context.Notify(Feedback.NoChannelsExist);
             return true;
         }
 
-        context.Notify("Channel Name          Owner      Members Status");
-        context.Notify("--------------------------------------------------");
+        context.Notify(Feedback.ChannelNameOwnerMembersStatus);
+        context.Notify(Feedback.Dashes50);
         foreach (var ch in allChannels)
         {
             if (!ch.Visible(executor, db))

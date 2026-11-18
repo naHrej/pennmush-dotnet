@@ -28,19 +28,19 @@ public class HomeCommandHandler : ICommandHandler
         Dbref homeRef = execObj.Home.IsValid ? execObj.Home : new Dbref(0);
         if (execObj.Location == homeRef)
         {
-            context.Notify("You are already home.");
+            context.Notify(Feedback.YouAreAlreadyHome);
             return true;
         }
 
         Dbref oldLoc = execObj.Location;
         if (oldLoc.IsValid)
         {
-            context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} goes home.");
+            context.NotifyExcept(oldLoc, context.Executor, Feedback.GoesHome.Text(("value", $"{execObj.Name}")));
         }
 
         db.MoveObject(context.Executor, homeRef);
-        context.Notify("There's no place like home...");
-        context.NotifyExcept(homeRef, context.Executor, $"{execObj.Name} arrives from home.");
+        context.Notify(Feedback.TheresNoPlaceLikeHome);
+        context.NotifyExcept(homeRef, context.Executor, Feedback.ArrivesFromHome.Text(("value", $"{execObj.Name}")));
 
         _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
 
@@ -67,42 +67,42 @@ public class EnterCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("Enter what?");
+            context.Notify(Feedback.EnterWhat);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
         var target = db.FindInContents(execObj.Location, context.Arguments.Trim());
         if (target == null)
         {
-            context.Notify("I don't see that here to enter.");
+            context.Notify(Feedback.IDontSeeThatHereToEnter);
             return false;
         }
 
         if (target.Id == context.Executor)
         {
-            context.Notify("You cannot enter yourself!");
+            context.Notify(Feedback.YouCannotEnterYourself);
             return false;
         }
 
         if (!target.EvalLock(LockType.Enter, context.Executor, db))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
         Dbref oldLoc = execObj.Location;
         db.MoveObject(context.Executor, target.Id);
 
-        context.Notify($"You enter {target.Name}.");
-        context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} enters {target.Name}.");
-        context.NotifyExcept(target.Id, context.Executor, $"{execObj.Name} has entered.");
+        context.Notify(Feedback.YouEnter, ("value", $"{target.Name}"));
+        context.NotifyExcept(oldLoc, context.Executor, Feedback.ValueEntersValue.Text(("value", $"{execObj.Name}"), ("value2", $"{target.Name}")));
+        context.NotifyExcept(target.Id, context.Executor, Feedback.HasEntered.Text(("value", $"{execObj.Name}")));
         _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, $"enter #{target.Id.Value}");
         return true;
@@ -129,20 +129,20 @@ public class LeaveCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
         var container = db.GetObject(execObj.Location);
         if (container == null || !container.Location.IsValid || container.Type == ObjectType.Room)
         {
-            context.Notify("You can't leave this.");
+            context.Notify(Feedback.YouCantLeaveThis);
             return false;
         }
 
         if (!container.EvalLock(LockType.Leave, context.Executor, db))
         {
-            context.Notify("You can't leave.");
+            context.Notify(Feedback.YouCantLeave);
             return false;
         }
 
@@ -150,9 +150,9 @@ public class LeaveCommandHandler : ICommandHandler
         Dbref oldLoc = execObj.Location;
         db.MoveObject(context.Executor, dest);
 
-        context.Notify($"You leave {container.Name}.");
-        context.NotifyExcept(oldLoc, context.Executor, $"{execObj.Name} leaves {container.Name}.");
-        context.NotifyExcept(dest, context.Executor, $"{execObj.Name} has arrived from {container.Name}.");
+        context.Notify(Feedback.YouLeave, ("value", $"{container.Name}"));
+        context.NotifyExcept(oldLoc, context.Executor, Feedback.ValueLeavesValue.Text(("value", $"{execObj.Name}"), ("value2", $"{container.Name}")));
+        context.NotifyExcept(dest, context.Executor, Feedback.HasArrivedFrom.Text(("value", $"{execObj.Name}"), ("value2", $"{container.Name}")));
         _lookHandler?.ShowHere(context, db, context.Executor, LookKind.Automatic);
         FollowerMovement.Bring(context, db, _dispatcher, _connected, oldLoc, "leave");
         return true;
@@ -167,14 +167,14 @@ public class GiveCommandHandler : ICommandHandler
     {
         if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(context.RightArg))
         {
-            context.Notify("Usage: give <player>=<amount or object>");
+            context.Notify(Feedback.UsageGivePlayerAmountOrObject);
             return false;
         }
 
         var execObj = db.GetObject(context.Executor);
         if (execObj == null || !execObj.Location.IsValid)
         {
-            context.Notify("You are nowhere.");
+            context.Notify(Feedback.YouAreNowhere);
             return false;
         }
 
@@ -182,13 +182,13 @@ public class GiveCommandHandler : ICommandHandler
         var target = db.FindInContents(execObj.Location, targetName) ?? db.FindPlayer(targetName);
         if (target == null || target.Type != ObjectType.Player)
         {
-            context.Notify("You can only give to players who are here.");
+            context.Notify(Feedback.YouCanOnlyGiveToPlayersWhoAreHere);
             return false;
         }
 
         if (target.Id == context.Executor)
         {
-            context.Notify("You can't give to yourself.");
+            context.Notify(Feedback.YouCantGiveToYourself);
             return false;
         }
 
@@ -197,22 +197,22 @@ public class GiveCommandHandler : ICommandHandler
         {
             if (pennies <= 0)
             {
-                context.Notify("You must give a positive amount.");
+                context.Notify(Feedback.YouMustGiveAPositiveAmount);
                 return false;
             }
 
             if (!execObj.IsWizard && execObj.Pennies < pennies)
             {
-                context.Notify("You don't have that many pennies.");
+                context.Notify(Feedback.YouDontHaveThatManyPennies);
                 return false;
             }
 
             if (!execObj.IsWizard) execObj.Pennies -= pennies;
             target.Pennies += pennies;
 
-            context.Notify($"You give {pennies} pennies to {target.Name}.");
-            context.NotifyTarget(target.Id, $"{execObj.Name} gives you {pennies} pennies.");
-            context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} gives some pennies to {target.Name}.");
+            context.Notify(Feedback.YouGivePenniesTo, ("value", $"{pennies}"), ("value2", $"{target.Name}"));
+            context.NotifyTarget(target.Id, Feedback.GivesYouPennies.Text(("value", $"{execObj.Name}"), ("value2", $"{pennies}")));
+            context.NotifyExcept(execObj.Location, context.Executor, Feedback.GivesSomePenniesTo.Text(("value", $"{execObj.Name}"), ("value2", $"{target.Name}")));
             return true;
         }
 
@@ -221,20 +221,20 @@ public class GiveCommandHandler : ICommandHandler
         var thing = db.FindInContents(context.Executor, objName);
         if (thing == null)
         {
-            context.Notify("You don't have that to give.");
+            context.Notify(Feedback.YouDontHaveThatToGive);
             return false;
         }
 
         if (!thing.EvalLock(LockType.Give, context.Executor, db))
         {
-            context.Notify("You can't give that away.");
+            context.Notify(Feedback.YouCantGiveThatAway);
             return false;
         }
 
         db.MoveObject(thing.Id, target.Id);
-        context.Notify($"You give {thing.Name} to {target.Name}.");
-        context.NotifyTarget(target.Id, $"{execObj.Name} gives you {thing.Name}.");
-        context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} gives {thing.Name} to {target.Name}.");
+        context.Notify(Feedback.YouGiveTo, ("value", $"{thing.Name}"), ("value2", $"{target.Name}"));
+        context.NotifyTarget(target.Id, Feedback.GivesYou.Text(("value", $"{execObj.Name}"), ("value2", $"{thing.Name}")));
+        context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueGivesValueToValue.Text(("value", $"{execObj.Name}"), ("value2", $"{thing.Name}"), ("value3", $"{target.Name}")));
         return true;
     }
 }
@@ -253,7 +253,7 @@ public class ExamineCommandHandler : ICommandHandler
 
         if (target == null)
         {
-            context.Notify("I can't see that here to examine.");
+            context.Notify(Feedback.ICantSeeThatHereToExamine);
             return false;
         }
 
