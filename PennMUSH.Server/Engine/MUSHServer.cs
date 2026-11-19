@@ -53,6 +53,7 @@ public class MUSHServer
     public SiteLockTable SiteLocks { get; }
     public WizardLog Logs { get; }
     public SqlDatabase Sql { get; } = new();
+    public ConnectionLogStore ConnectionLog { get; } = new();
     public HttpFetch Web { get; } = new();
     public HttpChannel Http { get; } = new();
     public HelpStore Help { get; } = new();
@@ -126,6 +127,8 @@ public class MUSHServer
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
         Functions.SqlDatabase = Sql;
+        ConnectionLog.OpenFile(Path.Combine(GameDirectory, "connlog.db"));
+        Functions.ConnectionLog = ConnectionLog;
         Functions.Passwords = new CallbackPasswords((id, password) =>
         {
             _playerPasswords[id] = password;
@@ -358,7 +361,7 @@ public class MUSHServer
             () => Storage.Save(Database, Cron),
             () => _shutdownRequested = true,
             () => _quietRebootRequested = true), "@shutdown");
-        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks), "@sitelock");
+        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks, ConnectionLog), "@sitelock");
 
         // Apply aliases & reserved aliases from configuration
         foreach (var (alias, orig) in Config.CommandAliases)
@@ -407,6 +410,15 @@ public class MUSHServer
     public void RegisterConnection(MUSHConnection conn, bool isReconnect = false)
     {
         _connections[conn.Id] = conn;
+        string host = string.IsNullOrWhiteSpace(conn.Host) ? "localhost" : conn.Host;
+        conn.ConnLogId = ConnectionLog.RecordConnect(
+            conn.PlayerId,
+            conn.PlayerId.IsValid ? Database.GetObject(conn.PlayerId)?.Name : null,
+            host,
+            host,
+            conn.ConnectedAt.ToUnixTimeSeconds(),
+            ssl: false,
+            websocket: conn.IsWebSocket);
 
         // If player is already authenticated or re-registering across a hot-reboot, do not re-show login screen
         if (isReconnect || conn.PlayerId.IsValid)
@@ -452,6 +464,7 @@ public class MUSHServer
         if (!_connections.TryRemove(conn.Id, out _))
             return;
         conn.Close();
+        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
         if (conn.PlayerId.IsValid)
         {
             Database.SetConnected(conn.PlayerId, false);
@@ -491,6 +504,7 @@ public class MUSHServer
                 await conn.SendLineAsync("Goodbye!", ct);
             }
             conn.Close();
+        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
             return;
         }
 
@@ -553,6 +567,7 @@ public class MUSHServer
                     await conn.SendLineAsync("Goodbye!", ct);
                 }
                 conn.Close();
+        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
                 break;
 
             case "WHO":
@@ -592,6 +607,7 @@ public class MUSHServer
 
                 conn.PlayerId = player.Id;
                 Database.SetConnected(player.Id, true);
+                ConnectionLog.UpdatePlayer(conn.ConnLogId, player.Id, player.Name);
                 await conn.SendLineAsync($"Welcome back to {Config.MudName}, {player.Name}!", ct);
 
                 // Send MOTD
@@ -972,6 +988,7 @@ public class MUSHServer
         foreach (var conn in _connections.Values)
         {
             conn.Close();
+        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
         }
     }
 }

@@ -20,9 +20,9 @@ public static class LateSubsystemFunctions
         registry.Register("CHECKPASS", (ctx, args) => CheckPassFunc(registry, ctx, args));
         registry.Register("SQL", (ctx, args) => SqlFunc(registry, ctx, args));
         registry.Register("MAPSQL", (ctx, args) => MapSqlFunc(registry, ctx, args));
-        registry.Register("ADDRLOG", (ctx, args) => WizardLogFunc(registry, ctx));
-        registry.Register("CONNLOG", (ctx, args) => WizardLogFunc(registry, ctx));
-        registry.Register("CONNRECORD", (ctx, args) => WizardLogFunc(registry, ctx));
+        registry.Register("ADDRLOG", (ctx, args) => AddrLogFunc(registry, ctx, args));
+        registry.Register("CONNLOG", (ctx, args) => ConnLogFunc(registry, ctx, args));
+        registry.Register("CONNRECORD", (ctx, args) => ConnRecordFunc(registry, ctx, args));
         registry.Register("BEEP", (ctx, args) => BeepFunc(registry, ctx, args));
         registry.Register("BENCHMARK", (ctx, args) => BenchmarkFunc(registry, ctx, args), noParse: true);
         registry.Register("POLL", (ctx, args) => registry.PollQuestion);
@@ -172,6 +172,88 @@ public static class LateSubsystemFunctions
         if (actor == null || (!actor.IsWizard && !actor.IsRoyalty))
             return MushError.PermissionDenied.Text();
         return string.Empty;
+    }
+
+    public static string AddrLogFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
+            return MushError.PermissionDenied.Text();
+        if (reg.ConnectionLog == null || !reg.ConnectionLog.IsOpen)
+            return string.Empty;
+
+        int i = 0;
+        bool countOnly = false;
+        if (args.Length > 0 && args[0].Trim().Equals("count", StringComparison.OrdinalIgnoreCase))
+        {
+            countOnly = true;
+            i = 1;
+        }
+        if (args.Length <= i + 1) return "#-1 MISSING ARGUMENTS";
+
+        string mode = args[i].Trim();
+        string pat = args[i + 1].Trim();
+        string sep = args.Length > i + 2 ? args[i + 2] : "|";
+
+        var hits = reg.ConnectionLog.QueryAddrLog(mode, pat);
+        if (countOnly) return hits.Count.ToString();
+        return string.Join(sep, hits.Select(h => $"{h.Ip} {h.Host}"));
+    }
+
+    public static string ConnLogFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
+            return MushError.PermissionDenied.Text();
+        if (reg.ConnectionLog == null || !reg.ConnectionLog.IsOpen)
+            return string.Empty;
+
+        int i = 0;
+        bool countOnly = false;
+        if (args.Length > 0 && args[0].Trim().Equals("count", StringComparison.OrdinalIgnoreCase))
+        {
+            countOnly = true;
+            i = 1;
+        }
+
+        string mode = args.Length > i && !string.IsNullOrWhiteSpace(args[i]) ? args[i].Trim() : "all";
+        long? after = args.Length > i + 1 && long.TryParse(args[i + 1].Trim(), out long a) ? a : null;
+        long? before = args.Length > i + 2 && long.TryParse(args[i + 2].Trim(), out long b) ? b : null;
+        string? spec = args.Length > i + 3 ? args[i + 3].Trim() : null;
+        string sep = args.Length > i + 4 ? args[i + 4] : " ";
+
+        var ids = reg.ConnectionLog.QueryConnLogIds(mode, after, before, spec);
+        if (countOnly) return ids.Count.ToString();
+        return string.Join(sep, ids);
+    }
+
+    public static string ConnRecordFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
+            return MushError.PermissionDenied.Text();
+        if (reg.ConnectionLog == null || !reg.ConnectionLog.IsOpen)
+            return string.Empty;
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (!long.TryParse(args[0].Trim(), out long id))
+            return MushError.ArgumentMustBeInteger.Text();
+
+        var rec = reg.ConnectionLog.GetRecord(id);
+        if (rec == null) return "#-1 NO SUCH RECORD";
+
+        string sep = args.Length > 1 ? args[1] : " ";
+        return string.Join(sep, new[]
+        {
+            $"#{rec.Dbref}",
+            rec.Name,
+            rec.IpAddress,
+            rec.Hostname,
+            rec.ConnectedAt.ToString(),
+            rec.DisconnectedAt.ToString(),
+            rec.Reason,
+            rec.Ssl ? "1" : "0",
+            rec.WebSocket ? "1" : "0"
+        });
     }
 
     public static string BeepFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

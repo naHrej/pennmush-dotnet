@@ -31,6 +31,7 @@ public class MUSHConnection
     private static int NextDescriptor;
     public int Descriptor { get; } = System.Threading.Interlocked.Increment(ref NextDescriptor);
     public string Host { get; set; } = "";
+    public long ConnLogId { get; set; }
     public string? PublicBaseUrl { get; set; }
     public bool IsWebSocket => _webSocket != null;
     public bool Hidden { get; set; }
