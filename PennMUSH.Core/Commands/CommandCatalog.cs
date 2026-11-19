@@ -206,18 +206,18 @@ public sealed class CommandCatalog
         if (!string.IsNullOrEmpty(hook.Attribute))
         {
             var attr = obj.GetAttribute(hook.Attribute, db);
-            return attr != null && MatchLines(dispatcher, obj, attr.Value, raw, context, db);
+            return attr != null && MatchLines(dispatcher, hook, obj, attr.Value, raw, context, db);
         }
 
         foreach (var attr in obj.Attributes)
         {
-            if (MatchLines(dispatcher, obj, attr.Value, raw, context, db))
+            if (MatchLines(dispatcher, hook, obj, attr.Value, raw, context, db))
                 return true;
         }
         return false;
     }
 
-    private static bool MatchLines(CommandDispatcher dispatcher, MUSHObject obj, string body, string raw, CommandContext context, ObjectDatabase db)
+    private static bool MatchLines(CommandDispatcher dispatcher, CommandHook hook, MUSHObject obj, string body, string raw, CommandContext context, ObjectDatabase db)
     {
         foreach (string line in body.Replace("\r\n", "\n").Split('\n', ';'))
         {
@@ -233,6 +233,7 @@ public sealed class CommandCatalog
                 continue;
             if (!string.IsNullOrWhiteSpace(action))
             {
+                action = ApplyRegisters(dispatcher, hook, action, context, obj.Id);
                 var inner = dispatcher.DispatchHook(obj.Id, action, db, context.Enactor);
                 foreach (var note in inner.TargetedNotifications)
                     context.TargetedNotifications.Add(note);
@@ -258,8 +259,29 @@ public sealed class CommandCatalog
     {
         if (dispatcher.Evaluator == null)
             return value;
-        var ctx = new EvaluationContext(hook.Object, context.Enactor, location: db.GetObject(hook.Object)?.Location ?? Dbref.Nothing);
-        return dispatcher.Evaluator.Evaluate(value, ctx);
+        return ApplyRegisters(dispatcher, hook, value, context, hook.Object);
+    }
+
+    private static string ApplyRegisters(CommandDispatcher dispatcher, CommandHook hook, string value, CommandContext context, Dbref executor)
+    {
+        if (dispatcher.Evaluator == null)
+            return value;
+        var ctx = new EvaluationContext(executor, context.Enactor);
+        if (!hook.ClearRegs)
+        {
+            foreach (var register in context.Registers)
+                ctx.SetRegister(register.Key, register.Value);
+        }
+
+        string result = dispatcher.Evaluator.Evaluate(value, ctx);
+        if (!hook.Localize && !hook.ClearRegs)
+        {
+            context.Registers.Clear();
+            foreach (var register in ctx.Registers)
+                context.Registers[register.Key] = register.Value;
+        }
+
+        return result;
     }
 
     public static bool IsTrue(string? text)

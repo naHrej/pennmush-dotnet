@@ -13,6 +13,7 @@ public class ActionQueue
     private readonly object _lock = new();
     private int _nextPid = 1;
     public int MaxQueueEntriesPerPlayer { get; set; } = 500;
+    public Func<Dbref, bool>? IgnoresQueueLimit { get; set; }
 
     public int Count
     {
@@ -26,7 +27,9 @@ public class ActionQueue
     {
         lock (_lock)
         {
-            if (MaxQueueEntriesPerPlayer > 0 && _entries.Count(e => e.Executor == executor) >= MaxQueueEntriesPerPlayer)
+            if (MaxQueueEntriesPerPlayer > 0
+                && IgnoresQueueLimit?.Invoke(executor) != true
+                && _entries.Count(e => e.Executor == executor) >= MaxQueueEntriesPerPlayer)
             {
                 return null;
             }

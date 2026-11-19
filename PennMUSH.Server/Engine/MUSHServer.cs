@@ -89,7 +89,7 @@ public class MUSHServer
         Database = new ObjectDatabase();
         Storage = new SqliteStore($"Data Source={dbPath}");
         RuntimeState = new RuntimeStateStore($"Data Source={dbPath}");
-        Queue = new ActionQueue();
+        Queue = new ActionQueue { IgnoresQueueLimit = id => _sessions.IgnoresQuota(id) };
         Cron = new CronScheduler();
         Channels = new ChannelRegistry();
         Mail = new MailStore();
@@ -268,7 +268,7 @@ public class MUSHServer
         Dispatcher.Register(new ScanCommandHandler(Config.MasterRoom.Value), "@scan");
         Dispatcher.Register(new SweepCommandHandler(), "@sweep");
         Dispatcher.Register(new WithCommandHandler(Dispatcher, Evaluator, Config.MasterRoom.Value), "with");
-        Dispatcher.Register(new SearchCommandHandler(), "@search");
+        Dispatcher.Register(new SearchCommandHandler(Evaluator), "@search");
         Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify", "@drain");
         Dispatcher.Register(new HaltCommandHandler(Queue), "@halt");
         Dispatcher.Register(new AllHaltCommandHandler(Queue), "@allhalt");
@@ -370,7 +370,7 @@ public class MUSHServer
         Dispatcher.Register(
             new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config), TextCache, SyncSuggestionsFromCache),
             "@readcache");
-        Dispatcher.Register(new DumpCommandHandler(SaveAll), "@dump");
+        Dispatcher.Register(new DumpCommandHandler(_ => SaveAll()), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@clone");
         Dispatcher.Register(new ChownCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@chown");
@@ -397,7 +397,7 @@ public class MUSHServer
             SaveAll,
             () => _shutdownRequested = true,
             () => _quietRebootRequested = true), "@shutdown");
-        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks, ConnectionLog), "@sitelock");
+        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks, ConnectionLog, new NameLockFile(Path.Combine(GameDirectory, "names.cnf"))), "@sitelock");
 
         // Apply aliases & reserved aliases from configuration
         foreach (var (alias, orig) in Config.CommandAliases)

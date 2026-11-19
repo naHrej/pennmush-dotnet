@@ -6,6 +6,7 @@ using System.Linq;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Flags;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
@@ -443,15 +444,20 @@ public class SearchCommandHandler : ICommandHandler
     {
         "type", "name", "zone", "parent", "flags", "lflags", "powers",
         "exits", "things", "objects", "rooms", "players",
-        "mindb", "maxdb", "start", "count"
-    };
-
-    private static readonly HashSet<string> Unsupported = new(StringComparer.OrdinalIgnoreCase)
-    {
+        "mindb", "maxdb", "start", "count",
         "eval", "elock", "command", "listen", "eplayer", "eroom", "eexit", "ething", "eobject"
     };
 
+    private static readonly HashSet<string> NeedsEvaluator = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "eval", "eplayer", "eroom", "eexit", "ething", "eobject"
+    };
+
+    private readonly ExpressionEvaluator? _evaluator;
+
     public string Name => "@search";
+
+    public SearchCommandHandler(ExpressionEvaluator? evaluator = null) => _evaluator = evaluator;
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -501,7 +507,7 @@ public class SearchCommandHandler : ICommandHandler
                 continue;
             if (owner != null && obj.Owner != owner.Id)
                 continue;
-            if (!Matches(obj, criteria))
+            if (!Matches(obj, criteria) || !MatchesSpecial(obj, criteria, db))
                 continue;
             bool showPlayers = playersArePublic && obj.Type == ObjectType.Player;
             if (!actor.IsWizard && !showPlayers && !ListenerSearch.CanExamine(actor, obj))
@@ -527,7 +533,7 @@ public class SearchCommandHandler : ICommandHandler
         return true;
     }
 
-    private static bool TryParse(
+    private bool TryParse(
         CommandContext context,
         out string owner,
         out int? minDb,
@@ -597,7 +603,7 @@ public class SearchCommandHandler : ICommandHandler
 
         foreach (var pair in criteria)
         {
-            if (Unsupported.Contains(pair.Key))
+            if (NeedsEvaluator.Contains(pair.Key) && _evaluator == null)
             {
                 error = Feedback.ThatSearchIsNotAvailable.Text();
                 return false;
@@ -611,7 +617,7 @@ public class SearchCommandHandler : ICommandHandler
         return true;
     }
 
-    private static bool IsClass(string word) => Supported.Contains(word) || Unsupported.Contains(word);
+    private static bool IsClass(string word) => Supported.Contains(word);
 
     private static MUSHObject? FindPlayer(ObjectDatabase db, string name)
     {
@@ -660,6 +666,65 @@ public class SearchCommandHandler : ICommandHandler
                 return false;
         }
         return true;
+    }
+
+    private bool MatchesSpecial(MUSHObject obj, List<(string Key, string Value)> criteria, ObjectDatabase db)
+    {
+        foreach (var pair in criteria)
+        {
+            if (pair.Key.Equals("command", StringComparison.OrdinalIgnoreCase)
+                && ListenerSearch.MatchingAttributes(obj, pair.Value).Count == 0)
+                return false;
+            if (pair.Key.Equals("listen", StringComparison.OrdinalIgnoreCase) && !Hears(obj, pair.Value))
+                return false;
+            if (pair.Key.Equals("elock", StringComparison.OrdinalIgnoreCase) && !PassesLock(obj, pair.Value, db))
+                return false;
+            if (NeedsEvaluator.Contains(pair.Key) && !Evaluates(obj, pair, db))
+                return false;
+        }
+        return true;
+    }
+
+    private bool Evaluates(MUSHObject obj, (string Key, string Value) pair, ObjectDatabase db)
+    {
+        if (_evaluator == null)
+            return false;
+        if (pair.Key.Equals("eplayer", StringComparison.OrdinalIgnoreCase) && obj.Type != ObjectType.Player)
+            return false;
+        if (pair.Key.Equals("eroom", StringComparison.OrdinalIgnoreCase) && obj.Type != ObjectType.Room)
+            return false;
+        if (pair.Key.Equals("eexit", StringComparison.OrdinalIgnoreCase) && obj.Type != ObjectType.Exit)
+            return false;
+        if ((pair.Key.Equals("ething", StringComparison.OrdinalIgnoreCase) || pair.Key.Equals("eobject", StringComparison.OrdinalIgnoreCase))
+            && obj.Type != ObjectType.Thing)
+            return false;
+
+        string expression = pair.Value.Replace("##", obj.Id.ToString(), StringComparison.Ordinal);
+        var ctx = new EvaluationContext(obj.Id, obj.Id, location: obj.Location);
+        return CommandCatalog.IsTrue(_evaluator.Evaluate(expression, ctx));
+    }
+
+    private static bool Hears(MUSHObject obj, string text)
+    {
+        var listen = obj.GetAttribute("LISTEN");
+        if (listen != null && PatternMatcher.Match(listen.Value, text, out _))
+            return true;
+        foreach (var attr in obj.Attributes)
+        {
+            if (!attr.Value.StartsWith('^'))
+                continue;
+            int colon = attr.Value.IndexOf(':');
+            string pattern = (colon > 1 ? attr.Value[1..colon] : attr.Value[1..]).Trim();
+            if (pattern.Length > 0 && PatternMatcher.Match(pattern, text, out _))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool PassesLock(MUSHObject obj, string key, ObjectDatabase db)
+    {
+        var node = LockParser.Parse(key);
+        return node.Evaluate(obj.Id, obj.Id, db);
     }
 
     private static bool TypeMatches(ObjectType type, string value)

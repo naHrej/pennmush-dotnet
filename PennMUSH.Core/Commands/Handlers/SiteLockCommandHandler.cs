@@ -10,13 +10,15 @@ public class SiteLockCommandHandler : ICommandHandler
 {
     private readonly SiteLockTable _table;
     private readonly ConnectionLogStore? _connLog;
+    private readonly NameLockFile? _names;
 
     public string Name => "@sitelock";
 
-    public SiteLockCommandHandler(SiteLockTable table, ConnectionLogStore? connLog = null)
+    public SiteLockCommandHandler(SiteLockTable table, ConnectionLogStore? connLog = null, NameLockFile? names = null)
     {
         _table = table;
         _connLog = connLog;
+        _names = names;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -96,12 +98,43 @@ public class SiteLockCommandHandler : ICommandHandler
         return false;
     }
 
-    private static bool Names(CommandContext context, string name)
+    private bool Names(CommandContext context, string name)
     {
-        context.Notify(name.Length == 0
-            ? "Unable to open names file."
-            : name.StartsWith('!') ? "Unable to delete name." : "Unable to lock name.");
-        return false;
+        if (_names == null)
+        {
+            context.Notify(name.Length == 0
+                ? "Unable to open names file."
+                : name.StartsWith('!') ? "Unable to delete name." : "Unable to lock name.");
+            return false;
+        }
+
+        if (name.Length == 0)
+        {
+            context.Notify("Unable to open names file.");
+            return false;
+        }
+
+        if (name.StartsWith('!'))
+        {
+            string target = name[1..].Trim();
+            if (target.Length == 0 || !_names.Delete(target))
+            {
+                context.Notify("Unable to delete name.");
+                return false;
+            }
+
+            context.Notify(Feedback.NameDeleted);
+            return true;
+        }
+
+        if (!_names.Lock(name))
+        {
+            context.Notify("Unable to lock name.");
+            return false;
+        }
+
+        context.Notify(Feedback.NameLocked);
+        return true;
     }
 
     private void List(CommandContext context)

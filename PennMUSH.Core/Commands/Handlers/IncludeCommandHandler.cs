@@ -77,6 +77,14 @@ public class IncludeCommandHandler : ICommandHandler
         for (int i = 0; i < args.Length && i < ActionFrame.ArgumentCount; i++)
             frame.Args[i] = args[i];
         string source = StripListenPrefix(attribute.Value);
+        bool clearRegs = context.Switches.Contains("clearregs");
+        bool localize = context.Switches.Contains("localize");
+        var evaluation = new EvaluationContext(context.Executor, context.Enactor, caller: context.Enactor, args: args);
+        if (!clearRegs)
+        {
+            foreach (var register in context.Registers)
+                evaluation.SetRegister(register.Key, register.Value);
+        }
         _depth++;
         try
         {
@@ -89,7 +97,7 @@ public class IncludeCommandHandler : ICommandHandler
                     string command = Unwrap(piece);
                     if (command.Length == 0)
                         continue;
-                    command = Prepare(command, context, frame.Args);
+                    command = Prepare(command, context, frame.Args, evaluation);
                     if (command.Length == 0)
                         continue;
                     var result = _dispatcher.Dispatch(context.Executor, command, db, frame, context.Enactor);
@@ -105,6 +113,12 @@ public class IncludeCommandHandler : ICommandHandler
 
             if (frame.Break && !frame.NoBreak && context.Frame != null)
                 context.Frame.Break = true;
+            if (!localize && !clearRegs)
+            {
+                context.Registers.Clear();
+                foreach (var register in evaluation.Registers)
+                    context.Registers[register.Key] = register.Value;
+            }
         }
         finally
         {
@@ -114,16 +128,12 @@ public class IncludeCommandHandler : ICommandHandler
         return true;
     }
 
-    private string Prepare(string command, CommandContext context, string[] args)
+    private string Prepare(string command, CommandContext context, string[] args, EvaluationContext evaluation)
     {
         if (_evaluator == null)
             return SubstituteArgs(command, args);
 
-        var evaluation = new EvaluationContext(
-            context.Executor,
-            context.Enactor,
-            caller: context.Enactor,
-            args: args);
+        evaluation.Arguments = args;
         return _evaluator.Evaluate(command, evaluation).Trim();
     }
 

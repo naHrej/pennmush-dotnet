@@ -320,6 +320,7 @@ public enum Feedback
     PasswordForChanged,
     PasswordForChangedTo,
     PennMUSHNetC13Net10,
+    PennMUSHNetVersion,
     PermissionDenied,
     PermissionDeniedOrFailedToOpenEditorSession,
     PermissionToJoinDenied,
@@ -711,6 +712,16 @@ public enum Feedback
     YouPageWith,
     YourDoingIs,
     YoureNotAllowedToFollow,
+    DebugDumpComplete,
+    GcHeap,
+    ListLocks,
+    MemoryAllocations,
+    NameDeleted,
+    NameLocked,
+    ParanoidDumpComplete,
+    DatabaseSavedWithoutForking,
+    WouldEditTo,
+    WorkingSet,
 }
 
 public static class FeedbackText
@@ -1027,6 +1038,7 @@ public static class FeedbackText
         [Feedback.PasswordForChanged] = "Password for {{value}} changed.",
         [Feedback.PasswordForChangedTo] = "Password for {{value}} changed to {{value2}}.",
         [Feedback.PennMUSHNetC13Net10] = "PennMUSH .NET (C# 13 / .NET 10)",
+        [Feedback.PennMUSHNetVersion] = "PennMUSH .NET {{version}}",
         [Feedback.PermissionDenied] = "Permission denied.",
         [Feedback.PermissionDeniedOrFailedToOpenEditorSession] = "Permission denied or failed to open editor session.",
         [Feedback.PermissionToJoinDenied] = "Permission to join denied.",
@@ -1154,7 +1166,7 @@ public static class FeedbackText
         [Feedback.UsageGivePlayerAmountOrObject] = "Usage: give <player>=<amount or object>",
         [Feedback.UsageGrepObjectText] = "Usage: @grep <object>=<text>",
         [Feedback.UsageKickCount] = "Usage: @kick <count>",
-        [Feedback.UsageListCommandsFlagsPowersFunctionsAttribs] = "Usage: @list commands|flags|powers|functions|attribs",
+        [Feedback.UsageListCommandsFlagsPowersFunctionsAttribs] = "Usage: @list commands|flags|powers|functions|attribs|locks|allocations",
         [Feedback.UsageLockTypeObjectKey] = "Usage: @lock[/<type>] <object>=<key>",
         [Feedback.UsageLsetObjectLockFlag] = "Usage: @lset <object>/<lock>=[!]<flag>",
         [Feedback.UsageMailClearMessageNumber] = "Usage: @mail/clear <message-number>",
@@ -1418,6 +1430,16 @@ public static class FeedbackText
         [Feedback.YouPageWith] = "You page {{target}} with '{{message}}'.",
         [Feedback.YourDoingIs] = "Your DOING is: {{value}}",
         [Feedback.YoureNotAllowedToFollow] = "You're not allowed to follow.",
+        [Feedback.DebugDumpComplete] = "Debug dump complete.",
+        [Feedback.GcHeap] = "GC heap: {{value}} bytes",
+        [Feedback.ListLocks] = "Locks: {{value}}",
+        [Feedback.MemoryAllocations] = "Memory allocations:",
+        [Feedback.NameDeleted] = "Name deleted.",
+        [Feedback.NameLocked] = "Name locked.",
+        [Feedback.ParanoidDumpComplete] = "Paranoid dump complete.",
+        [Feedback.DatabaseSavedWithoutForking] = "Database saved without forking.",
+        [Feedback.WouldEditTo] = "Would edit to: {{value}}",
+        [Feedback.WorkingSet] = "Working set: {{value}} bytes",
     };
 
     private static readonly ConcurrentDictionary<Feedback, string> Overrides = new();

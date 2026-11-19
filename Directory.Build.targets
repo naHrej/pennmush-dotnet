@@ -1,0 +1,21 @@
+<Project>
+  <Target Name="GenerateServerVersion" BeforeTargets="GetAssemblyVersion">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)build\Write-ServerVersion.ps1&quot; -RepoRoot &quot;$([System.IO.Path]::TrimEndingDirectorySeparator('$(MSBuildThisFileDirectory)'))&quot; -SourcePath &quot;$(IntermediateOutputPath)ServerVersion.Generated.cs&quot; -ProductPath &quot;$(IntermediateOutputPath)ServerProductVersion.txt&quot; -InformationalPath &quot;$(IntermediateOutputPath)ServerInformationalVersion.txt&quot;" />
+    <ReadLinesFromFile File="$(IntermediateOutputPath)ServerProductVersion.txt">
+      <Output TaskParameter="Lines" PropertyName="Version" />
+    </ReadLinesFromFile>
+    <ReadLinesFromFile File="$(IntermediateOutputPath)ServerInformationalVersion.txt">
+      <Output TaskParameter="Lines" PropertyName="InformationalVersion" />
+    </ReadLinesFromFile>
+    <PropertyGroup>
+      <FileVersion>$(Version)</FileVersion>
+      <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="IncludeServerVersion" BeforeTargets="CoreCompile" Condition="'$(MSBuildProjectName)' == 'PennMUSH.Core'" DependsOnTargets="GenerateServerVersion">
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)ServerVersion.Generated.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
