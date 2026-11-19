@@ -46,7 +46,9 @@ public class MushConfiguration
     public string DownFile { get; set; } = "txt/down.txt";
     public string FullFile { get; set; } = "txt/full.txt";
     public string GuestFile { get; set; } = "txt/guest.txt";
+    public string RegisterFile { get; set; } = "txt/register.txt";
     public string ColorsFile { get; set; } = "txt/colors.json";
+    public string DictFile { get; set; } = string.Empty;
 
     // Economy & Names
     public string MoneySingular { get; set; } = "Penny";
@@ -63,6 +65,7 @@ public class MushConfiguration
     public Dictionary<string, List<RestrictionRule>> CommandRestrictions { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, List<RestrictionRule>> FunctionRestrictions { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> RestrictedNames { get; } = new();
+    public List<HelpFileDirective> HelpFiles { get; } = new();
 
     // Raw directives for unmodeled config directives
     public Dictionary<string, string> RawDirectives { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -133,9 +136,11 @@ public class MushConfiguration
         "input_database", "output_database", "crash_database", "mail_database", "chat_database",
         "sql_database", "http_handler",
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
-        "full_file", "guest_file", "colors_file", "money_singular", "money_plural",
+        "full_file", "guest_file", "register_create_file", "colors_file", "dict_file",
+        "help_command", "ahelp_command", "money_singular", "money_plural",
         "starting_money", "paycheck", "use_quota", "starting_quota"
     };
 }
 
 public record RestrictionRule(string Restriction, string? ErrorMessage = null);
+public record HelpFileDirective(string CommandName, string FilePath, bool AdminOnly);

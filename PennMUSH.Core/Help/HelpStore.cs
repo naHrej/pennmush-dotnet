@@ -11,6 +11,7 @@ public class HelpStore
     private string? _directory;
 
     public int TopicCount => _topics.Count;
+    public IReadOnlyCollection<string> Topics => _topics.Keys;
 
     public void Reload()
     {
@@ -26,6 +27,7 @@ public class HelpStore
             return;
 
         var files = Directory.GetFiles(directoryPath, "*.hlp", SearchOption.AllDirectories);
+        Array.Sort(files, StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {
             LoadFromFile(file);
@@ -61,13 +63,17 @@ public class HelpStore
             if (rawLine.StartsWith('&'))
             {
                 started = true;
-                if (!inHeader && names.Count > 0)
+                if (!inHeader && (names.Count > 0 || body.Count > 0))
                     Flush();
 
                 inHeader = true;
-                string name = TopicName(rawLine.Substring(1));
-                if (name.Length > 0)
-                    names.Add(name);
+                string afterAmp = rawLine.Substring(1).TrimStart();
+                if (!afterAmp.StartsWith('&'))
+                {
+                    string name = TopicName(afterAmp);
+                    if (name.Length > 0)
+                        names.Add(name);
+                }
             }
             else if (started)
             {

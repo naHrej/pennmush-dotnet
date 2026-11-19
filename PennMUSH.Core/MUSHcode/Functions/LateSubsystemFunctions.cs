@@ -28,10 +28,10 @@ public static class LateSubsystemFunctions
         registry.Register("BEEP", (ctx, args) => BeepFunc(registry, ctx, args));
         registry.Register("BENCHMARK", (ctx, args) => BenchmarkFunc(registry, ctx, args), noParse: true);
         registry.Register("POLL", (ctx, args) => registry.PollQuestion);
-        registry.Register("SUGGEST", (ctx, args) => SuggestFunc(registry, args));
-        registry.Register("TEXTENTRIES", (ctx, args) => TextEntriesFunc(registry, args));
-        registry.Register("TEXTFILE", (ctx, args) => TextFileFunc(registry, args));
-        registry.Register("TEXTSEARCH", (ctx, args) => TextSearchFunc(registry, args));
+        registry.Register("SUGGEST", (ctx, args) => SuggestFunc(registry, ctx, args));
+        registry.Register("TEXTENTRIES", (ctx, args) => TextEntriesFunc(registry, ctx, args));
+        registry.Register("TEXTFILE", (ctx, args) => TextFileFunc(registry, ctx, args));
+        registry.Register("TEXTSEARCH", (ctx, args) => TextSearchFunc(registry, ctx, args));
         registry.Register("ROOT", RootFunc);
     }
 
@@ -318,7 +318,10 @@ public static class LateSubsystemFunctions
         return report;
     }
 
-    public static string SuggestFunc(FunctionRegistry reg, string[] args)
+    private static bool IsAdmin(FunctionRegistry reg, EvaluationContext ctx)
+        => reg.Database?.GetObject(ctx.Executor)?.IsRoyalty == true;
+
+    public static string SuggestFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1])) return string.Empty;
         string cat = args[0].Trim().ToLowerInvariant();
@@ -331,15 +334,35 @@ public static class LateSubsystemFunctions
         IEnumerable<string> candidates = cat switch
         {
             "functions" => reg.Names,
+            "commands" => reg.CommandNamesProvider?.Invoke() ?? Enumerable.Empty<string>(),
             "attributes" or "attribs" => StandardAttributes.CanonicalNames(),
             "flags" => FlagTable.Definitions.Select(d => d.Name),
             "powers" => FlagTable.PowerNames,
-            _ => Array.Empty<string>()
+            _ => Enumerable.Empty<string>()
         };
 
+        if (reg.TextCache != null && reg.TextCache.HasCategory(cat))
+        {
+            bool admin = IsAdmin(reg, ctx);
+            if (!reg.TextCache.IsAdminOnly(cat) || admin)
+                candidates = candidates.Concat(reg.TextCache.GetEntries(cat, admin));
+        }
+
+        if (reg.Suggestions != null)
+        {
+            bool adminBlocked = reg.TextCache != null
+                && reg.TextCache.HasCategory(cat)
+                && reg.TextCache.IsAdminOnly(cat)
+                && !IsAdmin(reg, ctx);
+            if (!adminBlocked)
+                candidates = candidates.Concat(reg.Suggestions.GetWords(cat));
+        }
+
+        string wordUpper = word.ToUpperInvariant();
         return string.Join(delim, candidates
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(c => (Name: c, Dist: Levenshtein(word.ToUpperInvariant(), c.ToUpperInvariant())))
+            .Where(c => c.StartsWith(word, StringComparison.OrdinalIgnoreCase) || Math.Abs(c.Length - word.Length) <= 2)
+            .Select(c => (Name: c, Dist: Levenshtein(wordUpper, c.ToUpperInvariant())))
             .Where(x => x.Dist <= 2 || x.Name.StartsWith(word, StringComparison.OrdinalIgnoreCase))
             .OrderBy(x => x.Dist)
             .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
@@ -363,37 +386,84 @@ public static class LateSubsystemFunctions
         return d[a.Length, b.Length];
     }
 
-    public static string TextEntriesFunc(FunctionRegistry reg, string[] args)
+    public static string TextEntriesFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2 || reg.TextEntriesProvider == null) return string.Empty;
+        if (args.Length < 2) return string.Empty;
+        string file = args[0].Trim();
+        string pattern = args[1].Trim();
         string sep = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
-        var entries = reg.TextEntriesProvider(args[0].Trim())
-            .Where(e => PennMUSH.Core.Queue.PatternMatcher.Match(args[1].Trim(), e, out _));
-        return string.Join(sep, entries);
-    }
 
-    public static string TextFileFunc(FunctionRegistry reg, string[] args)
-    {
-        if (args.Length < 2 || reg.TextFileEntryProvider == null) return MushError.Nothing.Text();
-        return reg.TextFileEntryProvider(args[0].Trim(), args[1].Trim()) ?? MushError.Nothing.Text();
-    }
+        if (reg.TextEntriesProvider != null)
+        {
+            var entries = reg.TextEntriesProvider(file)
+                .Where(e => PennMUSH.Core.Queue.PatternMatcher.Match(pattern, e, out _));
+            return string.Join(sep, entries);
+        }
 
-    public static string TextSearchFunc(FunctionRegistry reg, string[] args)
-    {
-        if (args.Length < 2 || reg.TextEntriesProvider == null || reg.TextFileEntryProvider == null)
+        if (reg.TextCache == null)
             return string.Empty;
-        string sep = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+        if (!reg.TextCache.HasCategory(file))
+            return "#-1 NO SUCH FILE";
+
+        bool admin = IsAdmin(reg, ctx);
+        if (reg.TextCache.IsAdminOnly(file) && !admin)
+            return MushError.PermissionDenied.Text();
+
+        return string.Join(sep, reg.TextCache.GetEntries(file, admin)
+            .Where(e => PennMUSH.Core.Queue.PatternMatcher.Match(pattern, e, out _)));
+    }
+
+    public static string TextFileFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return MushError.Nothing.Text();
+        string file = args[0].Trim();
+        string topic = args[1].Trim();
+
+        if (reg.TextFileEntryProvider != null)
+            return reg.TextFileEntryProvider(file, topic) ?? MushError.Nothing.Text();
+
+        if (reg.TextCache == null)
+            return MushError.Nothing.Text();
+        if (!reg.TextCache.HasCategory(file))
+            return "#-1 NO SUCH FILE";
+
+        bool admin = IsAdmin(reg, ctx);
+        if (reg.TextCache.IsAdminOnly(file) && !admin)
+            return MushError.PermissionDenied.Text();
+
+        return reg.TextCache.GetEntry(file, topic, admin, allowPrefix: true) ?? "#-1 NO ENTRY";
+    }
+
+    public static string TextSearchFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2) return string.Empty;
         string file = args[0].Trim();
         string needle = args[1];
-        bool isWild = needle.Contains('*') || needle.Contains('?');
-        var hits = reg.TextEntriesProvider(file).Where(e =>
+        string sep = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+
+        if (reg.TextEntriesProvider != null && reg.TextFileEntryProvider != null)
         {
-            string body = reg.TextFileEntryProvider(file, e) ?? string.Empty;
-            return isWild
-                ? PennMUSH.Core.Queue.PatternMatcher.Match(needle, body, out _)
-                : body.Contains(needle, StringComparison.OrdinalIgnoreCase);
-        });
-        return string.Join(sep, hits);
+            bool isWild = needle.Contains('*') || needle.Contains('?');
+            var hits = reg.TextEntriesProvider(file).Where(e =>
+            {
+                string body = reg.TextFileEntryProvider(file, e) ?? string.Empty;
+                return isWild
+                    ? PennMUSH.Core.Queue.PatternMatcher.Match(needle, body, out _)
+                    : body.Contains(needle, StringComparison.OrdinalIgnoreCase);
+            });
+            return string.Join(sep, hits);
+        }
+
+        if (reg.TextCache == null)
+            return string.Empty;
+        if (!reg.TextCache.HasCategory(file))
+            return "#-1 NO SUCH FILE";
+
+        bool admin = IsAdmin(reg, ctx);
+        if (reg.TextCache.IsAdminOnly(file) && !admin)
+            return MushError.PermissionDenied.Text();
+
+        return string.Join(sep, reg.TextCache.SearchEntries(file, needle, admin));
     }
 
     public static string RootFunc(EvaluationContext ctx, string[] args)

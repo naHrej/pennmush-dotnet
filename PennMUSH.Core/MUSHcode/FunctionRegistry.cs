@@ -58,13 +58,16 @@ public class FunctionRegistry
     public Func<Dbref, string, bool>? PasswordVerifier { get; set; }
     public Func<string, IEnumerable<string>>? TextEntriesProvider { get; set; }
     public Func<string, string, string?>? TextFileEntryProvider { get; set; }
+    public PennMUSH.Core.Help.ITextFileCache? TextCache { get; set; }
+    public PennMUSH.Core.Help.SuggestionVocabulary? Suggestions { get; set; }
     public SqlDatabase? SqlDatabase { get; set; }
     public ConnectionLogStore? ConnectionLog { get; set; }
     public bool SideEffectsEnabled { get; set; } = true;
 
-    public FunctionRegistry(ObjectDatabase? database = null)
+    public FunctionRegistry(ObjectDatabase? database = null, PennMUSH.Core.Help.ITextFileCache? textCache = null)
     {
         Database = database;
+        TextCache = textCache;
         RegisterBuiltins();
     }
 
