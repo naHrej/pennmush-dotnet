@@ -232,8 +232,24 @@ public static class MushConfigParser
                 config.GuestFile = value;
                 break;
 
+            case "register_create_file":
+                config.RegisterFile = value;
+                break;
+
             case "colors_file":
                 config.ColorsFile = value;
+                break;
+
+            case "dict_file":
+                config.DictFile = value;
+                break;
+
+            case "help_command":
+                ParseHelpFile(value, adminOnly: false, config.HelpFiles);
+                break;
+
+            case "ahelp_command":
+                ParseHelpFile(value, adminOnly: true, config.HelpFiles);
                 break;
 
             case "money_singular":
@@ -274,6 +290,15 @@ public static class MushConfigParser
             string original = tokens[0];
             string alias = tokens[1];
             target[alias] = original;
+        }
+    }
+
+    private static void ParseHelpFile(string value, bool adminOnly, List<HelpFileDirective> target)
+    {
+        var tokens = value.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+        if (tokens.Length >= 2)
+        {
+            target.Add(new HelpFileDirective(tokens[0], tokens[1], adminOnly));
         }
     }
 

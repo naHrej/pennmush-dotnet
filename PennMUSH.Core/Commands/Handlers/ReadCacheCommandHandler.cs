@@ -9,13 +9,21 @@ public class ReadCacheCommandHandler : ICommandHandler
 {
     private readonly HelpStore _help;
     private readonly Func<IReadOnlyList<string>> _sizes;
+    private readonly ITextFileCache? _textCache;
+    private readonly Action? _onReloaded;
 
     public string Name => "@readcache";
 
-    public ReadCacheCommandHandler(HelpStore help, Func<IReadOnlyList<string>> sizes)
+    public ReadCacheCommandHandler(
+        HelpStore help,
+        Func<IReadOnlyList<string>> sizes,
+        ITextFileCache? textCache = null,
+        Action? onReloaded = null)
     {
         _help = help;
         _sizes = sizes;
+        _textCache = textCache;
+        _onReloaded = onReloaded;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -30,6 +38,8 @@ public class ReadCacheCommandHandler : ICommandHandler
         foreach (string line in _sizes())
             context.Notify(line);
         _help.Reload();
+        _textCache?.Reload();
+        _onReloaded?.Invoke();
         context.Notify(Feedback.HelpFilesReindexed);
         return true;
     }

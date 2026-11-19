@@ -58,6 +58,7 @@ public class MUSHServer
     public HttpFetch Web { get; } = new();
     public HttpChannel Http { get; } = new();
     public HelpStore Help { get; } = new();
+    public TextFileCache TextCache { get; } = new();
     public SuggestionVocabulary Suggestions { get; } = new();
     public EditorSessionManager EditorSessions { get; } = new();
     private readonly byte[] _tokenSecret = Guid.NewGuid().ToByteArray();
@@ -159,9 +160,15 @@ public class MUSHServer
             Help.LoadFromDirectory(hlpDir);
         }
 
+        TextCache.ConfigureFromGameDirectory(GameDirectory, Config);
+        SyncSuggestionsFromCache();
+        Functions.TextCache = TextCache;
+        Functions.Suggestions = Suggestions;
+
         Dispatcher = new CommandDispatcher(Evaluator);
         Extensions = new ExtensionManager(this);
         RegisterCommands();
+        Functions.CommandNamesProvider = () => Dispatcher.Table.PrimaryNames;
 
         // Scan and initialize external plugins
         var pluginCandidates = new[]
@@ -177,6 +184,24 @@ public class MUSHServer
 
         // Start queue tick background task
         _ = Task.Run(() => QueueTickLoopAsync(_cts.Token));
+    }
+
+    private void SyncSuggestionsFromCache()
+    {
+        foreach (string category in TextCache.Categories)
+        {
+            if (TextCache.IsAdminOnly(category))
+                continue;
+            Suggestions.ReplaceCachedCategory(category, TextCache.GetEntries(category, isAdmin: false));
+        }
+
+        if (!string.IsNullOrWhiteSpace(Config.DictFile))
+        {
+            string dictPath = Path.IsPathRooted(Config.DictFile)
+                ? Config.DictFile
+                : Path.Combine(GameDirectory, Config.DictFile);
+            Suggestions.LoadCachedWordFile("WORDS", dictPath);
+        }
     }
 
     private static string? ResolveConfigPath(string? configPath)
@@ -340,7 +365,9 @@ public class MUSHServer
         Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
         Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
         Dispatcher.Register(new SuggestCommandHandler(Suggestions), "@suggest");
-        Dispatcher.Register(new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config)), "@readcache");
+        Dispatcher.Register(
+            new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config), TextCache, SyncSuggestionsFromCache),
+            "@readcache");
         Dispatcher.Register(new DumpCommandHandler(SaveAll), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@clone");
