@@ -10,10 +10,19 @@ using PennMUSH.Core.Types;
 public class ChownAllCommandHandler : ICommandHandler
 {
     private readonly int _startingQuota;
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? _startingQuota;
 
-    public ChownAllCommandHandler(int startingQuota = 20)
+    public ChownAllCommandHandler(
+        int startingQuota = 20,
+        Func<bool>? liveUseQuota = null,
+        Func<int>? liveStartingQuota = null)
     {
         _startingQuota = startingQuota;
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
     }
 
     public string Name => "@chownall";
@@ -54,8 +63,11 @@ public class ChownAllCommandHandler : ICommandHandler
             count++;
         }
 
-        QuotaRules.Adjust(db, victim, count, _startingQuota);
-        QuotaRules.Adjust(db, recipient, -count, _startingQuota);
+        if (UseQuotaNow && count > 0 && victim.Id != recipient.Id)
+        {
+            QuotaRules.Adjust(db, victim, count, StartingQuotaNow);
+            QuotaRules.Adjust(db, recipient, -count, StartingQuotaNow);
+        }
         context.Notify(Feedback.OwnershipChangedForObjects, ("value", $"{count}"));
         return true;
     }

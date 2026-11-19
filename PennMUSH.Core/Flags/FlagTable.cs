@@ -59,6 +59,9 @@ public static class FlagTable
         RegisterFlag(new FlagDefinition { Name = "JUMP_OK", Letter = 'J', TargetType = ObjectType.Room, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "NO_TEL", Letter = 'N', TargetType = ObjectType.Room, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "CLOUDY", Letter = 'x', TargetType = ObjectType.Exit, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
+        RegisterFlag(new FlagDefinition { Name = "MISTRUST", Letter = 'm', TargetType = ObjectType.Thing | ObjectType.Room | ObjectType.Exit, Permissions = FlagPrivileges.Wizard, NegatePermissions = FlagPrivileges.Wizard });
+        RegisterFlag(new FlagDefinition { Name = "NO_QUOTA", Letter = '\0', TargetType = ObjectType.None, Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard });
+        RegisterFlag(new FlagDefinition { Name = "QUOTAS", Letter = '\0', TargetType = ObjectType.None, Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard });
 
         // Aliases from hdrs/flag_tab.h
         FlagAliases["INHERIT"] = "TRUST";
@@ -73,6 +76,7 @@ public static class FlagTable
         FlagAliases["TEL_OK"] = "JUMP_OK";
         FlagAliases["TELOK"] = "JUMP_OK";
         FlagAliases["TEL-OK"] = "JUMP_OK";
+        FlagAliases["NOQUOTA"] = "NO_QUOTA";
 
         // Powers from hdrs/flag_tab.h
         RegisterPower(new FlagDefinition { Name = "Announce", Permissions = FlagPrivileges.Wizard | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.Wizard, IsPower = true });
@@ -109,6 +113,7 @@ public static class FlagTable
         PowerAliases["@wall"] = "Announce";
         PowerAliases["wall"] = "Announce";
         PowerAliases["Can_nspemit"] = "Can_spoof";
+        PowerAliases["noquota"] = "No_Quota";
     }
 
     private static void RegisterFlag(FlagDefinition def)

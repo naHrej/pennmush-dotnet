@@ -11,6 +11,17 @@ using PennMUSH.Core.Types;
 
 public class DestroyCommandHandler : ICommandHandler
 {
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? 20;
+
+    public DestroyCommandHandler(Func<bool>? liveUseQuota = null, Func<int>? liveStartingQuota = null)
+    {
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
+    }
+
     public string Name => "@destroy";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -53,7 +64,7 @@ public class DestroyCommandHandler : ICommandHandler
         {
             string name = target.Name;
             var id = target.Id;
-            Free(db, target);
+            Free(db, target, UseQuotaNow, StartingQuotaNow);
             context.Notify(Feedback.HasBeenDestroyed, ("value", $"{name}"), ("value2", $"{id}"));
             return true;
         }
@@ -63,10 +74,12 @@ public class DestroyCommandHandler : ICommandHandler
         return true;
     }
 
-    internal static void Free(ObjectDatabase db, MUSHObject target)
+    internal static void Free(ObjectDatabase db, MUSHObject target, bool useQuota = true, int startingQuota = 20)
     {
         if (target.Type == ObjectType.Garbage)
             return;
+        if (target.Type != ObjectType.Player)
+            QuotaRules.Refund(db, db.GetObject(target.Owner), 1, useQuota, startingQuota);
         if (target.Type == ObjectType.Exit)
         {
             if (target.Exits.IsValid)
@@ -96,6 +109,17 @@ public class DestroyCommandHandler : ICommandHandler
 
 public class PurgeCommandHandler : ICommandHandler
 {
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? 20;
+
+    public PurgeCommandHandler(Func<bool>? liveUseQuota = null, Func<int>? liveStartingQuota = null)
+    {
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
+    }
+
     public string Name => "@purge";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -112,7 +136,7 @@ public class PurgeCommandHandler : ICommandHandler
         {
             if (obj.Id.Value <= 2 || obj.Type == ObjectType.Garbage || !obj.HasFlag("GOING"))
                 continue;
-            DestroyCommandHandler.Free(db, obj);
+            DestroyCommandHandler.Free(db, obj, UseQuotaNow, StartingQuotaNow);
             count++;
         }
 
@@ -183,6 +207,17 @@ public class UndestroyCommandHandler : ICommandHandler
 
 public class CloneCommandHandler : ICommandHandler
 {
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? 20;
+
+    public CloneCommandHandler(Func<bool>? liveUseQuota = null, Func<int>? liveStartingQuota = null)
+    {
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
+    }
+
     public string Name => "@clone";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -216,6 +251,12 @@ public class CloneCommandHandler : ICommandHandler
             return false;
         }
 
+        if (!QuotaRules.TryPay(db, execObj, 1, UseQuotaNow, StartingQuotaNow))
+        {
+            context.Notify(Feedback.SorryYourBuildingQuotaHasRunOut);
+            return false;
+        }
+
         var clone = db.CreateObject(target.Name, target.Type, context.Executor);
         clone.Location = execObj.Location;
         clone.Home = target.Home.IsValid ? target.Home : execObj.Location;
@@ -240,6 +281,17 @@ public class CloneCommandHandler : ICommandHandler
 
 public class ChownCommandHandler : ICommandHandler
 {
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? 20;
+
+    public ChownCommandHandler(Func<bool>? liveUseQuota = null, Func<int>? liveStartingQuota = null)
+    {
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
+    }
+
     public string Name => "@chown";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -258,20 +310,43 @@ public class ChownCommandHandler : ICommandHandler
             return false;
         }
 
-        var newOwner = db.FindPlayer(context.RightArg.Trim());
+        string ownerSpec = context.RightArg.Trim();
+        MUSHObject? newOwner;
+        if (ownerSpec.Equals("me", StringComparison.OrdinalIgnoreCase))
+        {
+            newOwner = execObj != null && execObj.Type == ObjectType.Player ? execObj : null;
+        }
+        else
+        {
+            if (ownerSpec.StartsWith('*') && ownerSpec.Length > 1)
+                ownerSpec = ownerSpec.Substring(1);
+            newOwner = db.FindPlayer(ownerSpec);
+        }
+
         if (newOwner == null)
         {
             context.Notify(Feedback.ICantFindThatPlayer);
             return false;
         }
 
-        if (execObj == null || (!execObj.IsWizard && target.Owner != context.Executor))
+        bool chownOkSelf = target.HasFlag("CHOWN_OK") && newOwner.Id == context.Executor;
+        if (execObj == null || target.Type == ObjectType.Player || (!execObj.IsWizard && target.Owner != context.Executor && !chownOkSelf))
         {
             context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
-        target.Owner = newOwner.Id;
+        if (!QuotaRules.TryTransfer(db, target, newOwner, allowOverdraft: execObj.IsWizard, UseQuotaNow, StartingQuotaNow))
+        {
+            context.Notify(newOwner.Id == context.Executor
+                ? Feedback.SorryYourBuildingQuotaHasRunOut
+                : Feedback.ThatPlayerDoesntHaveEnoughQuota);
+            return false;
+        }
+
+        if (chownOkSelf)
+            target.RemoveFlag("CHOWN_OK");
+
         context.Notify(Feedback.OwnerOfChangedTo, ("value", $"{target.Name}"), ("value2", $"{target.Id}"), ("value3", $"{newOwner.Name}"));
         return true;
     }

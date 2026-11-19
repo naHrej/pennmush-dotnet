@@ -7,6 +7,17 @@ using PennMUSH.Core.Types;
 
 public class OpenCommandHandler : ICommandHandler
 {
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? true;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? 20;
+
+    public OpenCommandHandler(Func<bool>? liveUseQuota = null, Func<int>? liveStartingQuota = null)
+    {
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
+    }
+
     public string Name => "@open";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -21,6 +32,12 @@ public class OpenCommandHandler : ICommandHandler
         if (execObj == null || !execObj.Location.IsValid)
         {
             context.Notify(Feedback.YouCannotOpenExitsFromHere);
+            return false;
+        }
+
+        if (!QuotaRules.TryPay(db, execObj, 1, UseQuotaNow, StartingQuotaNow))
+        {
+            context.Notify(Feedback.SorryYourBuildingQuotaHasRunOut);
             return false;
         }
 

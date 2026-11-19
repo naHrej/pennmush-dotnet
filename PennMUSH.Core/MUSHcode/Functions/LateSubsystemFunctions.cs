@@ -6,8 +6,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using PennMUSH.Core.Attributes;
+using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Types;
 
 public static class LateSubsystemFunctions
 {
@@ -36,18 +38,20 @@ public static class LateSubsystemFunctions
     public static string QuotaFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (reg.Database == null) return "100";
-        var obj = args.Length > 0
+        var actor = reg.Database.GetObject(ctx.Executor);
+        var obj = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0])
             ? (reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.MatchObject(ctx.Executor, args[0]))
-            : reg.Database.GetObject(ctx.Executor);
+            : actor;
         if (obj == null) return MushError.NoMatch.Text();
-        if (obj.Type != PennMUSH.Core.Types.ObjectType.Player) return "#-1 NOT A PLAYER";
-        if (obj.IsGod || obj.IsWizard || obj.IsRoyalty || obj.HasPower("No_Quota"))
+        if (obj.Type != ObjectType.Player) return "#-1 NOT A PLAYER";
+        if (actor != null && !QuotaRules.CanSee(actor, obj))
+            return MushError.PermissionDenied.Text();
+        if (!reg.IsQuotaEnabled || QuotaRules.IsUnlimited(obj, reg.Database))
             return "99999";
 
-        var attr = obj.GetAttribute("RQUOTA", reg.Database);
-        int rquota = attr != null && int.TryParse(attr.Value.Trim(), out int q) ? q : 100;
-        int owned = reg.Database.GetAllObjects().Count(o => o.Type != PennMUSH.Core.Types.ObjectType.Garbage && o.Owner == obj.Id);
-        return (owned + rquota).ToString();
+        int rquota = QuotaRules.PeekRemaining(reg.Database, obj, reg.EffectiveStartingQuota);
+        int owned = reg.Database.GetAllObjects().Count(o => o.Type != ObjectType.Garbage && o.Owner == obj.Id);
+        return (owned + rquota).ToString(CultureInfo.InvariantCulture);
     }
 
     public static string AttrListFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, string attrName)
@@ -78,7 +82,9 @@ public static class LateSubsystemFunctions
         {
             "mud_name" => reg.MudName,
             "mud_url" => reg.MudUrl,
-            "starting_money" => reg.StartingMoney.ToString(),
+            "starting_money" => reg.StartingMoney.ToString(CultureInfo.InvariantCulture),
+            "use_quota" => reg.IsQuotaEnabled ? "yes" : "no",
+            "starting_quota" => reg.EffectiveStartingQuota.ToString(CultureInfo.InvariantCulture),
             _ => MushError.Nothing.Text()
         };
     }

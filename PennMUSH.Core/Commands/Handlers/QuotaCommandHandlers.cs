@@ -11,13 +11,20 @@ public class QuotaCommandHandler : ICommandHandler
     private readonly bool _useQuota;
     private readonly Func<bool>? _liveUseQuota;
     private readonly int _startingQuota;
+    private readonly Func<int>? _liveStartingQuota;
     private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? _useQuota;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? _startingQuota;
 
-    public QuotaCommandHandler(bool useQuota = true, int startingQuota = 20, Func<bool>? liveUseQuota = null)
+    public QuotaCommandHandler(
+        bool useQuota = true,
+        int startingQuota = 20,
+        Func<bool>? liveUseQuota = null,
+        Func<int>? liveStartingQuota = null)
     {
         _useQuota = useQuota;
         _startingQuota = startingQuota;
         _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
     }
 
     public string Name => "@quota";
@@ -25,10 +32,10 @@ public class QuotaCommandHandler : ICommandHandler
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         if (context.Switches.Contains("all"))
-            return QuotaRules.All(context, db, _startingQuota, context.LeftArg);
+            return QuotaRules.All(context, db, StartingQuotaNow, context.LeftArg, UseQuotaNow);
         if (context.Switches.Contains("set"))
-            return QuotaRules.Set(context, db, UseQuotaNow, _startingQuota);
-        return QuotaRules.Show(context, db, UseQuotaNow, _startingQuota);
+            return QuotaRules.Set(context, db, UseQuotaNow, StartingQuotaNow);
+        return QuotaRules.Show(context, db, UseQuotaNow, StartingQuotaNow);
     }
 }
 
@@ -37,39 +44,59 @@ public class SquotaCommandHandler : ICommandHandler
     private readonly bool _useQuota;
     private readonly Func<bool>? _liveUseQuota;
     private readonly int _startingQuota;
+    private readonly Func<int>? _liveStartingQuota;
     private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? _useQuota;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? _startingQuota;
 
-    public SquotaCommandHandler(bool useQuota = true, int startingQuota = 20, Func<bool>? liveUseQuota = null)
+    public SquotaCommandHandler(
+        bool useQuota = true,
+        int startingQuota = 20,
+        Func<bool>? liveUseQuota = null,
+        Func<int>? liveStartingQuota = null)
     {
         _useQuota = useQuota;
         _startingQuota = startingQuota;
         _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
     }
 
     public string Name => "@squota";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
-        => QuotaRules.Set(context, db, UseQuotaNow, _startingQuota);
+        => QuotaRules.Set(context, db, UseQuotaNow, StartingQuotaNow);
 }
 
 public class AllQuotaCommandHandler : ICommandHandler
 {
     private readonly int _startingQuota;
+    private readonly bool _useQuota;
+    private readonly Func<bool>? _liveUseQuota;
+    private readonly Func<int>? _liveStartingQuota;
+    private bool UseQuotaNow => _liveUseQuota?.Invoke() ?? _useQuota;
+    private int StartingQuotaNow => _liveStartingQuota?.Invoke() ?? _startingQuota;
 
-    public AllQuotaCommandHandler(int startingQuota = 20)
+    public AllQuotaCommandHandler(
+        int startingQuota = 20,
+        bool useQuota = true,
+        Func<bool>? liveUseQuota = null,
+        Func<int>? liveStartingQuota = null)
     {
         _startingQuota = startingQuota;
+        _useQuota = useQuota;
+        _liveUseQuota = liveUseQuota;
+        _liveStartingQuota = liveStartingQuota;
     }
 
     public string Name => "@allquota";
 
     public bool Execute(CommandContext context, ObjectDatabase db)
-        => QuotaRules.All(context, db, _startingQuota, context.LeftArg);
+        => QuotaRules.All(context, db, StartingQuotaNow, context.LeftArg, UseQuotaNow);
 }
 
-internal static class QuotaRules
+public static class QuotaRules
 {
     private static readonly Dbref God = new(1);
+    private static readonly object QuotaSync = new();
 
     public static bool Show(CommandContext context, ObjectDatabase db, bool useQuota, int startingQuota)
     {
@@ -88,7 +115,7 @@ internal static class QuotaRules
         }
 
         int owned = Owned(db, who.Id);
-        if (Unlimited(who, db) || !useQuota)
+        if (IsUnlimited(who, db) || !useQuota)
         {
             context.Notify(Feedback.ObjectsLimitUnlimited, ("value", $"{owned}"));
             return true;
@@ -121,7 +148,7 @@ internal static class QuotaRules
         }
 
         int owned = Owned(db, who.Id);
-        if (Unlimited(who, db) || !useQuota)
+        if (IsUnlimited(who, db) || !useQuota)
         {
             context.Notify(Feedback.ObjectsLimitUnlimited, ("value", $"{owned}"));
             return true;
@@ -146,7 +173,7 @@ internal static class QuotaRules
         return true;
     }
 
-    public static bool All(CommandContext context, ObjectDatabase db, int startingQuota, string requested)
+    public static bool All(CommandContext context, ObjectDatabase db, int startingQuota, string requested, bool useQuota = true)
     {
         var actor = db.GetObject(context.Executor);
         if (actor == null || !actor.IsGod)
@@ -177,7 +204,7 @@ internal static class QuotaRules
             if (who.Type != ObjectType.Player)
                 continue;
             int owned = Owned(db, who.Id);
-            if (Unlimited(who, db))
+            if (IsUnlimited(who, db) || !useQuota)
             {
                 if (!quiet)
                     context.Notify(Feedback.ObjectsLimitUnlimited2, ("value", $"{who.Name}"), ("value2", $"{owned}"));
@@ -202,18 +229,20 @@ internal static class QuotaRules
     private static bool TryResolve(ObjectDatabase db, MUSHObject actor, string name, out MUSHObject who)
     {
         string token = name.Trim();
-        if (token.Length == 0 || token.Equals("me", System.StringComparison.OrdinalIgnoreCase))
+        if (token.Length == 0 || token.Equals("me", StringComparison.OrdinalIgnoreCase))
         {
-            var owner = db.GetObject(actor.Owner);
-            if (owner == null || owner.Type != ObjectType.Player)
+            var account = ResolveAccount(db, actor);
+            if (account == null)
             {
                 who = actor;
                 return false;
             }
-            who = owner;
+            who = account;
             return true;
         }
 
+        if (token.StartsWith('*') && token.Length > 1)
+            token = token.Substring(1);
         var found = db.FindPlayer(token);
         if (found == null || found.Type != ObjectType.Player)
         {
@@ -224,32 +253,47 @@ internal static class QuotaRules
         return true;
     }
 
-    private static bool CanSee(MUSHObject actor, MUSHObject who)
-        => actor.IsRoyalty
-            || actor.HasPower("QUOTAS")
-            || actor.HasPower("SEE_ALL")
-            || actor.IsWizard
-            || who.Id == actor.Id
-            || who.Owner == actor.Owner;
-
-    private static bool Unlimited(MUSHObject who, ObjectDatabase db)
+    public static MUSHObject? ResolveAccount(ObjectDatabase db, MUSHObject? obj)
     {
-        if (who.IsRoyalty || who.HasPower("NO_QUOTA"))
-            return true;
-        var owner = db.GetObject(who.Owner);
-        if (owner == null)
-            return false;
-        if (owner.IsRoyalty)
-            return true;
-        return !who.HasFlag("MISTRUST") && owner.HasPower("NO_QUOTA");
+        var curr = obj;
+        for (int hop = 0; hop < 8 && curr != null; hop++)
+        {
+            if (curr.Type == ObjectType.Player)
+                return curr;
+            if (!curr.Owner.IsValid || curr.Owner == curr.Id)
+                return null;
+            curr = db.GetObject(curr.Owner);
+        }
+        return null;
     }
 
-    private static int Owned(ObjectDatabase db, Dbref who)
+    public static bool CanSee(MUSHObject actor, MUSHObject who)
+        => actor.IsRoyalty
+            || actor.HasPower("Quotas")
+            || actor.HasFlag("QUOTAS")
+            || actor.HasPower("See_All")
+            || actor.IsWizard
+            || who.Id == actor.Id
+            || (actor.Type != ObjectType.Player && who.Id == actor.Owner);
+
+    public static bool IsUnlimited(MUSHObject who, ObjectDatabase db)
     {
-        int owned = -1;
+        if (who.IsRoyalty || who.HasPower("No_Quota") || who.HasFlag("NO_QUOTA"))
+            return true;
+        if (who.Type == ObjectType.Player)
+            return false;
+        if (who.HasFlag("MISTRUST"))
+            return false;
+        var owner = ResolveAccount(db, who);
+        return owner != null && (owner.IsRoyalty || owner.HasPower("No_Quota") || owner.HasFlag("NO_QUOTA"));
+    }
+
+    public static int Owned(ObjectDatabase db, Dbref who)
+    {
+        int owned = 0;
         foreach (var obj in db.GetAllObjects())
         {
-            if (obj.Type == ObjectType.Garbage)
+            if (obj.Type == ObjectType.Garbage || obj.Id == who)
                 continue;
             if (obj.Owner == who)
                 owned++;
@@ -257,21 +301,112 @@ internal static class QuotaRules
         return owned;
     }
 
-    private static int Remaining(ObjectDatabase db, MUSHObject who, int startingQuota)
+    public static int PeekRemaining(ObjectDatabase db, MUSHObject who, int startingQuota)
     {
-        var entry = who.GetAttribute("RQUOTA");
+        var entry = who.GetAttribute("RQUOTA", db);
         if (entry != null)
             return int.TryParse(entry.Value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int stored) ? stored : 0;
 
-        int owned = Owned(db, who.Id);
-        int remaining = owned <= startingQuota ? startingQuota - owned : owned;
-        Store(who, remaining);
-        return remaining;
+        return Math.Max(0, startingQuota - Owned(db, who.Id));
+    }
+
+    public static int Remaining(ObjectDatabase db, MUSHObject who, int startingQuota)
+    {
+        lock (QuotaSync)
+        {
+            var entry = who.GetAttribute("RQUOTA");
+            if (entry != null)
+                return int.TryParse(entry.Value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int stored) ? stored : 0;
+
+            int owned = Owned(db, who.Id);
+            int remaining = Math.Max(0, startingQuota - owned);
+            Store(who, remaining);
+            return remaining;
+        }
+    }
+
+    public static bool TryPay(ObjectDatabase db, MUSHObject? actor, int cost, bool useQuota, int startingQuota)
+    {
+        if (cost <= 0 || !useQuota || actor == null || IsUnlimited(actor, db))
+            return true;
+
+        var account = ResolveAccount(db, actor);
+        if (account == null)
+            return true;
+
+        lock (QuotaSync)
+        {
+            int remaining = Remaining(db, account, startingQuota);
+            if (remaining < cost)
+                return false;
+
+            Store(account, remaining - cost);
+            return true;
+        }
+    }
+
+    public static void Refund(ObjectDatabase db, MUSHObject? owner, int amount, bool useQuota, int startingQuota)
+    {
+        if (amount <= 0 || !useQuota || owner == null)
+            return;
+
+        var account = ResolveAccount(db, owner);
+        if (account == null || IsUnlimited(account, db))
+            return;
+
+        lock (QuotaSync)
+        {
+            int remaining = Remaining(db, account, startingQuota);
+            Store(account, remaining + amount);
+        }
+    }
+
+    public static bool TryTransfer(ObjectDatabase db, MUSHObject target, MUSHObject newOwner, bool allowOverdraft, bool useQuota, int startingQuota)
+    {
+        if (target.Owner == newOwner.Id)
+            return true;
+
+        if (!useQuota)
+        {
+            target.Owner = newOwner.Id;
+            return true;
+        }
+
+        var oldAccount = ResolveAccount(db, db.GetObject(target.Owner));
+        var newAccount = ResolveAccount(db, newOwner);
+        if (oldAccount != null && newAccount != null && oldAccount.Id == newAccount.Id)
+        {
+            target.Owner = newOwner.Id;
+            return true;
+        }
+
+        lock (QuotaSync)
+        {
+            bool oldLimited = oldAccount != null && !IsUnlimited(oldAccount, db);
+            bool newLimited = newAccount != null && !IsUnlimited(newAccount, db);
+
+            int oldRemaining = oldLimited ? Remaining(db, oldAccount!, startingQuota) : 0;
+            int newRemaining = newLimited ? Remaining(db, newAccount!, startingQuota) : 0;
+
+            if (newLimited && !allowOverdraft && newRemaining < 1)
+                return false;
+
+            if (oldLimited)
+                Store(oldAccount!, oldRemaining + 1);
+            if (newLimited)
+                Store(newAccount!, newRemaining - 1);
+
+            target.Owner = newOwner.Id;
+            return true;
+        }
     }
 
     public static void Adjust(ObjectDatabase db, MUSHObject who, int payment, int startingQuota)
     {
-        Store(who, Remaining(db, who, startingQuota) + payment);
+        lock (QuotaSync)
+        {
+            Store(who, Remaining(db, who, startingQuota) + payment);
+        }
     }
 
     private static void Store(MUSHObject who, int remaining)

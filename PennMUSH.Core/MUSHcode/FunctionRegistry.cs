@@ -41,6 +41,12 @@ public class FunctionRegistry
     public Dbref PlayerStart { get; set; } = new(0);
     public Dbref DefaultHome { get; set; } = new(0);
     public int StartingMoney { get; set; } = 100;
+    public bool UseQuota { get; set; } = true;
+    public Func<bool>? UseQuotaProvider { get; set; }
+    public int StartingQuota { get; set; } = 20;
+    public Func<int>? StartingQuotaProvider { get; set; }
+    public bool IsQuotaEnabled => UseQuotaProvider?.Invoke() ?? UseQuota;
+    public int EffectiveStartingQuota => StartingQuotaProvider?.Invoke() ?? StartingQuota;
     public string MudName { get; set; } = "PennMUSH";
     public string MudUrl { get; set; } = string.Empty;
     public Func<IEnumerable<string>>? CommandNamesProvider { get; set; }
