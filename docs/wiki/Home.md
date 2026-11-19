@@ -22,7 +22,7 @@ Welcome to the **PennMUSH .NET** API & operator documentation, extracted directl
 * Learn how rooms, exits, multi-parent/zone hierarchies, and permissions work in [Architecture & Concepts](Architecture-and-Concepts).
 * Reference flags, powers, standard attributes, and lock types in [Flags, Powers, Attributes & Locks](Flags-Powers-Attributes-and-Locks).
 * Style output with the 927-color table, `@moniker`, and `@sockset` in [Colors, Markup & Presentation](Colors-Markup-and-Presentation).
-* Browse command syntax in the [Commands Index](Commands-Index) (coming in PR 2).
+* Browse all **201** built-in command names (**204** with `alias.cnf`), switches, and pre-login commands in the [Commands Index](Commands-Index).
 
 ### MUSHcode Developers
 * Master evaluation order, bracket/brace escaping, `noParse` rules, `%`-substitutions, Q-registers, regex captures, and `MushError` codes in [MUSHcode Language Guide](MUSHcode-Language-Guide).
