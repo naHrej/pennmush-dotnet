@@ -92,8 +92,9 @@ public static class LateSubsystemFunctions
         var target = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
             ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
         if (target == null || target.Type != PennMUSH.Core.Types.ObjectType.Player) return "#-1 NO SUCH PLAYER";
-        if (reg.PasswordVerifier == null) return "0";
-        return reg.PasswordVerifier(target.Id, args[1]) ? "1" : "0";
+        if (reg.PasswordVerifier != null)
+            return reg.PasswordVerifier(target.Id, args[1]) ? "1" : "0";
+        return PennMUSH.Core.Database.PasswordHash.Accepts(target, args[1], null) ? "1" : "0";
     }
 
     public static string SqlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

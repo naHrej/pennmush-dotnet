@@ -29,6 +29,8 @@ public sealed class SiteLockTable
 
     public IReadOnlyList<SiteRule> Rules => _rules;
 
+    public void ClearRules() => _rules.Clear();
+
     public bool Can(string host, uint flag)
     {
         if (string.IsNullOrEmpty(host))

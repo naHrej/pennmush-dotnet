@@ -49,6 +49,36 @@ public class MailStore
         _activeFolders[player] = Math.Clamp(folder, 0, 15);
     }
 
+    public IReadOnlyList<MailMessage> ExportAllMessages()
+    {
+        var all = new List<MailMessage>();
+        foreach (var box in _mailboxes.Values)
+        {
+            lock (box) all.AddRange(box);
+        }
+        return all;
+    }
+
+    public IReadOnlyDictionary<Dbref, int> ExportActiveFolders()
+        => new Dictionary<Dbref, int>(_activeFolders);
+
+    public void ClearAndLoad(IEnumerable<MailMessage> messages, IEnumerable<KeyValuePair<Dbref, int>> activeFolders)
+    {
+        _mailboxes.Clear();
+        _activeFolders.Clear();
+        int maxId = 0;
+        foreach (var msg in messages)
+        {
+            if (msg.Id > maxId) maxId = msg.Id;
+            var box = _mailboxes.GetOrAdd(msg.Recipient, _ => new List<MailMessage>());
+            lock (box) box.Add(msg);
+        }
+        if (maxId >= _nextMailId)
+            _nextMailId = maxId + 1;
+        foreach (var kv in activeFolders)
+            _activeFolders[kv.Key] = Math.Clamp(kv.Value, 0, 15);
+    }
+
     public IReadOnlyList<MailMessage> GetMessages(Dbref player, int? folder = null, bool includeCleared = false)
     {
         int targetFolder = folder ?? GetCurrentFolder(player);

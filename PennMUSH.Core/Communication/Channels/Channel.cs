@@ -32,6 +32,11 @@ public class Channel
         }
     }
 
+    public IReadOnlyDictionary<string, string> GetAllLockTexts()
+    {
+        lock (_lock) return _locks.ToDictionary(kv => kv.Key, kv => kv.Value.Text, StringComparer.OrdinalIgnoreCase);
+    }
+
     public Channel(string name, Dbref owner, ChannelFlags flags = ChannelFlags.Public | ChannelFlags.Player)
     {
         Name = name;

@@ -40,6 +40,12 @@ public sealed class MailAliasTable
         Capacity = 0;
     }
 
+    public void ImportAlias(MailAlias alias)
+    {
+        _aliases.Add(alias);
+        NoteAdded();
+    }
+
     public void NoteAdded()
     {
         if (Capacity == 0)
