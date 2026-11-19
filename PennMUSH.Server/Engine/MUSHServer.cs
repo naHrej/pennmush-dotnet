@@ -125,6 +125,7 @@ public class MUSHServer
         Functions.EditorSessions = EditorSessions;
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
+        Functions.SqlDatabase = Sql;
         Functions.Passwords = new CallbackPasswords((id, password) =>
         {
             _playerPasswords[id] = password;

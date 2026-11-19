@@ -18,8 +18,8 @@ public static class LateSubsystemFunctions
         registry.Register("FOLLOWING", (ctx, args) => AttrListFunc(registry, ctx, args, "FOLLOWING"));
         registry.Register("CONFIG", (ctx, args) => ConfigFunc(registry, args));
         registry.Register("CHECKPASS", (ctx, args) => CheckPassFunc(registry, ctx, args));
-        registry.Register("SQL", (ctx, args) => "#-1 SQL IS NOT ENABLED");
-        registry.Register("MAPSQL", (ctx, args) => "#-1 SQL IS NOT ENABLED");
+        registry.Register("SQL", (ctx, args) => SqlFunc(registry, ctx, args));
+        registry.Register("MAPSQL", (ctx, args) => MapSqlFunc(registry, ctx, args));
         registry.Register("ADDRLOG", (ctx, args) => WizardLogFunc(registry, ctx));
         registry.Register("CONNLOG", (ctx, args) => WizardLogFunc(registry, ctx));
         registry.Register("CONNRECORD", (ctx, args) => WizardLogFunc(registry, ctx));
@@ -94,6 +94,76 @@ public static class LateSubsystemFunctions
         if (target == null || target.Type != PennMUSH.Core.Types.ObjectType.Player) return "#-1 NO SUCH PLAYER";
         if (reg.PasswordVerifier == null) return "0";
         return reg.PasswordVerifier(target.Id, args[1]) ? "1" : "0";
+    }
+
+    public static string SqlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || (!actor.IsWizard && !actor.HasPower("Sql_Ok")))
+            return MushError.PermissionDenied.Text();
+        if (reg.SqlDatabase == null || !reg.SqlDatabase.IsConnected)
+            return "#-1 SQL IS NOT ENABLED";
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            return MushError.TooFewArguments.Text();
+
+        string rowSep = args.Length > 1 ? args[1] : " ";
+        string colSep = args.Length > 2 ? args[2] : " ";
+
+        var res = reg.SqlDatabase.Query(args[0]);
+        if (res.Error != null) return $"#-1 SQL ERROR: {res.Error}";
+        if (res.Fields.Count == 0) return string.Empty;
+
+        return string.Join(rowSep, res.Rows.Select(row =>
+            string.Join(colSep, row.Select(cell => cell ?? string.Empty))));
+    }
+
+    public static string MapSqlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || (!actor.IsWizard && !actor.HasPower("Sql_Ok")))
+            return MushError.PermissionDenied.Text();
+        if (reg.SqlDatabase == null || !reg.SqlDatabase.IsConnected)
+            return "#-1 SQL IS NOT ENABLED";
+        if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
+            return MushError.TooFewArguments.Text();
+
+        string osep = args.Length > 2 ? args[2] : " ";
+        bool includeColNames = args.Length > 3 && LogicFunctions.IsTruthy(args[3]);
+
+        var res = reg.SqlDatabase.Query(args[1]);
+        if (res.Error != null) return $"#-1 SQL ERROR: {res.Error}";
+        if (res.Fields.Count == 0) return string.Empty;
+
+        var results = new List<string>();
+        if (includeColNames)
+        {
+            var headerArgs = new string[2 + res.Fields.Count];
+            headerArgs[0] = args[0];
+            headerArgs[1] = "0";
+            for (int i = 0; i < res.Fields.Count; i++)
+                headerArgs[2 + i] = res.Fields[i];
+            results.Add(DbFunctions.Ufun(reg, ctx, headerArgs));
+        }
+
+        int rowNum = 1;
+        foreach (var row in res.Rows)
+        {
+            var uargs = new string[2 + res.Fields.Count];
+            uargs[0] = args[0];
+            uargs[1] = rowNum.ToString();
+            for (int i = 0; i < res.Fields.Count; i++)
+            {
+                string val = i < row.Length ? (row[i] ?? string.Empty) : string.Empty;
+                uargs[2 + i] = val;
+                string colName = res.Fields[i];
+                if (!int.TryParse(colName, out _) && LogicFunctions.IsValidQregName(colName))
+                    ctx.SetRegister(colName, val);
+            }
+            results.Add(DbFunctions.Ufun(reg, ctx, uargs));
+            rowNum++;
+        }
+
+        return string.Join(osep, results);
     }
 
     public static string WizardLogFunc(FunctionRegistry reg, EvaluationContext ctx)

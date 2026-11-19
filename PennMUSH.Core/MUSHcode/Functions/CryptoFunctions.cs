@@ -21,7 +21,7 @@ public static class CryptoFunctions
         registry.Register("ENCRYPT", Encrypt);
         registry.Register("DECRYPT", Decrypt);
         registry.Register("SSL", (ctx, args) => Ssl(registry, ctx, args));
-        registry.Register("SQLESCAPE", SqlEscape);
+        registry.Register("SQLESCAPE", (ctx, args) => SqlEscape(registry, ctx, args));
     }
 
     public static string Encode64(EvaluationContext ctx, string[] args)
@@ -215,8 +215,11 @@ public static class CryptoFunctions
             : "0";
     }
 
-    public static string SqlEscape(EvaluationContext ctx, string[] args)
+    public static string SqlEscape(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor != null && !actor.IsWizard && !actor.HasPower("Sql_Ok"))
+            return MushError.PermissionDenied.Text();
         if (args.Length == 0) return string.Empty;
         return args[0]
             .Replace("\\", "\\\\", StringComparison.Ordinal)
