@@ -28,7 +28,7 @@ Welcome to the **PennMUSH .NET** API & operator documentation, extracted directl
 * Master evaluation order, bracket/brace escaping, `noParse` rules, `%`-substitutions, Q-registers, regex captures, and `MushError` codes in [MUSHcode Language Guide](MUSHcode-Language-Guide).
 * Build interactive web panels, live code editors, and WebSocket JSON frames with [Colors, Markup & Presentation](Colors-Markup-and-Presentation) and [MUjs Protocol Reference](MUjs-Protocol-Reference).
 * Check exact compatibility differences vs PennMUSH 1.8 in [PennMUSH 1.8 Parity & Differences](PennMUSH-1.8-Parity-and-Differences).
-* Browse the softcode function reference in the [Functions Index](Functions-Index) (coming in PRs 3–4).
+* Browse all **567** built-in MUSHcode functions (**578** with `alias.cnf`), signatures, and `noParse` / `sideEffect` tags across 15 domain guides in the [Functions Index](Functions-Index).
 
 ### Server Operators & Hosting
 * Configure `game/mush.cnf`, `alias.cnf`, `restrict.cnf`, SQLite databases (`mush.db`, `connlog.db`, optional SQL DB), text caches, HTTP routes, hot-reboots, and CI/CD in [Server Configuration & Persistence](Server-Configuration-and-Persistence).
