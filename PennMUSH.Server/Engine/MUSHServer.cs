@@ -44,6 +44,7 @@ public class MUSHServer
 
     public ObjectDatabase Database { get; }
     public SqliteStore Storage { get; }
+    public RuntimeStateStore RuntimeState { get; }
     public ActionQueue Queue { get; }
     public CronScheduler Cron { get; }
     public ChannelRegistry Channels { get; }
@@ -85,6 +86,7 @@ public class MUSHServer
 
         Database = new ObjectDatabase();
         Storage = new SqliteStore($"Data Source={dbPath}");
+        RuntimeState = new RuntimeStateStore($"Data Source={dbPath}");
         Queue = new ActionQueue();
         Cron = new CronScheduler();
         Channels = new ChannelRegistry();
@@ -129,6 +131,7 @@ public class MUSHServer
         Functions.SqlDatabase = Sql;
         ConnectionLog.OpenFile(Path.Combine(GameDirectory, "connlog.db"));
         Functions.ConnectionLog = ConnectionLog;
+        RuntimeState.Load(Channels, Mail, MailAliases, Functions, SiteLocks);
         Functions.Passwords = new CallbackPasswords((id, password) =>
         {
             _playerPasswords[id] = password;
@@ -334,7 +337,7 @@ public class MUSHServer
         Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
         Dispatcher.Register(new SuggestCommandHandler(Suggestions), "@suggest");
         Dispatcher.Register(new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config)), "@readcache");
-        Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");
+        Dispatcher.Register(new DumpCommandHandler(SaveAll), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
         Dispatcher.Register(new CloneCommandHandler(), "@clone");
         Dispatcher.Register(new ChownCommandHandler(), "@chown");
@@ -358,7 +361,7 @@ public class MUSHServer
         Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
         Dispatcher.Register(new RebootCommandHandler(() => OnRebootRequested?.Invoke()), "@reboot");
         Dispatcher.Register(new ShutdownCommandHandler(
-            () => Storage.Save(Database, Cron),
+            SaveAll,
             () => _shutdownRequested = true,
             () => _quietRebootRequested = true), "@shutdown");
         Dispatcher.Register(new SiteLockCommandHandler(SiteLocks, ConnectionLog), "@sitelock");
@@ -406,6 +409,12 @@ public class MUSHServer
     public event Action? OnRebootRequested;
     public event Action? OnQuietRebootRequested;
     public event Action? OnShutdownRequested;
+
+    public void SaveAll()
+    {
+        Storage.Save(Database, Cron);
+        RuntimeState.Save(Channels, Mail, MailAliases, Functions, SiteLocks);
+    }
 
     public void RegisterConnection(MUSHConnection conn, bool isReconnect = false)
     {
