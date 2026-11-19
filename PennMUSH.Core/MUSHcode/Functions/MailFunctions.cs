@@ -66,12 +66,15 @@ public static class MailFunctions
 
     public static string MailFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (reg.Mail == null) return "0 0 0";
-        if (args.Length == 0 || (args.Length == 1 && !int.TryParse(args[0].Trim(), out _) && !args[0].Contains(':') && reg.Database != null && (reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) != null || reg.Database.FindPlayer(args[0].Trim()) != null)))
+        if (reg.Mail == null) return "0";
+        if (args.Length == 0)
+            return reg.Mail.GetMailStats(ctx.Executor).TotalCount.ToString();
+
+        if (args.Length == 1 && !int.TryParse(args[0].Trim(), out _) && !args[0].Contains(':') && reg.Database != null &&
+            (reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) != null || reg.Database.FindPlayer(args[0].Trim()) != null))
         {
-            Dbref statsTarget = args.Length > 0
-                ? (reg.Database?.GetObject(DbFunctions.ParseDbref(args[0], ctx))?.Id ?? reg.Database?.FindPlayer(args[0].Trim())?.Id ?? ctx.Executor)
-                : ctx.Executor;
+            Dbref statsTarget = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))?.Id
+                ?? reg.Database.FindPlayer(args[0].Trim())?.Id ?? ctx.Executor;
             if (!CanAccessMail(reg, ctx, statsTarget))
                 return MushError.PermissionDenied.Text();
             var stats = reg.Mail.GetMailStats(statsTarget);
@@ -95,10 +98,65 @@ public static class MailFunctions
     public static string MailList(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (reg.Mail == null) return string.Empty;
-        var (target, folder, _) = ParseMailRef(reg, ctx, args, 0);
-        int f = folder ?? reg.Mail.GetCurrentFolder(target);
-        var msgs = reg.Mail.GetMessages(target, f);
-        return string.Join(" ", Enumerable.Range(1, msgs.Count).Select(i => $"{f}:{i}"));
+        Dbref target = ctx.Executor;
+        string spec = args.Length > 0 ? args[0].Trim() : string.Empty;
+        if (args.Length >= 2 && reg.Database != null)
+        {
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+            if (p == null) return MushError.NoMatch.Text();
+            target = p.Id;
+            spec = args[1].Trim();
+        }
+        else if (args.Length == 1 && reg.Database != null)
+        {
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+            if (p != null)
+            {
+                target = p.Id;
+                spec = string.Empty;
+            }
+        }
+        if (!CanAccessMail(reg, ctx, target))
+            return MushError.PermissionDenied.Text();
+
+        int folder = reg.Mail.GetCurrentFolder(target);
+        int colon = spec.IndexOf(':');
+        if (colon >= 0)
+        {
+            if (int.TryParse(spec.Substring(0, colon), out int pf)) folder = pf;
+            spec = spec.Substring(colon + 1).Trim();
+        }
+
+        var msgs = reg.Mail.GetMessages(target, folder, includeCleared: true);
+        var indices = new List<string>();
+        for (int i = 0; i < msgs.Count; i++)
+        {
+            var m = msgs[i];
+            int num = i + 1;
+            bool match = spec.ToLowerInvariant() switch
+            {
+                "" or "all" => !m.IsCleared,
+                "unread" => !m.IsRead && !m.IsCleared,
+                "read" => m.IsRead && !m.IsCleared,
+                "cleared" => m.IsCleared,
+                "tagged" => m.IsTagged && !m.IsCleared,
+                "urgent" => m.IsUrgent && !m.IsCleared,
+                _ => MatchNumberRange(spec, num) && !m.IsCleared
+            };
+            if (match) indices.Add($"{folder}:{num}");
+        }
+        return string.Join(" ", indices);
+    }
+
+    private static bool MatchNumberRange(string spec, int num)
+    {
+        if (int.TryParse(spec, out int exact)) return num == exact;
+        int dash = spec.IndexOf('-');
+        if (dash > 0 && dash < spec.Length - 1 &&
+            int.TryParse(spec.Substring(0, dash), out int lo) &&
+            int.TryParse(spec.Substring(dash + 1), out int hi))
+            return num >= lo && num <= hi;
+        return false;
     }
 
     private static string MailField(FunctionRegistry reg, EvaluationContext ctx, string[] args, Func<MailMessage, string> selector)
@@ -156,29 +214,73 @@ public static class MailFunctions
 
     public static string MailStatsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool detailed)
     {
-        if (reg.Mail == null) return "0";
+        if (reg.Mail == null) return detailed ? "0 0 0 0 0 0" : "0 0";
         Dbref target = ctx.Executor;
         if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) && reg.Database != null)
         {
-            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim());
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
             if (p == null) return MushError.NoMatch.Text();
             target = p.Id;
         }
+        if (!CanAccessMail(reg, ctx, target))
+            return MushError.PermissionDenied.Text();
 
-        var stats = reg.Mail.GetMailStats(target);
+        var rec = reg.Mail.GetMailStats(target);
+        int sentTotal = 0, sentUnread = 0, sentCleared = 0;
+        if (reg.Database != null)
+        {
+            foreach (var obj in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Player))
+            {
+                for (int f = 0; f <= 15; f++)
+                {
+                    foreach (var m in reg.Mail.GetMessages(obj.Id, f, includeCleared: true).Where(m => m.Sender == target))
+                    {
+                        sentTotal++;
+                        if (!m.IsRead) sentUnread++;
+                        if (m.IsCleared) sentCleared++;
+                    }
+                }
+            }
+        }
+
         if (!detailed)
-            return stats.TotalCount.ToString();
-        return $"{stats.TotalCount} {stats.UnreadCount} {stats.ClearedCount}";
+            return $"{sentTotal} {rec.TotalCount}";
+        return $"{sentTotal} {sentUnread} {sentCleared} {rec.TotalCount} {rec.UnreadCount} {rec.ClearedCount}";
     }
 
     public static string MailFStats(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (reg.Mail == null) return "0 0 0";
-        int folder = args.Length > 0 && int.TryParse(args[0].Trim(), out int f)
-            ? f
-            : reg.Mail.GetCurrentFolder(ctx.Executor);
+        Dbref target = ctx.Executor;
+        int folder = reg.Mail.GetCurrentFolder(target);
 
-        var msgs = reg.Mail.GetMessages(ctx.Executor, folder, includeCleared: true);
+        if (args.Length == 1 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            if (int.TryParse(args[0].Trim(), out int f))
+                folder = f;
+            else if (reg.Database != null)
+            {
+                var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+                if (p == null) return MushError.NoMatch.Text();
+                target = p.Id;
+                folder = reg.Mail.GetCurrentFolder(target);
+            }
+        }
+        else if (args.Length >= 2)
+        {
+            if (reg.Database != null)
+            {
+                var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+                if (p == null) return MushError.NoMatch.Text();
+                target = p.Id;
+            }
+            if (!int.TryParse(args[1].Trim(), out folder))
+                return "#-1 FOLDER MUST BE INTEGER";
+        }
+        if (!CanAccessMail(reg, ctx, target))
+            return MushError.PermissionDenied.Text();
+
+        var msgs = reg.Mail.GetMessages(target, folder, includeCleared: true);
         int total = msgs.Count;
         int unread = msgs.Count(m => !m.IsRead);
         int cleared = msgs.Count(m => m.IsCleared);
@@ -194,9 +296,15 @@ public static class MailFunctions
         if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             return string.Join(" ", reg.MailAliases.Visible(viewer).Select(a => "+" + a.Name));
 
+        string sep = args.Length > 1 && !string.IsNullOrEmpty(args[1]) ? args[1] : " ";
         var alias = reg.MailAliases.Find(viewer, args[0].Trim());
-        if (alias == null) return MushError.NoMatch.Text();
-        return string.Join(" ", alias.Members.Select(m => m.ToString()));
+        if (alias == null)
+        {
+            if (args.Length == 1 && args[0].Length == 1)
+                return string.Join(args[0], reg.MailAliases.Visible(viewer).Select(a => "+" + a.Name));
+            return MushError.NoMatch.Text();
+        }
+        return string.Join(sep, alias.Members.Select(m => m.ToString()));
     }
 
     public static string MailFullStatsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
