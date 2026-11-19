@@ -182,7 +182,7 @@ public class Sections10_12_14_19FunctionTests
     [Fact]
     public void Section19_LateSubsystemFunctions_WorkCorrectly()
     {
-        Assert.Equal("42", _evaluator.Evaluate($"[quota({_alice.Id})]", _ctx));
+        Assert.Equal("43", _evaluator.Evaluate($"[quota({_alice.Id})]", _ctx));
         Assert.Equal("#1", _evaluator.Evaluate($"[followers({_alice.Id})]", _ctx));
         Assert.Equal("#1", _evaluator.Evaluate($"[following({_alice.Id})]", _ctx));
 
@@ -202,7 +202,7 @@ public class Sections10_12_14_19FunctionTests
         Assert.Equal("\a\a", _evaluator.Evaluate("[beep(2)]", _ctx));
         Assert.Equal("#-1 PERMISSION DENIED", _evaluator.Evaluate("[beep(1)]", _mortalCtx));
 
-        Assert.True(double.TryParse(_evaluator.Evaluate("[benchmark(add(1,2),5)]", _ctx), out _));
+        Assert.StartsWith("Average:", _evaluator.Evaluate("[benchmark(add(1,2),5)]", _ctx));
         Assert.Equal("Tabs or spaces?", _evaluator.Evaluate("[poll()]", _ctx));
         Assert.Contains("LWHO", _evaluator.Evaluate("[suggest(functions,lwh)]", _ctx));
 

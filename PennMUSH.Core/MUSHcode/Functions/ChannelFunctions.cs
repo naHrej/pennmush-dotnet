@@ -46,9 +46,23 @@ public static class ChannelFunctions
         var ch = FindChannel(reg, args[0]);
         if (ch == null) return MushError.NoMatch.Text();
 
-        int count = args.Length > 1 && int.TryParse(args[1].Trim(), out int c) && c > 0 ? c : 10;
-        var msgs = ch.GetRecentMessages(count);
-        return string.Join("\n", msgs.Select(m => m.Text));
+        int count = 10;
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            if (!int.TryParse(args[1].Trim(), out int parsed))
+                return MushError.ArgumentMustBePositiveInteger.Text();
+            if (parsed < 0) return MushError.ArgumentMustBePositiveInteger.Text();
+            count = parsed == 0 ? int.MaxValue : parsed;
+        }
+        int start = 1;
+        if (args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]) && (!int.TryParse(args[2].Trim(), out start) || start < 1))
+            return MushError.OutOfRange.Text();
+        string delim = args.Length > 3 && !string.IsNullOrEmpty(args[3]) ? args[3] : " ";
+        bool showStamp = args.Length > 4 && LogicFunctions.IsTruthy(args[4]);
+
+        var allMsgs = ch.GetRecentMessages(ch.BufferCapacity);
+        var slice = allMsgs.Skip(start - 1).Take(count);
+        return string.Join(delim, slice.Select(m => showStamp ? $"[{m.Timestamp:yyyy-MM-dd HH:mm:ss}] {m.Text}" : m.Text));
     }
 
     public static string CEmit(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -88,6 +102,26 @@ public static class ChannelFunctions
         var ch = FindChannel(reg, args[0]);
         if (ch == null) return MushError.NoMatch.Text();
 
+        if (args.Length >= 2 && !string.IsNullOrWhiteSpace(args[1]) && reg.Database != null)
+        {
+            var target = reg.Database.GetObject(DbFunctions.ParseDbref(args[1], ctx))
+                ?? reg.Database.MatchObject(ctx.Executor, args[1]);
+            if (target == null) return MushError.NoMatch.Text();
+            var member = ch.GetMember(target.Id);
+            if (member == null) return "#-1 NOT ON CHANNEL";
+            if (!longNames)
+            {
+                var usb = new StringBuilder();
+                if (member.IsMuted) usb.Append('G');
+                if (member.IsHidden) usb.Append('H');
+                return usb.ToString();
+            }
+            var ulist = new List<string>();
+            if (member.IsMuted) ulist.Add("Gag");
+            if (member.IsHidden) ulist.Add("Hide");
+            return string.Join(" ", ulist);
+        }
+
         if (!longNames)
         {
             var sb = new StringBuilder();
@@ -121,9 +155,12 @@ public static class ChannelFunctions
         if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             return string.Join(sep, reg.Channels.GetAllChannels().Select(c => c.Name));
 
-        var dbref = DbFunctions.ParseDbref(args[0], ctx);
-        if (!dbref.IsValid) return MushError.NoMatch.Text();
-        return string.Join(sep, reg.Channels.GetChannelsForPlayer(dbref).Select(c => c.Name));
+        var obj = reg.Database?.GetObject(DbFunctions.ParseDbref(args[0], ctx))
+            ?? reg.Database?.MatchObject(ctx.Executor, args[0]);
+        if (obj == null && args.Length == 1 && args[0].Length == 1)
+            return string.Join(args[0], reg.Channels.GetAllChannels().Select(c => c.Name));
+        if (obj == null) return MushError.NoMatch.Text();
+        return string.Join(sep, reg.Channels.GetChannelsForPlayer(obj.Id).Select(c => c.Name));
     }
 
     public static string CLock(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -131,10 +168,26 @@ public static class ChannelFunctions
         if (args.Length == 0 || reg.Channels == null) return MushError.Nothing.Text();
         int slash = args[0].IndexOf('/');
         string chName = slash >= 0 ? args[0].Substring(0, slash).Trim() : args[0].Trim();
-        string lockKind = slash >= 0 && slash < args[0].Length - 1 ? args[0].Substring(slash + 1).Trim() : "join";
+        string lockKind = slash >= 0 && slash < args[0].Length - 1 ? args[0].Substring(slash + 1).Trim().ToLowerInvariant() : "join";
+
+        if (lockKind is not ("join" or "speak" or "mod" or "see" or "hide"))
+            return "#-1 NO SUCH LOCK TYPE";
 
         var ch = FindChannel(reg, chName);
         if (ch == null) return MushError.NoMatch.Text();
+
+        if (args.Length >= 2)
+        {
+            if (!reg.SideEffectsEnabled || ctx.NoSideFX)
+                return MushError.PermissionDenied.Text();
+            var actor = reg.Database?.GetObject(ctx.Executor);
+            if (actor == null || (!actor.IsWizard && ch.Owner != actor.Id))
+                return MushError.PermissionDenied.Text();
+            var key = string.IsNullOrWhiteSpace(args[1]) ? null : PennMUSH.Core.Locks.LockParser.Parse(args[1]);
+            ch.SetLock(lockKind, args[1], key!);
+            return string.Empty;
+        }
+
         return ch.GetLockText(lockKind);
     }
 
@@ -185,7 +238,7 @@ public static class ChannelFunctions
 
     public static string CUsers(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Channels == null) return "0";
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || reg.Channels == null) return "#-1 NO CHANNEL GIVEN";
         var ch = FindChannel(reg, args[0]);
         return ch != null ? ch.Members.Count.ToString() : MushError.NoMatch.Text();
     }
@@ -196,10 +249,20 @@ public static class ChannelFunctions
         var ch = FindChannel(reg, args[0]);
         if (ch == null) return MushError.NoMatch.Text();
 
-        string filter = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "on";
+        string filter = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim().ToLowerInvariant() : "on";
+        if (filter is not ("on" or "off" or "all"))
+            return "#-1 INVALID ARGUMENT";
+        bool skipGagged = args.Length > 2 && LogicFunctions.IsTruthy(args[2]);
+
+        var looker = reg.Database?.GetObject(ctx.Executor);
+        bool privWho = PennMUSH.Core.Attributes.AttributePermissions.CanPrivWho(looker);
         var members = ch.Members.AsEnumerable();
-        if (filter == "on")
+        if (skipGagged)
+            members = members.Where(m => !m.IsMuted);
+        if (filter == "on" && !privWho)
             members = members.Where(m => !m.IsHidden);
+        else if (filter == "off")
+            members = members.Where(m => m.IsHidden);
 
         return string.Join(" ", members.Select(m => m.PlayerId.ToString()));
     }

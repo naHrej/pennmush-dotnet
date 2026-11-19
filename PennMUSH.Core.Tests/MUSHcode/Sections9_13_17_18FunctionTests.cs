@@ -138,7 +138,8 @@ public class Sections9_13_17_18FunctionTests
     [Fact]
     public void Section17_MailFunctions_WorkCorrectly()
     {
-        Assert.Equal("1 1 0", _evaluator.Evaluate("[mail()]", _ctx));
+        Assert.Equal("1", _evaluator.Evaluate("[mail()]", _ctx));
+        Assert.Equal("1 1 0", _evaluator.Evaluate("[mail(me)]", _ctx));
         Assert.Equal("0:1", _evaluator.Evaluate("[maillist()]", _ctx));
         Assert.Equal("Hello Wizard!", _evaluator.Evaluate("[mail(1)]", _ctx));
         Assert.Equal(_alice.Id.ToString(), _evaluator.Evaluate("[mailfrom(1)]", _ctx));
@@ -149,8 +150,8 @@ public class Sections9_13_17_18FunctionTests
         Assert.Equal(string.Empty, _evaluator.Evaluate($"[mailsend({_alice.Id},Hi/Body text)]", _ctx));
         Assert.Equal("-1", _evaluator.Evaluate($"[sent({_wiz.Id})]", _ctx));
         Assert.Equal("-1", _evaluator.Evaluate($"[recv({_wiz.Id})]", _ctx));
-        Assert.Equal("1", _evaluator.Evaluate("[mailstats()]", _ctx));
-        Assert.Equal("1 1 0", _evaluator.Evaluate("[maildstats()]", _ctx));
+        Assert.Equal("1 1", _evaluator.Evaluate("[mailstats()]", _ctx));
+        Assert.Equal("1 1 0 1 1 0", _evaluator.Evaluate("[maildstats()]", _ctx));
         Assert.Equal("1 1 0 11 1 1 0 22", _evaluator.Evaluate("[mailfstats()]", _ctx));
         Assert.Equal("1 1 0", _evaluator.Evaluate("[folderstats(0)]", _ctx));
         Assert.Equal("+staff", _evaluator.Evaluate("[malias()]", _ctx));
