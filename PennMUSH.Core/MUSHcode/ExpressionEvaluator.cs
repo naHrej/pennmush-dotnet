@@ -412,6 +412,9 @@ public class ExpressionEvaluator
             case 'n':
                 value = ApplyLeadingCase(EnactorName(context), capitalize);
                 return true;
+            case 'k':
+                value = ApplyLeadingCase(EnactorMoniker(context), capitalize);
+                return true;
             case 's':
                 value = ApplyLeadingCase(Pronoun(context, Subject), capitalize);
                 return true;
@@ -449,6 +452,15 @@ public class ExpressionEvaluator
     private string EnactorName(EvaluationContext context)
     {
         return FindObject(context.Enactor)?.Name ?? MushError.Nothing.Text();
+    }
+
+    private string EnactorMoniker(EvaluationContext context)
+    {
+        var obj = FindObject(context.Enactor);
+        if (obj == null)
+            return MushError.Nothing.Text();
+        var attr = obj.GetAttribute("MONIKER", _database);
+        return attr != null && !string.IsNullOrEmpty(attr.Value) ? attr.Value : obj.Name;
     }
 
     private string EnactorObjectId(EvaluationContext context)
@@ -518,7 +530,29 @@ public class ExpressionEvaluator
     {
         if (!capitalize || string.IsNullOrEmpty(value))
             return value;
-        return char.ToUpperInvariant(value[0]) + value[1..];
+
+        int i = 0;
+        while (i < value.Length && value[i] == '\x1B' && i + 1 < value.Length && value[i + 1] == '[')
+        {
+            int end = i + 2;
+            while (end < value.Length && (char.IsDigit(value[end]) || value[end] == ';' || value[end] == '?'))
+                end++;
+            if (end < value.Length && char.IsLetter(value[end]))
+            {
+                i = end + 1;
+                continue;
+            }
+            break;
+        }
+
+        if (i >= value.Length)
+            return value;
+
+        char upper = char.ToUpperInvariant(value[i]);
+        if (upper == value[i])
+            return value;
+
+        return string.Concat(value.AsSpan(0, i), new ReadOnlySpan<char>(ref upper), value.AsSpan(i + 1));
     }
 
 }

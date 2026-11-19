@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Presentation\colors.json" LogicalName="PennMUSH.Core.Presentation.colors.json" />
+  </ItemGroup>
+
 </Project>

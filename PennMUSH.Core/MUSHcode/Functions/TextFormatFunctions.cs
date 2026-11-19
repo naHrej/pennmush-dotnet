@@ -9,28 +9,11 @@ using System.Text.Json;
 using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Presentation;
 using PennMUSH.Core.Queue;
 
 public static class TextFormatFunctions
 {
-    private static readonly Dictionary<string, (int R, int G, int B, int Xterm, string Ansi16)> NamedColors = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["black"] = (0, 0, 0, 0, "x"),
-        ["red"] = (205, 0, 0, 1, "r"),
-        ["green"] = (0, 205, 0, 2, "g"),
-        ["yellow"] = (205, 205, 0, 3, "y"),
-        ["blue"] = (0, 0, 238, 4, "b"),
-        ["magenta"] = (205, 0, 205, 5, "m"),
-        ["cyan"] = (0, 205, 205, 6, "c"),
-        ["white"] = (229, 229, 229, 7, "w"),
-        ["gray"] = (127, 127, 127, 8, "hx"),
-        ["grey"] = (127, 127, 127, 8, "hx"),
-        ["orange"] = (255, 165, 0, 214, "y"),
-        ["pink"] = (255, 192, 203, 218, "hr"),
-        ["purple"] = (128, 0, 128, 129, "m"),
-        ["brown"] = (165, 42, 42, 130, "y")
-    };
-
     public static void Register(FunctionRegistry registry)
     {
         registry.Register("ANSI", (ctx, args) => AnsiFunc(registry, ctx, args));
@@ -51,126 +34,187 @@ public static class TextFormatFunctions
     public static string AnsiFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
-        string spec = args[0].Trim();
-        string text = args[1];
-        if (string.IsNullOrEmpty(text)) return string.Empty;
-        if (string.IsNullOrEmpty(spec) || spec == "n") return text;
+        if (string.IsNullOrEmpty(args[1])) return string.Empty;
 
-        var codes = new List<string>();
-        foreach (string part in spec.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            string token = part;
-            bool isBg = false;
-            if (token.StartsWith('/'))
-            {
-                isBg = true;
-                token = token[1..];
-            }
-            if (token.StartsWith('+'))
-                token = token[1..];
+        string spec = AnsiColorTable.StripAnsi(args[0]).Trim();
+        if (!AnsiColorTable.TryBuildAnsiSgr(spec, out string sgrOpen, out string sgrClose, out bool hasAnsi))
+            return "#-1 INVALID ANSI DEFINITION";
+        if (!hasAnsi)
+            return args[1];
 
-            int slash = token.IndexOf('/');
-            if (slash > 0)
-            {
-                if (!TryParseColorSpec(token[..slash], isBg: false, codes) ||
-                    !TryParseColorSpec(token[(slash + 1)..], isBg: true, codes))
-                    return "#-1 INVALID ANSI DEFINITION";
-                continue;
-            }
-
-            if (TryParseColorSpec(token, isBg, codes))
-                continue;
-
-            // Legacy compact single-letter codes (e.g. "hr", "u", "n")
-            foreach (char c in token)
-            {
-                string? code = c switch
-                {
-                    'h' => "1",
-                    'u' => "4",
-                    'f' => "5",
-                    'i' => "7",
-                    'n' => "0",
-                    'x' => "30", 'r' => "31", 'g' => "32", 'y' => "33",
-                    'b' => "34", 'm' => "35", 'c' => "36", 'w' => "37",
-                    'X' => "40", 'R' => "41", 'G' => "42", 'Y' => "43",
-                    'B' => "44", 'M' => "45", 'C' => "46", 'W' => "47",
-                    _ => null
-                };
-                if (code == null) return "#-1 INVALID ANSI DEFINITION";
-                codes.Add(code);
-            }
-        }
-
-        if (codes.Count == 0) return text;
-        return $"\x1B[{string.Join(";", codes)}m{text}\x1B[0m";
-    }
-
-    private static bool TryParseColorSpec(string token, bool isBg, List<string> codes)
-    {
-        if (string.IsNullOrEmpty(token)) return false;
-
-        if (token.StartsWith("xterm", StringComparison.OrdinalIgnoreCase) &&
-            int.TryParse(token.AsSpan(5), out int xterm) && xterm is >= 0 and <= 255)
-        {
-            codes.Add($"{(isBg ? 48 : 38)};5;{xterm}");
-            return true;
-        }
-
-        if (token.StartsWith('#') && token.Length == 7 &&
-            int.TryParse(token.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int r) &&
-            int.TryParse(token.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int g) &&
-            int.TryParse(token.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int b))
-        {
-            codes.Add($"{(isBg ? 48 : 38)};2;{r};{g};{b}");
-            return true;
-        }
-
-        if (token.Length > 1 && NamedColors.TryGetValue(token, out var nc))
-        {
-            codes.Add($"{(isBg ? 48 : 38)};2;{nc.R};{nc.G};{nc.B}");
-            return true;
-        }
-
-        return false;
+        return $"{sgrOpen}{args[1]}{sgrClose}";
     }
 
     public static string ColorsFunc(EvaluationContext ctx, string[] args)
     {
         if (args.Length >= 2 && !string.IsNullOrWhiteSpace(args[1]))
-        {
-            string cSpec = args[0].Trim().TrimStart('+');
-            string fmt = args[1].Trim().ToLowerInvariant();
-            if (!NamedColors.TryGetValue(cSpec, out var info))
-            {
-                if (cSpec.StartsWith('#') && cSpec.Length == 7 &&
-                    int.TryParse(cSpec.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int r) &&
-                    int.TryParse(cSpec.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int g) &&
-                    int.TryParse(cSpec.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int b))
-                {
-                    info = (r, g, b, 0, "w");
-                }
-                else
-                {
-                    return "#-1 INVALID COLOR";
-                }
-            }
+            return FormatColorsConversion(args[0], args[1]);
 
-            return fmt switch
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
+            return string.Join(" ", AnsiColorTable.NamedColorNames);
+
+        string pattern = args[0].Trim();
+        return string.Join(" ", AnsiColorTable.AllColorNames
+            .Where(name => PatternMatcher.Match(pattern, name, out _)));
+    }
+
+    private static string FormatColorsConversion(string rawColorSpec, string rawFormats)
+    {
+        string colorSpec = AnsiColorTable.StripAnsi(rawColorSpec).Trim();
+        if (!AnsiColorTable.TryParseAnsiSpec(colorSpec, out var parsed))
+        {
+            if (AnsiColorTable.TryGetNamedColor(colorSpec, out var namedEntry))
             {
-                "hex" => $"#{info.R:x2}{info.G:x2}{info.B:x2}",
-                "rgb" => $"{info.R} {info.G} {info.B}",
-                "256color" or "xterm" => $"xterm{info.Xterm}",
-                "16color" => info.Ansi16,
-                "name" => cSpec.ToLowerInvariant(),
-                _ => $"#{info.R:x2}{info.G:x2}{info.B:x2}"
-            };
+                parsed = new ParsedAnsiSpec
+                {
+                    Foreground = new ParsedColorValue(
+                        namedEntry.R,
+                        namedEntry.G,
+                        namedEntry.B,
+                        namedEntry.Xterm,
+                        namedEntry.Ansi16Index,
+                        namedEntry.IsHiliteAnsi16,
+                        $"38;2;{namedEntry.R};{namedEntry.G};{namedEntry.B}",
+                        $"48;2;{namedEntry.R};{namedEntry.G};{namedEntry.B}",
+                        $"+{namedEntry.Name}")
+                };
+            }
+            else
+            {
+                return "#-1 INVALID COLOR";
+            }
         }
 
-        string pattern = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) ? args[0].Trim() : "*";
-        return string.Join(" ", NamedColors.Keys
-            .Where(k => PatternMatcher.Match(pattern, k, out _))
-            .OrderBy(k => k, StringComparer.OrdinalIgnoreCase));
+        bool hasFg = parsed.Foreground is { IsDefault: false };
+        bool hasBg = parsed.Background is { IsDefault: false };
+        if (!hasFg && !hasBg)
+            return "#-1 COLORS() REQUIRES AT LEAST ONE COLOR";
+
+        string formatMode = "hex";
+        bool includeStyles = false;
+
+        foreach (string token in rawFormats.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            switch (token.ToLowerInvariant())
+            {
+                case "hex":
+                case "x":
+                    formatMode = "hex";
+                    break;
+                case "rgb":
+                case "r":
+                    formatMode = "rgb";
+                    break;
+                case "256color":
+                case "xterm256":
+                case "d":
+                    formatMode = "256color";
+                    break;
+                case "xterm256x":
+                case "h":
+                    formatMode = "xterm256x";
+                    break;
+                case "xterm":
+                    formatMode = "xterm";
+                    break;
+                case "16color":
+                case "c":
+                    formatMode = "16color";
+                    break;
+                case "name":
+                    formatMode = "name";
+                    break;
+                case "auto":
+                    formatMode = "auto";
+                    break;
+                case "styles":
+                    includeStyles = true;
+                    break;
+                default:
+                    return "#-1 INVALID ARGUMENT";
+            }
+        }
+
+        var sb = new StringBuilder();
+        if (includeStyles)
+        {
+            if (!hasFg && parsed.Bold) sb.Append('h');
+            if (parsed.Underline) sb.Append('u');
+            if (parsed.Flash) sb.Append('f');
+            if (parsed.Inverse) sb.Append('i');
+        }
+
+        bool emitFg = parsed.Foreground.HasValue && (formatMode == "16color" || !parsed.Foreground.Value.IsDefault);
+        bool emitBg = parsed.Background.HasValue && (formatMode == "16color" || !parsed.Background.Value.IsDefault);
+
+        if (emitFg)
+        {
+            string? formattedFg = FormatColorComponent(parsed.Foreground!.Value, isBg: false, parsed.Bold, formatMode);
+            if (formattedFg == null)
+                return "#-1 NO MATCHING COLOR NAME";
+            sb.Append(formattedFg);
+        }
+
+        if (emitBg)
+        {
+            if (formatMode != "16color")
+                sb.Append('/');
+
+            string? formattedBg = FormatColorComponent(parsed.Background!.Value, isBg: true, hiliteFg: false, formatMode);
+            if (formattedBg == null)
+                return "#-1 NO MATCHING COLOR NAME";
+            sb.Append(formattedBg);
+        }
+
+        return sb.ToString();
+    }
+
+    private static string? FormatColorComponent(ParsedColorValue val, bool isBg, bool hiliteFg, string formatMode)
+    {
+        if (val.IsDefault)
+            return formatMode == "16color" ? (isBg ? "D" : "d") : string.Empty;
+
+        bool applyBright = !isBg && val.IsLegacyAnsi16 && hiliteFg;
+        byte r = val.R;
+        byte g = val.G;
+        byte b = val.B;
+        int xterm = val.Xterm;
+        if (applyBright)
+        {
+            (r, g, b) = AnsiColorTable.GetAnsi16Rgb(val.Ansi16Index, hilite: true);
+            xterm = AnsiColorTable.RgbToNearestXterm(r, g, b);
+        }
+
+        switch (formatMode)
+        {
+            case "hex":
+                return $"#{r:x2}{g:x2}{b:x2}";
+            case "rgb":
+                return $"{r} {g} {b}";
+            case "256color":
+                return xterm.ToString(CultureInfo.InvariantCulture);
+            case "xterm256x":
+                return xterm.ToString("x", CultureInfo.InvariantCulture);
+            case "xterm":
+                return $"xterm{xterm}";
+            case "16color":
+            {
+                char letter = AnsiColorTable.GetAnsi16Letter(val.Ansi16Index);
+                if (isBg)
+                    return char.ToUpperInvariant(letter).ToString();
+                bool isHilite = val.Ansi16Hilite || hiliteFg;
+                return isHilite ? $"{letter}h" : letter.ToString();
+            }
+            case "name":
+            {
+                var names = AnsiColorTable.FindNamesByRgb(r, g, b);
+                return names.Count > 0 ? string.Join(" ", names) : null;
+            }
+            case "auto":
+                return applyBright ? val.AutoToken + "h" : val.AutoToken;
+            default:
+                return $"#{r:x2}{g:x2}{b:x2}";
+        }
     }
 
     public static string AccentFunc(EvaluationContext ctx, string[] args)
@@ -269,7 +313,11 @@ public static class TextFormatFunctions
         if (stripAccents)
             result = StringFunctions.StripAccents(ctx, [result]);
         if (encodeHtml)
-            result = System.Net.WebUtility.HtmlEncode(StringFunctions.Strip(ctx, [result]));
+        {
+            result = keepAnsi
+                ? AnsiToHtmlTranslator.Translate(result, escapeHtml: true, ColorDepth.TrueColor)
+                : System.Net.WebUtility.HtmlEncode(result);
+        }
         return result;
     }
 

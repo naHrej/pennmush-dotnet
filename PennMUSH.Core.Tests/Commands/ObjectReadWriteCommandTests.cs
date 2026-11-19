@@ -123,13 +123,13 @@ public class ObjectReadWriteCommandTests
         var player = _db.GetObject(_owner)!;
 
         var code = _dispatcher.Dispatch(_owner, $"@decompile #{lamp.Id.Value}", _db);
-        _dispatcher.Dispatch(_owner, $"@moniker #{lamp.Id.Value}=Glass Lamp", _db);
+        _dispatcher.Dispatch(_owner, $"@moniker #{lamp.Id.Value}=\x1B[33mGlass Lamp\x1B[0m", _db);
         var sent = _dispatcher.Dispatch(_owner, $"@message #{player.Id.Value}=#{lamp.Id.Value}/DESC", _db);
 
         Assert.Contains("&DESC Lamp=glass", code.Notifications);
         Assert.Contains($"@@ Lamp ({lamp.Id})", code.Notifications);
         Assert.Contains("@create Lamp", code.Notifications);
-        Assert.Equal("Glass Lamp", lamp.GetAttribute("MONIKER")!.Value);
+        Assert.Equal("\x1B[33mGlass Lamp\x1B[0m", lamp.GetAttribute("MONIKER")!.Value);
         Assert.Equal("glass", sent.TargetedNotifications.Single(n => n.Scope == NotificationScope.Target).Message);
     }
 

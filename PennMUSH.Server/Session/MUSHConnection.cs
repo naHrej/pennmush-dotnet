@@ -134,7 +134,12 @@ public class MUSHConnection
             return;
         }
 
-        string html = "<div>" + ApplyHtmlBreaks(rendered.Text) + "</div>";
+        bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(rendered.Text);
+        string body = hadAnsi
+            ? AnsiToHtmlTranslator.Translate(rendered.Text, escapeHtml: false, EffectiveHtmlColorDepth())
+            : rendered.Text;
+
+        string html = "<div>" + ApplyHtmlBreaks(body) + "</div>";
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
         {
             // A div is a block, so the next line starts on its own. Keep a wire
@@ -143,7 +148,11 @@ public class MUSHConnection
             html += "\r\n";
         }
 
-        await DeliverTextAsync(html, ct, preserveHtml: true);
+        await DeliverTextAsync(
+            html,
+            ct,
+            preserveHtml: true,
+            plainText: hadAnsi ? AnsiToHtmlTranslator.StripAnsi(rendered.Text) : null);
     }
 
     public async Task SendRawAsync(string text, CancellationToken ct = default)
@@ -167,8 +176,15 @@ public class MUSHConnection
             return;
 
         string outText = rendered.Text;
+        string? plainText = null;
         if (Capabilities.SupportsHtml)
         {
+            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(outText);
+            if (hadAnsi)
+            {
+                plainText = AnsiToHtmlTranslator.StripAnsi(outText);
+                outText = AnsiToHtmlTranslator.Translate(outText, escapeHtml: false, EffectiveHtmlColorDepth());
+            }
             outText = ApplyHtmlBreaks(outText);
             if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
             {
@@ -176,7 +192,7 @@ public class MUSHConnection
             }
         }
 
-        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames);
+        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames, plainText: plainText);
     }
 
     public async Task SendPromptAsync(string text, CancellationToken ct = default)
@@ -205,11 +221,20 @@ public class MUSHConnection
         if (rendered.HadFrames && rendered.Text.Length == 0)
             return;
 
-        string outText = Capabilities.SupportsHtml
-            ? ApplyHtmlBreaks(rendered.Text)
-            : rendered.Text;
+        string outText = rendered.Text;
+        string? plainText = null;
+        if (Capabilities.SupportsHtml)
+        {
+            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(outText);
+            if (hadAnsi)
+            {
+                plainText = AnsiToHtmlTranslator.StripAnsi(outText);
+                outText = AnsiToHtmlTranslator.Translate(outText, escapeHtml: false, EffectiveHtmlColorDepth());
+            }
+            outText = ApplyHtmlBreaks(outText);
+        }
 
-        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames);
+        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames, plainText: plainText);
     }
 
     public async Task SendGmcpAsync(string package, string payload, CancellationToken ct = default)
@@ -248,10 +273,23 @@ public class MUSHConnection
         // HTML screen on raw newlines, so newlines become spaces instead of <br/>.
         string compact = StripAccents ? AccentStripper.Strip(markup) : markup;
         compact = compact.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\n', ' ');
+        string? plainText = null;
+        if (AnsiToHtmlTranslator.ContainsAnsi(compact))
+        {
+            plainText = AnsiToHtmlTranslator.StripAnsi(compact);
+            compact = AnsiToHtmlTranslator.Translate(compact, escapeHtml: false, EffectiveHtmlColorDepth());
+        }
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
             compact += "\r\n";
 
-        await DeliverTextAsync(compact, ct, preserveHtml: true);
+        await DeliverTextAsync(compact, ct, preserveHtml: true, plainText: plainText);
+    }
+
+    private ColorDepth EffectiveHtmlColorDepth()
+    {
+        if (!string.IsNullOrEmpty(ColorStyle) && !ColorStyle.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            return Capabilities.ColorMode;
+        return Capabilities.ColorMode == ColorDepth.None ? ColorDepth.None : ColorDepth.TrueColor;
     }
 
     private async Task SendWebSocketJsonPayloadsAsync(IReadOnlyList<string> payloads, CancellationToken ct)
@@ -270,14 +308,14 @@ public class MUSHConnection
         }
     }
 
-    private async Task DeliverTextAsync(string text, CancellationToken ct, bool preserveHtml = false)
+    private async Task DeliverTextAsync(string text, CancellationToken ct, bool preserveHtml = false, string? plainText = null)
     {
         if (ProtocolMode == ClientProtocolMode.MujsWebSocket)
         {
             var output = new TerminalOutputPayload(
                 Stream: "main",
                 Html: text,
-                Plain: text.Replace("\r", "").Replace("\n", "")
+                Plain: (plainText ?? text).Replace("\r", "").Replace("\n", "")
             );
             await SendEnvelopeAsync("terminal.output", output, null, ct);
             return;

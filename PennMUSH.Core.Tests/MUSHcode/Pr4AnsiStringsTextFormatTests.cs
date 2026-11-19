@@ -107,9 +107,11 @@ public class Pr4AnsiStringsTextFormatTests
         Assert.Equal("#-1 INVALID ANSI DEFINITION", _evaluator.Evaluate("[ansi(???,hi)]", _wizCtx));
         Assert.Equal(string.Empty, _evaluator.Evaluate("[ansi(r,)]", _wizCtx));
 
-        // COLORS
-        Assert.Equal("#cd0000", _evaluator.Evaluate("[colors(red,hex)]", _wizCtx));
-        Assert.Equal("205 0 0", _evaluator.Evaluate("[colors(red,rgb)]", _wizCtx));
+        // COLORS (legacy 16-color vs full X11/CSS color table)
+        Assert.Equal("#cd0000", _evaluator.Evaluate("[colors(r,hex)]", _wizCtx));
+        Assert.Equal("205 0 0", _evaluator.Evaluate("[colors(r,rgb)]", _wizCtx));
+        Assert.Equal("#ff0000", _evaluator.Evaluate("[colors(red,hex)]", _wizCtx));
+        Assert.Equal("255 0 0", _evaluator.Evaluate("[colors(red,rgb)]", _wizCtx));
 
         // ACCENT equal length error
         Assert.Equal("#-1 STRING LENGTHS MUST BE EQUAL", _evaluator.Evaluate("[accent(ab,')]", _wizCtx));
