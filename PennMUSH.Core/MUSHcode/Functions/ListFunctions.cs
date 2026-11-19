@@ -178,7 +178,7 @@ public static class ListFunctions
         string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
         string target = args[1];
         if (delim.Length == 1 && target.Contains(delim[0]))
-            return "#-1 CAN ONLY TEST ONE ELEMENT";
+            return MushError.CanOnlyTestOneElement.Text();
         var list = SplitList(args[0], delim);
 
         for (int i = 0; i < list.Count; i++)
@@ -834,7 +834,7 @@ public static class ListFunctions
         string word = args[2];
 
         if (l1.Count != l2.Count)
-            return "#-1 NUMBER OF WORDS MUST BE EQUAL";
+            return MushError.NumberOfWordsMustBeEqual.Text();
 
         for (int i = 0; i < l1.Count; i++)
         {
@@ -880,7 +880,7 @@ public static class ListFunctions
         var l2 = SplitList(args[2], delim);
 
         if (l1.Count != l2.Count)
-            return "#-1 LISTS MUST BE OF EQUAL SIZE";
+            return MushError.ListsMustBeOfEqualSize.Text();
         if (l1.Count == 0)
             return string.Empty;
 

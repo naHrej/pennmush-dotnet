@@ -30,9 +30,9 @@ public class HelpCommandHandler : ICommandHandler
         {
             string? suggestion = _suggestions?.Closest("HELP", topic);
             if (suggestion != null)
-                context.Notify(ForClient($"No help entry for '{topic}'. Did you mean '{suggestion}'?", context));
+                context.Notify(ForClient(Feedback.NoHelpEntryDidYouMean.Text(("topic", topic), ("suggestion", suggestion)), context));
             else
-                context.Notify(ForClient($"No entry for '{topic}'.", context));
+                context.Notify(ForClient(Feedback.NoEntryFor.Text(("topic", topic)), context));
             return false;
         }
 

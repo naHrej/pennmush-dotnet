@@ -108,7 +108,7 @@ public static class ChannelFunctions
                 ?? reg.Database.MatchObject(ctx.Executor, args[1]);
             if (target == null) return MushError.NoMatch.Text();
             var member = ch.GetMember(target.Id);
-            if (member == null) return "#-1 NOT ON CHANNEL";
+            if (member == null) return MushError.NotOnChannel.Text();
             if (!longNames)
             {
                 var usb = new StringBuilder();
@@ -171,7 +171,7 @@ public static class ChannelFunctions
         string lockKind = slash >= 0 && slash < args[0].Length - 1 ? args[0].Substring(slash + 1).Trim().ToLowerInvariant() : "join";
 
         if (lockKind is not ("join" or "speak" or "mod" or "see" or "hide"))
-            return "#-1 NO SUCH LOCK TYPE";
+            return MushError.NoSuchLockType.Text();
 
         var ch = FindChannel(reg, chName);
         if (ch == null) return MushError.NoMatch.Text();
@@ -238,7 +238,7 @@ public static class ChannelFunctions
 
     public static string CUsers(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || reg.Channels == null) return "#-1 NO CHANNEL GIVEN";
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]) || reg.Channels == null) return MushError.NoChannelGiven.Text();
         var ch = FindChannel(reg, args[0]);
         return ch != null ? ch.Members.Count.ToString() : MushError.NoMatch.Text();
     }
@@ -251,7 +251,7 @@ public static class ChannelFunctions
 
         string filter = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim().ToLowerInvariant() : "on";
         if (filter is not ("on" or "off" or "all"))
-            return "#-1 INVALID ARGUMENT";
+            return MushError.InvalidArgument.Text();
         bool skipGagged = args.Length > 2 && LogicFunctions.IsTruthy(args[2]);
 
         var looker = reg.Database?.GetObject(ctx.Executor);

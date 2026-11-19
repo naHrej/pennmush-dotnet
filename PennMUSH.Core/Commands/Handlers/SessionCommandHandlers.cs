@@ -94,8 +94,8 @@ public class HideCommandHandler : ICommandHandler
         if (session == null)
         {
             context.Notify(actor.IsWizard || actor.HasPower("See_All")
-                ? "Couldn't find that descriptor."
-                : "Permission denied.");
+                ? Feedback.CouldntFindThatDescriptor
+                : Feedback.PermissionDenied);
             return false;
         }
         if (!session.LoggedIn)
@@ -111,7 +111,7 @@ public class HideCommandHandler : ICommandHandler
 
         bool hide = forced ?? !session.Hidden;
         _sessions.SetHidden(descriptor, hide);
-        context.Notify(hide ? "Connection hidden." : "Connection unhidden.");
+        context.Notify(hide ? Feedback.ConnectionHidden : Feedback.ConnectionUnhidden);
         return true;
     }
 
@@ -421,7 +421,7 @@ internal static class SessionReport
     private static string RowName(ObjectDatabase db, SessionInfo item)
     {
         if (!item.LoggedIn)
-            return "Connecting...";
+            return Feedback.Connecting.Text();
         return db.GetObject(item.PlayerId)?.Name ?? "Unknown";
     }
 

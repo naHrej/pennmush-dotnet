@@ -67,7 +67,7 @@ public class CronCommandHandler : ICommandHandler
             if (_scheduler.AddOrUpdateJob(id, expression, executor.Id, target, commandToRun, out string? error))
             {
                 var job = _scheduler.GetJob(id)!;
-                context.Notify($"Cron job '{id}' added. Next run at: {job.NextRun:yyyy-MM-dd HH:mm:ss} UTC.");
+                context.Notify(Feedback.CronJobAddedNextRun, ("job", id), ("next", $"{job.NextRun:yyyy-MM-dd HH:mm:ss}"));
                 return true;
             }
 
@@ -108,7 +108,7 @@ public class CronCommandHandler : ICommandHandler
             if (_scheduler.ResumeJob(id))
             {
                 var job = _scheduler.GetJob(id)!;
-                context.Notify($"Cron job '{id}' resumed. Next run at: {job.NextRun:yyyy-MM-dd HH:mm:ss} UTC.");
+                context.Notify(Feedback.CronJobResumedNextRun, ("job", id), ("next", $"{job.NextRun:yyyy-MM-dd HH:mm:ss}"));
                 return true;
             }
             context.Notify(Feedback.CronJobNotFound, ("job", $"{id}"));

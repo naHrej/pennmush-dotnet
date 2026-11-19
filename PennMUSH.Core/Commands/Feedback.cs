@@ -1,6 +1,7 @@
 namespace PennMUSH.Core.Commands;
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 /// <summary>
@@ -635,6 +636,81 @@ public enum Feedback
     ZoneSet,
     ZoneUpdatedOnObjects,
     ZoneUpdatedOnObjectsWereLeftUnchanged,
+    AttribsList,
+    BenchmarkReport,
+    BroadcastingThisRoom,
+    BuysFrom,
+    ClientAudio,
+    ClientCodeEditorOpened,
+    ClientOob,
+    ClientStyle,
+    CommandDisabled,
+    CommandsEntry,
+    CommandsEntryThisRoom,
+    Connecting,
+    ConnectionHidden,
+    ConnectionUnhidden,
+    CouldntFindThatDescriptor,
+    CronJobAddedNextRun,
+    CronJobResumedNextRun,
+    DecompileNoAttributesMatch,
+    Disabled,
+    Enabled,
+    EndRecall,
+    FlagDisabled,
+    FlagEnabled,
+    FlagNamesMayNotContainSpaces,
+    FlagNamesMustBeLongerThanOneCharacter,
+    FunctionAdded,
+    FunctionsAreNotAvailable,
+    FunctionUpdated,
+    GarbageIsGarbage,
+    ICantFindThatItemHere,
+    ICantFindThatItemWithThatPriceHere,
+    ICantTellWhichOneToFollow,
+    ICantTellWhichOneToStopFollowing,
+    IDontUnderstandThatSearch,
+    IsListeningWithOwner,
+    IsntFollowingYou,
+    IsntSellingThatItem,
+    IsntSellingThatItemForThatPrice,
+    IsUnlocked,
+    KickedCommands,
+    MailNoSubject,
+    MotdCleared,
+    MotdSet,
+    NoEntryFor,
+    NoHelpEntryDidYouMean,
+    NoMatchingAccessRule,
+    NoMonikerSet,
+    NothingToPurge,
+    PagesMessage,
+    PurgedObjects,
+    QueueFor,
+    QueueForAll,
+    RestrictionsModified,
+    RestrictionsUnchanged,
+    SpeakDefaultSayVerb,
+    SpeakSays,
+    ThatSearchIsNotAvailable,
+    ThatsNotABuiltinFunction,
+    ThatWouldCauseAZoneLoop,
+    TheFollowingCommandsHaveHooks,
+    UpSince,
+    Used,
+    UserFunctions,
+    WhatDoYouWantToDecompile,
+    YouAreFollowedBy,
+    YouAreFollowing,
+    YouBeginFollowing,
+    YouBuyFrom,
+    YouCantDoThatWhileFixed,
+    YouDontControlThat,
+    YouHaveNoDoingSet,
+    YouMustProvideANameForTheFlag,
+    YouPageWith,
+    YourDoingIs,
+    YoureNotAllowedToFollow,
 }
 
 public static class FeedbackText
@@ -1267,9 +1343,84 @@ public static class FeedbackText
         [Feedback.ZoneSet] = "Zone set.",
         [Feedback.ZoneUpdatedOnObjects] = "Zone updated on {{value}} objects.",
         [Feedback.ZoneUpdatedOnObjectsWereLeftUnchanged] = "Zone updated on {{value}} objects. {{value2}} were left unchanged.",
+        [Feedback.AttribsList] = "Attribs: {{value}}",
+        [Feedback.BenchmarkReport] = "Average: {{avg}}   Min: {{min}}   Max: {{max}}",
+        [Feedback.BroadcastingThisRoom] = "{{value}} (this room) [broadcasting].",
+        [Feedback.BuysFrom] = "{{actor}} buys a {{item}} from {{vendor}}.",
+        [Feedback.ClientAudio] = "[Client Audio: {{value}}]",
+        [Feedback.ClientCodeEditorOpened] = "[Client] Code editor opened for {{value}}.",
+        [Feedback.ClientOob] = "[Client OOB: {{value}}]",
+        [Feedback.ClientStyle] = "[Client Style: {{value}}]",
+        [Feedback.CommandDisabled] = "Command disabled.",
+        [Feedback.CommandsEntry] = "{{value}} [commands].",
+        [Feedback.CommandsEntryThisRoom] = "{{value}} (this room) [commands].",
+        [Feedback.Connecting] = "Connecting...",
+        [Feedback.ConnectionHidden] = "Connection hidden.",
+        [Feedback.ConnectionUnhidden] = "Connection unhidden.",
+        [Feedback.CouldntFindThatDescriptor] = "Couldn't find that descriptor.",
+        [Feedback.CronJobAddedNextRun] = "Cron job '{{job}}' added. Next run at: {{next}} UTC.",
+        [Feedback.CronJobResumedNextRun] = "Cron job '{{job}}' resumed. Next run at: {{next}} UTC.",
+        [Feedback.DecompileNoAttributesMatch] = "{{prefix}}@@ No attributes match '{{pattern}}'. @@",
+        [Feedback.Disabled] = "Disabled.",
+        [Feedback.Enabled] = "Enabled.",
+        [Feedback.EndRecall] = "--- End recall ---",
+        [Feedback.FlagDisabled] = "Flag {{flag}} disabled.",
+        [Feedback.FlagEnabled] = "Flag {{flag}} enabled.",
+        [Feedback.FlagNamesMayNotContainSpaces] = "Flag names may not contain spaces.",
+        [Feedback.FlagNamesMustBeLongerThanOneCharacter] = "Flag names must be longer than one character.",
+        [Feedback.FunctionAdded] = "Function added.",
+        [Feedback.FunctionsAreNotAvailable] = "Functions are not available.",
+        [Feedback.FunctionUpdated] = "Function updated.",
+        [Feedback.GarbageIsGarbage] = "Garbage is garbage.",
+        [Feedback.ICantFindThatItemHere] = "I can't find that item here.",
+        [Feedback.ICantFindThatItemWithThatPriceHere] = "I can't find that item with that price here.",
+        [Feedback.ICantTellWhichOneToFollow] = "I can't tell which one to follow.",
+        [Feedback.ICantTellWhichOneToStopFollowing] = "I can't tell which one to stop following.",
+        [Feedback.IDontUnderstandThatSearch] = "I don't understand that search.",
+        [Feedback.IsListeningWithOwner] = "{{value}} [owner: {{owner}}] is listening.",
+        [Feedback.IsntFollowingYou] = "{{value}} isn't following you.",
+        [Feedback.IsntSellingThatItem] = "{{value}} isn't selling that item.",
+        [Feedback.IsntSellingThatItemForThatPrice] = "{{value}} isn't selling that item for that price",
+        [Feedback.IsUnlocked] = "{{value}} is unlocked.",
+        [Feedback.KickedCommands] = "Kicked {{count}} command{{plural}}.",
+        [Feedback.MailNoSubject] = "(No Subject)",
+        [Feedback.MotdCleared] = "{{label}} cleared.",
+        [Feedback.MotdSet] = "{{label}} set.",
+        [Feedback.NoEntryFor] = "No entry for '{{topic}}'.",
+        [Feedback.NoHelpEntryDidYouMean] = "No help entry for '{{topic}}'. Did you mean '{{suggestion}}'?",
+        [Feedback.NoMatchingAccessRule] = "No matching access rule",
+        [Feedback.NoMonikerSet] = "No moniker set.",
+        [Feedback.NothingToPurge] = "Nothing to purge.",
+        [Feedback.PagesMessage] = "{{sender}} pages: {{message}}",
+        [Feedback.PurgedObjects] = "Purged {{count}} object{{plural}}.",
+        [Feedback.QueueFor] = "Queue for {{value}}:",
+        [Feedback.QueueForAll] = "Queue for all:",
+        [Feedback.RestrictionsModified] = "{{label}} - Restrictions modified.",
+        [Feedback.RestrictionsUnchanged] = "{{label}} - Restrictions unchanged.",
+        [Feedback.SpeakDefaultSayVerb] = "says,",
+        [Feedback.SpeakSays] = "{{speaker}} {{verb}} \"{{text}}\"",
+        [Feedback.ThatSearchIsNotAvailable] = "That search is not available.",
+        [Feedback.ThatsNotABuiltinFunction] = "That's not a builtin function.",
+        [Feedback.ThatWouldCauseAZoneLoop] = "That would cause a zone loop.",
+        [Feedback.TheFollowingCommandsHaveHooks] = "The following commands have hooks: {{value}}",
+        [Feedback.UpSince] = "Up since {{start}} ({{elapsed}}).",
+        [Feedback.Used] = "Used.",
+        [Feedback.UserFunctions] = "User functions: {{value}}",
+        [Feedback.WhatDoYouWantToDecompile] = "What do you want to @decompile?",
+        [Feedback.YouAreFollowedBy] = "You are followed by: {{value}}",
+        [Feedback.YouAreFollowing] = "You are following: {{value}}",
+        [Feedback.YouBeginFollowing] = "You begin following {{value}}.",
+        [Feedback.YouBuyFrom] = "You buy a {{item}} from {{vendor}}.",
+        [Feedback.YouCantDoThatWhileFixed] = "You can't do that while fixed!",
+        [Feedback.YouDontControlThat] = "You don't control that.",
+        [Feedback.YouHaveNoDoingSet] = "You have no DOING set.",
+        [Feedback.YouMustProvideANameForTheFlag] = "You must provide a name for the flag.",
+        [Feedback.YouPageWith] = "You page {{target}} with '{{message}}'.",
+        [Feedback.YourDoingIs] = "Your DOING is: {{value}}",
+        [Feedback.YoureNotAllowedToFollow] = "You're not allowed to follow.",
     };
 
-    private static readonly Dictionary<Feedback, string> Overrides = new();
+    private static readonly ConcurrentDictionary<Feedback, string> Overrides = new();
 
     /// <summary>
     /// Replace the sentence for this server. Tokens in the new sentence
@@ -1282,6 +1433,21 @@ public static class FeedbackText
     }
 
     public static void ResetTemplates() => Overrides.Clear();
+
+    public static string GetTemplate(Feedback message)
+    {
+        if (Overrides.TryGetValue(message, out var template) || Defaults.TryGetValue(message, out template))
+            return template;
+        throw new ArgumentOutOfRangeException(nameof(message), message, "No template for this reply.");
+    }
+
+    public static IReadOnlyDictionary<Feedback, string> GetAllTemplates()
+    {
+        var result = new Dictionary<Feedback, string>(Defaults.Count);
+        foreach (Feedback message in Enum.GetValues<Feedback>())
+            result[message] = GetTemplate(message);
+        return result;
+    }
 
     /// <summary>
     /// The sentence for this reply. Each {{token}} needs a name and value.

@@ -309,7 +309,7 @@ public static class ConnectionAndZoneFunctions
             var zone = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx));
             if (zone == null) return string.Empty;
             if (zone.Type == ObjectType.Player && !zone.HasFlag("SHARED"))
-                return "#-1 INVALID ZONE";
+                return MushError.InvalidZone.Text();
             if (mode == WhoMode.Zone && !seeHidden && zone.GetLock(PennMUSH.Core.Locks.LockType.Zone) != null && !zone.EvalLock(PennMUSH.Core.Locks.LockType.Zone, ctx.Executor, reg.Database))
                 return MushError.PermissionDenied.Text();
             snaps = snaps.Where(s =>

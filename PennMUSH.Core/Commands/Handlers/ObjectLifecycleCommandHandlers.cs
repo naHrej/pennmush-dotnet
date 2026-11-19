@@ -140,7 +140,10 @@ public class PurgeCommandHandler : ICommandHandler
             count++;
         }
 
-        context.Notify(count == 0 ? "Nothing to purge." : $"Purged {count} object{(count == 1 ? "" : "s")}.");
+        if (count == 0)
+            context.Notify(Feedback.NothingToPurge);
+        else
+            context.Notify(Feedback.PurgedObjects, ("count", $"{count}"), ("plural", count == 1 ? "" : "s"));
         return true;
     }
 }
@@ -509,7 +512,10 @@ public class DoingCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
             var doing = execObj.GetAttribute("DOING");
-            context.Notify(doing != null ? $"Your DOING is: {doing.Value}" : "You have no DOING set.");
+            if (doing != null)
+                context.Notify(Feedback.YourDoingIs, ("value", doing.Value));
+            else
+                context.Notify(Feedback.YouHaveNoDoingSet);
             return true;
         }
 

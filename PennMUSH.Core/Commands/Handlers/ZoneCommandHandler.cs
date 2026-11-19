@@ -102,18 +102,18 @@ internal static class ZoneOperations
     {
         var actor = db.GetObject(context.Executor);
         if (actor == null)
-            return "Permission denied.";
+            return Feedback.PermissionDenied.Text();
         if (!Controls(actor, thing))
-            return "You don't control that.";
+            return Feedback.YouDontControlThat.Text();
         if (zone == null)
         {
             thing.ClearZones();
             return null;
         }
         if (WouldLoop(thing.Id, zone.Id, db))
-            return "That would cause a zone loop.";
+            return Feedback.ThatWouldCauseAZoneLoop.Text();
         if (!Controls(actor, zone) && !zone.EvalLock(LockType.Chzone, context.Executor, db))
-            return "Permission denied.";
+            return Feedback.PermissionDenied.Text();
 
         bool keepPrivileges = preserve && actor.IsWizard;
         if (thing.Type != ObjectType.Player && !keepPrivileges)
@@ -180,7 +180,7 @@ public class ChzoneCommandHandler : ICommandHandler
             return false;
         }
 
-        context.Notify(zone == null ? "Zone cleared." : "Zone set.");
+        context.Notify(zone == null ? Feedback.ZoneCleared : Feedback.ZoneSet);
         return true;
     }
 }

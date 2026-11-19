@@ -202,7 +202,7 @@ public class ChannelCommandHandler : ICommandHandler
             {
                 context.Notify(msg.Text);
             }
-            context.Notify($"--- End recall ---");
+            context.Notify(Feedback.EndRecall);
             return true;
         }
 

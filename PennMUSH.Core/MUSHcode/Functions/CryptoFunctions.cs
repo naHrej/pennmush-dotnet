@@ -101,7 +101,7 @@ public static class CryptoFunctions
             "sha512" => SHA512.HashData(data),
             _ => null
         };
-        return hash != null ? Convert.ToHexStringLower(hash) : "#-1 UNSUPPORTED DIGEST TYPE";
+        return hash != null ? Convert.ToHexStringLower(hash) : MushError.UnsupportedDigestType.Text();
     }
 
     public static string Sha0(EvaluationContext ctx, string[] args)
@@ -201,11 +201,11 @@ public static class CryptoFunctions
         {
             var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
                 ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
-            if (p == null) return "#-1 NOT CONNECTED";
+            if (p == null) return MushError.NotConnected.Text();
             targetId = p.Id;
         }
         var snap = reg.ConnectionsProvider().FirstOrDefault(s => s.PlayerId == targetId);
-        if (snap == null) return "#-1 NOT CONNECTED";
+        if (snap == null) return MushError.NotConnected.Text();
         var actor = reg.Database.GetObject(ctx.Executor);
         if (snap.PlayerId != ctx.Executor && !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
             return MushError.PermissionDenied.Text();

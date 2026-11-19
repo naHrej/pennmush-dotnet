@@ -43,7 +43,7 @@ public static class ClientFunctions
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
             NotificationScope.Target,
-            $"[Client] Code editor opened for {openPayload.Title}.",
+            Feedback.ClientCodeEditorOpened.Text(("value", openPayload.Title)),
             Target: player,
             ProtocolType: "editor.open",
             ProtocolPayload: openPayload
@@ -68,7 +68,7 @@ public static class ClientFunctions
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
             NotificationScope.Target,
-            $"[Client Window: {windowId} ({target}/{action})]",
+            Feedback.ClientWindow.Text(("value", windowId), ("value2", target), ("value3", action)),
             Target: player,
             ProtocolType: "window.update",
             ProtocolPayload: payload
@@ -89,7 +89,7 @@ public static class ClientFunctions
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
             NotificationScope.Target,
-            $"[Client Style: {url}]",
+            Feedback.ClientStyle.Text(("value", url)),
             Target: player,
             ProtocolType: "style.load",
             ProtocolPayload: payload
@@ -112,7 +112,7 @@ public static class ClientFunctions
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
             NotificationScope.Target,
-            $"[Client Audio: {url}]",
+            Feedback.ClientAudio.Text(("value", url)),
             Target: player,
             ProtocolType: "audio.play",
             ProtocolPayload: payload
@@ -132,7 +132,7 @@ public static class ClientFunctions
         var dispatcher = reg.NotificationDispatcher ?? _dispatcher;
         dispatcher?.Invoke(new Notification(
             NotificationScope.Target,
-            $"[Client OOB: {type}]",
+            Feedback.ClientOob.Text(("value", type)),
             Target: player,
             ProtocolType: type,
             ProtocolPayload: json

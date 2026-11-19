@@ -60,7 +60,7 @@ public class DecompileCommandHandler : ICommandHandler
         string source = context.LeftArg.Trim();
         if (source.Length == 0)
         {
-            context.Notify("What do you want to @decompile?");
+            context.Notify(Feedback.WhatDoYouWantToDecompile);
             return false;
         }
 
@@ -84,20 +84,20 @@ public class DecompileCommandHandler : ICommandHandler
         string patternText = slash < 0 ? "" : source[(slash + 1)..];
         if (objectName.Length == 0)
         {
-            context.Notify("What do you want to @decompile?");
+            context.Notify(Feedback.WhatDoYouWantToDecompile);
             return false;
         }
 
         var target = db.MatchObject(context.Executor, objectName);
         if (target == null)
         {
-            context.Notify("I can't see that here.");
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
         if (target.Type == ObjectType.Garbage)
         {
-            context.Notify("Garbage is garbage.");
+            context.Notify(Feedback.GarbageIsGarbage);
             return false;
         }
 
@@ -117,7 +117,7 @@ public class DecompileCommandHandler : ICommandHandler
 
         if (!CanExamine(actor, target))
         {
-            context.Notify("Permission denied.");
+            context.Notify(Feedback.PermissionDenied);
             return false;
         }
 
@@ -270,7 +270,7 @@ public class DecompileCommandHandler : ICommandHandler
         }
 
         if (printed == 0)
-            context.Notify($"{prefix}@@ No attributes match '{pattern}'. @@");
+            context.Notify(Feedback.DecompileNoAttributesMatch, ("prefix", prefix), ("pattern", pattern));
     }
 
     private static string AttributeFlagText(AttributeEntry attr, AttrFlagMode flagMode)

@@ -124,7 +124,7 @@ public static class TimeFunctions
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         string format = args[0];
         if (!ulong.TryParse(args[1].Trim(), out ulong totalSeconds))
-            return "#-1 ARGUMENT MUST BE UNSIGNED INTEGER";
+            return MushError.ArgumentMustBeUnsignedInteger.Text();
 
         ulong years = totalSeconds / 31536000;
         ulong rem = totalSeconds % 31536000;

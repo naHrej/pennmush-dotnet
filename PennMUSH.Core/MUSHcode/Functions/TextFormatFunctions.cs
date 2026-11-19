@@ -38,7 +38,7 @@ public static class TextFormatFunctions
 
         string spec = AnsiColorTable.StripAnsi(args[0]).Trim();
         if (!AnsiColorTable.TryBuildAnsiSgr(spec, out string sgrOpen, out string sgrClose, out bool hasAnsi))
-            return "#-1 INVALID ANSI DEFINITION";
+            return MushError.InvalidAnsiDefinition.Text();
         if (!hasAnsi)
             return args[1];
 
@@ -81,14 +81,14 @@ public static class TextFormatFunctions
             }
             else
             {
-                return "#-1 INVALID COLOR";
+                return MushError.InvalidColor.Text();
             }
         }
 
         bool hasFg = parsed.Foreground is { IsDefault: false };
         bool hasBg = parsed.Background is { IsDefault: false };
         if (!hasFg && !hasBg)
-            return "#-1 COLORS() REQUIRES AT LEAST ONE COLOR";
+            return MushError.ColorsRequiresAtLeastOneColor.Text();
 
         string formatMode = "hex";
         bool includeStyles = false;
@@ -131,7 +131,7 @@ public static class TextFormatFunctions
                     includeStyles = true;
                     break;
                 default:
-                    return "#-1 INVALID ARGUMENT";
+                    return MushError.InvalidArgument.Text();
             }
         }
 
@@ -151,7 +151,7 @@ public static class TextFormatFunctions
         {
             string? formattedFg = FormatColorComponent(parsed.Foreground!.Value, isBg: false, parsed.Bold, formatMode);
             if (formattedFg == null)
-                return "#-1 NO MATCHING COLOR NAME";
+                return MushError.NoMatchingColorName.Text();
             sb.Append(formattedFg);
         }
 
@@ -162,7 +162,7 @@ public static class TextFormatFunctions
 
             string? formattedBg = FormatColorComponent(parsed.Background!.Value, isBg: true, hiliteFg: false, formatMode);
             if (formattedBg == null)
-                return "#-1 NO MATCHING COLOR NAME";
+                return MushError.NoMatchingColorName.Text();
             sb.Append(formattedBg);
         }
 
@@ -223,7 +223,7 @@ public static class TextFormatFunctions
         string text = args[0];
         string tmpl = args[1];
         if (text.Length != tmpl.Length)
-            return "#-1 STRING LENGTHS MUST BE EQUAL";
+            return MushError.StringLengthsMustBeEqual.Text();
 
         var sb = new StringBuilder(text.Length);
         for (int i = 0; i < text.Length; i++)
@@ -304,7 +304,7 @@ public static class TextFormatFunctions
                     keepAnsi = true;
                     break;
                 default:
-                    return "#-1 INVALID SECOND ARGUMENT";
+                    return MushError.InvalidSecondArgument.Text();
             }
         }
 
@@ -358,11 +358,11 @@ public static class TextFormatFunctions
         {
             var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
                 ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
-            if (p == null) return "#-1 NOT CONNECTED";
+            if (p == null) return MushError.NotConnected.Text();
             targetId = p.Id;
         }
         var snap = reg.ConnectionsProvider().FirstOrDefault(s => s.PlayerId == targetId);
-        if (snap == null) return "#-1 NOT CONNECTED";
+        if (snap == null) return MushError.NotConnected.Text();
         return snap.SupportsPueblo
             || snap.SupportsHtml
             || snap.TerminalType.Contains("pueblo", StringComparison.OrdinalIgnoreCase)
@@ -385,7 +385,7 @@ public static class TextFormatFunctions
             }
             catch
             {
-                return "#-1 INVALID JSON";
+                return MushError.InvalidJson.Text();
             }
         }
 
@@ -415,7 +415,7 @@ public static class TextFormatFunctions
         }
 
         if (sent == 0 && sawDenied) return MushError.PermissionDenied.Text();
-        return sent == 0 ? "#-1 NO VALID PLAYERS" : sent.ToString();
+        return sent == 0 ? MushError.NoValidPlayers.Text() : sent.ToString();
     }
 
     public static string WsHtmlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

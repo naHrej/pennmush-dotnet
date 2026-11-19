@@ -77,7 +77,7 @@ public class PsCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify(all ? "Queue for all:" : $"Queue for {actor.Name}:");
+        context.Notify(all ? Feedback.QueueForAll.Text() : Feedback.QueueFor.Text(("value", actor.Name)));
         if (entries.Count == 0)
             context.Notify(Feedback.Empty);
         else
@@ -144,7 +144,7 @@ public class KickCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify($"Kicked {results.Count} command{(results.Count == 1 ? "" : "s")}.");
+        context.Notify(Feedback.KickedCommands, ("count", $"{results.Count}"), ("plural", results.Count == 1 ? "" : "s"));
         foreach (var result in results)
         {
             foreach (var note in result.Notifications)

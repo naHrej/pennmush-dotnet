@@ -206,7 +206,7 @@ public static class StringFunctions
                 cmp = daRef.Value.CompareTo(dbRef.Value);
                 break;
             default:
-                return "#-1 INVALID COMPARE TYPE";
+                return MushError.InvalidCompareType.Text();
         }
         return cmp < 0 ? "-1" : cmp > 0 ? "1" : "0";
     }
