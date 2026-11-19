@@ -28,7 +28,7 @@ Room/object creation, linking, destruction, ownership, hierarchy, quotas, inspec
 | `@entrances` | — | — | `/exits`, `/things`, `/players`, `/rooms` |
 | `@find` | — | — | Searches objects (`[<name>][=<low>-<high>]`) you own (or all for Wizard) |
 | `@whereis` | — | — | Reports player's room; notifies target unless executor is Wizard |
-| `@search` | — | — | `Partial Switches` — criteria search (`eval`/`elock`/`command`/`listen`/`e*` unsupported) |
+| `@search` | — | — | Criteria search (`owner`, `type`, `name`, `zone`, `parent`, `flags`, `powers`, `eval`, `e*`, `elock`, `command`, `listen`) |
 | `@scan` | — | — | `/room`, `/self`, `/zone`, `/globals`; lists matching `$`-commands |
 | `@sweep` | — | — | `/connected`, `/here`, `/inventory`, `/exits`; lists listeners & puppets |
 | `@decompile` | — | `CanExamine` (for header/flags) | `/tf`, `/db`, `/name`, `/flags`, `/attribs`, `/skipdefaults`, `=<prefix>` |
@@ -107,7 +107,7 @@ Backed by `QuotaRules` (`QuotaCommandHandlers.cs`) and `RQUOTA` (`MDark | Locked
 - **`@find [<name>][=<low>-<high>]`**: Lists objects matching substring and optional dbref range owned by caller (all objects for Wizard) (`FindCommandHandler`).
 - **`@whereis <player>`**: Reports `<player>`'s location room; notifies `<player>` `"<actor> is looking for you."` unless executor is Wizard or targeting self (`WhereIsCommandHandler`).
 - **`@entrances[/exits|/things|/players|/rooms] [<target>]`**: Lists objects whose `Home` equals `<target>` or exits whose destination equals `<target>` (`EntrancesCommandHandler`).
-- **`@search [<owner>] [<min>] [<max>][ <class>=<val>, ...]`** (`Tags: Partial Switches`): Filters by `owner` (`all` or player), dbref range, `type`, `name`, `zone`, `parent`, `flags`, `lflags`, `powers`, `exits`/`things`/`objects`/`rooms`/`players`, `mindb`, `maxdb`, `start`, `count` (`SearchCommandHandler`). Criteria `eval`, `elock`, `command`, `listen`, `eplayer`, `eroom`, `eexit`, `ething`, and `eobject` currently reply `"That search is not available."`.
+- **`@search [<owner>] [<min>] [<max>][ <class>=<val>, ...]`** (`SearchCommandHandler`): Filters by `owner` (`all` or player), dbref range, `type`, `name`, `zone`, `parent`, `flags`, `lflags`, `powers`, `exits`/`things`/`objects`/`rooms`/`players`, `mindb`/`maxdb`/`start`/`count`, `elock` (`LockParser`), `command` (`$`-commands), `listen` (`LISTEN` / `^`-listeners), and evaluator expressions `eval`, `eplayer`, `eroom`, `eexit`, `ething`/`eobject` (`##` substituted with `#<id>`). (`eval`/`e*` require an `ExpressionEvaluator`, otherwise returning `"That search is not available."`.)
 - **`@scan[/room][/self][/zone][/globals] <text>`**: Lists `$pattern:` attributes matching `<text>` across room/contents, carried inventory/self, personal/location zone, and `master_room` (`ScanCommandHandler`).
 - **`@sweep[/connected|/here|/inventory|/exits]`**: Reports players, `PUPPET`s, `$`-command objects, and `AUDIBLE` exits/rooms listening nearby (`SweepCommandHandler`).
 

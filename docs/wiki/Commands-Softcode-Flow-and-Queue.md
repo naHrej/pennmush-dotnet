@@ -11,7 +11,7 @@ Expression evaluation, conditionals, loops, action lists, queues/semaphores, use
 | `@ifelse` | `@if`, `@skip` | — | `<cond>=<true>[,<false>]` (`@skip` inverts `<cond>`) |
 | `@dolist` | — | — | Iterates whitespace-delimited items substituting `##`, `#@`, `%0` |
 | `@trigger` | `@tr` | — | `<obj>/<attr>[=<a0>,<a1>...]` evaluates attribute & dispatches |
-| `@include` | — | Cannot include `#1` God unless God; `Partial Switches` | `/nobreak` (`/localize`, `/clearregs` currently ignored) |
+| `@include` | — | Cannot include `#1` God unless God | `/nobreak`, `/localize`, `/clearregs` |
 | `@force` | — | Own/controlled or `Wizard` | `<target>=<command>` dispatches synchronously as `<target>` |
 | `@verb` | — | Permission check (`Allows`) | Multi-arg verb message/attribute runner (`WHAT`..`ACTION`, `%0–%9`) |
 | `@assert` | — | — | `/queued`; stops active `@include` frame if false & runs RHS |
@@ -20,11 +20,11 @@ Expression evaluation, conditionals, loops, action lists, queues/semaphores, use
 | `@wait` | `@notify`, `@drain` | — | Queues timed or semaphore commands; notifies 1 or drains all waiters |
 | `@halt` | — | Own/controlled (`Wizard` for `all` or others) | Cancels queued commands for target or `all` |
 | `@allhalt` | — | `Wizard` | Halts every entry in `ActionQueue` |
-| `@ps` | — | `/all` requires `Wizard`; `Partial Switches` | `/all`, `/summary`, `/count`, `<pid>` (`/quick`, `/debug` ignored) |
+| `@ps` | — | `/all` requires `Wizard` | `/all`, `/summary`, `/count`, `/quick`, `/debug`, `<pid>` |
 | `@kick` | — | `Wizard` | Executes next `<count>` ready non-semaphore queue entries immediately |
 | `@@` | — | — | No-op comment command |
 | `@function` | — | `Wizard` / `Functions` power; `Partial Switches` | `/delete`, `/enable`, `/disable`, `/restrict`, `/alias` (`/clone`, `/restore` stubbed) |
-| `@hook` | — | `Wizard` or `HOOK` power; `Partial Switches` | `/before`, `/after`, `/ignore`, `/override`, `/extend`, `/igswitch`, `/inplace`, `/inline`, `/list` |
+| `@hook` | — | `Wizard` or `HOOK` power | `/before`, `/after`, `/ignore`, `/override`, `/extend`, `/igswitch`, `/inplace`, `/inline`, `/nobreak`, `/localize`, `/clearregs`, `/list` |
 | `@command` | — | Lookups any; writes `Wizard`; `/delete` `God` | `/add`, `/alias`, `/clone`, `/delete`, `/on`, `/enable`, `/off`, `/disable`, `/restrict`, `/quiet`, parse switches |
 
 ---
@@ -59,12 +59,12 @@ Evaluates `<obj>/<attr>` on `<obj>` (`%!` = `<obj>`, `%#` = executor, `%0–%9` 
 ### `@force <target>=<command>`
 Dispatches `<command>` immediately as `<target>` (`ForceCommandHandler`; requires controlling `<target>` or `Wizard`).
 
-### `@include[/nobreak] <obj>/<attr>[=<args>]`
-`Tags: Partial Switches`
+### `@include[/nobreak|/localize|/clearregs] <obj>/<attr>[=<args>]`
 
-Reads `<obj>/<attr>` (stripped of leading `$pattern:` / `^pattern:` prefixes if present), splits commands on `;`, substitutes `%0–%9`, and executes each command in an `ActionFrame` (`RecursionLimit = 50`, `IncludeCommandHandler.cs`).
+Reads `<obj>/<attr>` (stripped of leading `$pattern:` / `^pattern:` prefixes if present), splits commands on `;`, substitutes `%0–%9`, and executes each command in an `ActionFrame` (`RecursionLimit = 50`, `IncludeCommandHandler.cs`):
 - `/nobreak` isolates nested `@break` / `@assert` frames from halting the caller's frame.
-- `/localize` and `/clearregs` are currently ignored.
+- `/localize` preserves outer Q-registers (`context.Registers`) around execution (starts with copies and does not write mutations back).
+- `/clearregs` begins with empty Q-registers and isolates outer Q-registers from changes.
 
 ### `@assert[/queued] <cond>[=<actionlist>]`, `@break[/queued] <cond>[=<actionlist>]`, `@retry <cond>[=<args>]`
 Action-list flow controllers operating on the active `@include` / `@verb` `ActionFrame` (`ActionListCommandHandler.cs`):
@@ -89,7 +89,7 @@ Handled by `WaitCommandHandler.cs` against `ActionQueue`:
 ### `@halt [<dbref|all>]`, `@allhalt`, `@ps`, `@kick`
 - **`@halt`** (`HaltCommandHandler.cs`): Clears executor's (or controlled target's) queued entries (`@halt all` requires `Wizard`).
 - **`@allhalt`** (**Wizard**, `AllHaltCommandHandler.cs`): Clears all entries across `ActionQueue`.
-- **`@ps[/all|/summary|/count] [<pid>]`** (`Tags: Partial Switches`, `PsCommandHandler`): Inspects own queue, a specific `<pid>`, or `/all` (**Wizard**). `/quick` and `/debug` switches are currently ignored.
+- **`@ps[/all|/summary|/count|/quick|/debug] [<pid>]`** (`PsCommandHandler`): Inspects own queue, a specific `<pid>`, `/all` (**Wizard**), `/summary`, or `/count`. `/quick` outputs compact `#<pid> <command>` lines without the header; `/debug <pid>` adds `Enactor`, `Args`, and saved `%`-registers (`Registers`).
 - **`@kick [<count>]`** (**Wizard**, `KickCommandHandler`): Immediately runs up to `<count>` (default `1`) non-semaphore queue entries ordered by scheduled time & PID.
 
 ---
@@ -106,11 +106,11 @@ Defines and configures persistent global softcode functions (`soft_functions` in
 - Switches: `/delete`, `/enable`, `/disable`, `/restrict <flags>`, `/alias <builtin>=<alias>`. (`/clone` and `/restore` currently report `"That's not a builtin function."`.)
 
 ### `@hook/<slot>[/<mode>] <command>[=<obj>[/<attr>]]`
-`Restrictions: Wizard or HOOK power` · `Tags: Partial Switches`
+`Restrictions: Wizard or HOOK power`
 
 Attaches or clears command hooks on built-in or user-added commands (disallowed on `@password` and `@newpassword`; stored in memory in `CommandCatalog`, `HookCommandHandler.cs`):
 - **Slots**: `/before`, `/after`, `/ignore`, `/override`, `/extend` (alias `/igswitch`).
-- **Modes** (for `/override` & `/extend`): `/inplace`, `/inline`, `/nobreak`, `/localize`, `/clearregs` (`CommandHook` stores and prints these flags on `@hook/list`, though hooked evaluation runs synchronously and does not isolate Q-registers).
+- **Modes** (for `/override` & `/extend`): `/inplace`, `/inline`, `/nobreak`, `/localize`, `/clearregs` (`/localize` restores caller Q-registers after hook evaluation; `/clearregs` evaluates with cleared Q-registers and leaves caller registers untouched via `CommandCatalog.ApplyRegisters`).
 - **`@hook/list [<command>]`**: Lists all hooked commands or hook details for `<command>`.
 
 ### `@command[/<switch>] <command>[=<rhs>]`

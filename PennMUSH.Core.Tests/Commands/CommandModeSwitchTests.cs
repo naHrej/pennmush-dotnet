@@ -9,6 +9,7 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
+using PennMUSH.Server.Engine;
 using PennMUSH.Server.Session;
 using Xunit;
 
@@ -311,9 +312,40 @@ public class CommandModeSwitchTests
         };
 
         await conn.SendLineAsync("café");
-        Assert.Contains(lines, line => line.Contains("PRE"));
-        Assert.Contains(lines, line => line.Contains("cafe") && !line.Contains("café"));
-        Assert.Contains(lines, line => line.Contains("POST"));
+        Assert.Equal(new[] { "cafe\r\n" }, lines);
+
+        string dbPath = Path.Combine(Path.GetTempPath(), $"cmdmode_{Guid.NewGuid():N}.db");
+        var server = new MUSHServer(dbPath);
+        try
+        {
+            var serverGod = server.Database.GetObject(new Dbref(1))!;
+            var cmdLines = new List<string>();
+            var serverConn = new MUSHConnection(text =>
+            {
+                cmdLines.Add(text);
+                return Task.CompletedTask;
+            })
+            {
+                PlayerId = serverGod.Id,
+                OutputPrefix = "PRE",
+                OutputSuffix = "POST",
+                StripAccents = true
+            };
+            server.RegisterConnection(serverConn, isReconnect: true);
+            cmdLines.Clear();
+
+            await server.HandleInputAsync(serverConn, "think café");
+            Assert.Equal(new[] { "PRE\r\n", "cafe\r\n", "POST\r\n" }, cmdLines);
+        }
+        finally
+        {
+            server.Stop();
+            foreach (string suffix in new[] { "", "-shm", "-wal" })
+            {
+                if (File.Exists(dbPath + suffix))
+                    try { File.Delete(dbPath + suffix); } catch { }
+            }
+        }
 
         lines.Clear();
         conn.StripAccents = false;

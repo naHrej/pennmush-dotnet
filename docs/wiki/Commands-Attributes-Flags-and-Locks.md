@@ -11,8 +11,8 @@ Commands that set or inspect attributes, flags, powers, locks, and topology warn
 | `@power` | — | `Wizard`, `logargs` *(in `restrict.cnf`)* | `<obj>=[!]<power>` |
 | `@wipe` | — | `noguest` *(in `restrict.cnf`)* | `<obj>[/<pattern>]` |
 | `@cpattr` | `@mvattr` | `noguest` *(in `restrict.cnf`)*, Controls src & dest | Copies (or moves) value + flags to one or more targets |
-| `@edit` | `@gedit` *(via `alias.cnf`)* | `noguest` *(in `restrict.cnf`)*, `Partial Switches` | `<obj>/<attr>=<old>,<new>` (literal replace; switches ignored) |
-| `@grep` | — | `Partial Switches` | `<obj>=<text>` (case-insensitive substring on own attrs; switches ignored) |
+| `@edit` | `@gedit` *(via `alias.cnf`)* | `noguest` *(in `restrict.cnf`)*, Controls target | `/first`, `/regexp`, `/all`, `/nocase`, `/check`, `/quiet` |
+| `@grep` | — | — | `/list`, `/print`, `/ilist`, `/iprint`, `/regexp`, `/wild`, `/nocase`, `/parent` |
 | `@atrlock` | `@attrlock` *(via `alias.cnf`)* | Controls target | `<obj>/<attr>[=on\|off]` |
 | `@atrchown` | `@attrchown` *(via `alias.cnf`)* | `noguest` *(in `restrict.cnf`)*, Controls target | `<obj>/<attr>=<owner>` (fails if attr `Locked` unless Wizard) |
 | `@lock` | `@elock`, `@ulock` | `noguest` *(in `restrict.cnf`)* | `@lock[/<type>] <obj>=<key>` (default `"Default"` lock) |
@@ -70,17 +70,22 @@ Matches attributes on `<target>` by wildcard pattern (default `*`) via `PatternM
 
 Copies `<src>/<attr>` value and `AttributeFlags` to one or more comma-separated destination objects/attributes (`CopyAttributeCommandHandler.cs`). When invoked as **`@mvattr`**, clears the source attribute afterward (unless `Locked` without Wizard).
 
-### `@edit <object>/<attribute>=<old>,<new>`
-`Aliases: @gedit (in game/alias.cnf)` · `Restrictions: noguest (in game/restrict.cnf)` · `Tags: Partial Switches`
+### `@edit[/first|/regexp|/all|/nocase|/check|/quiet] <object>/<attribute>=<old>,<new>`
+`Aliases: @gedit (in game/alias.cnf)` · `Restrictions: noguest (in game/restrict.cnf)`
 
-Must control `<object>`. Replaces **every literal** occurrence (`StringComparison.Ordinal`) of `<old>` with `<new>` inside `<attribute>` (`EditAttributeCommandHandler`).
-- **Known Parity Gap**: Switches `/first`, `/regexp`, `/all`, `/nocase`, `/check`, and `/quiet` are currently ignored.
+Must control `<object>`. By default replaces **every literal** occurrence (`StringComparison.Ordinal`) of `<old>` with `<new>` inside `<attribute>` (`EditAttributeCommandHandler`):
+- `/first`: Replaces only the first literal occurrence.
+- `/regexp`: Treats `<old>` as a .NET regular expression (first match by default, or all matches with `/all`; `/nocase` adds `RegexOptions.IgnoreCase`; invalid patterns print `Invalid Regular Expression.`).
+- `/check`: Previews the change (`Would edit to: <updated>`) without writing `<attribute>`.
+- `/quiet`: Suppresses status notifications (`Edited.`, `Nothing to change.`, `Would edit to: ...`).
 
-### `@grep <object>=<text>`
-`Tags: Partial Switches`
+### `@grep[/list|/print|/ilist|/iprint|/regexp|/wild|/nocase|/parent] <object>=<pattern>`
 
-Performs a case-insensitive substring search over `<object>`'s own attributes (both attribute name and value), printing `<ATTR>: <Value>` lines (`GrepCommandHandler`).
-- **Known Parity Gap**: Switches `/list`, `/print`, `/ilist`, `/iprint`, `/regexp`, `/wild`, `/nocase`, and `/parent` are currently ignored.
+Searches attribute names and values on `<object>` (`GrepCommandHandler`):
+- Default / `/print` prints `<ATTR>: <Value>` lines; `/list` prints matching attribute names only (`Sorted`).
+- `/nocase`, `/ilist`, and `/iprint` enable case-insensitive matching (`/ilist` sets `/list` + nocase; `/iprint` sets `/print` + nocase).
+- `/regexp` matches with `.NET Regex` (`Invalid Regular Expression.` on bad pattern); `/wild` matches using MUSH wildcard patterns (`PatternMatcher`).
+- `/parent` walks `<object>`'s multi-parent DAG (`Parents`) without duplicating overridden attribute names.
 
 ### `@atrlock <object>/<attr>[=on|off]`
 `Aliases: @attrlock (in game/alias.cnf)` · `Restrictions: Must control <object>`

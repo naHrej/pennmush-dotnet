@@ -12,7 +12,7 @@ Welcome to the **PennMUSH .NET** API & operator documentation, extracted directl
 | Standard Attributes & Locks | **221** table entries (**213** canonical attrs + **8** short aliases), **13** lock types | `PennMUSH.Core/Attributes/`, `PennMUSH.Core/Locks/` |
 | Color Palette | **927** X11 / xterm-256 / RGB24 color definitions | `game/txt/colors.json` |
 | Error & Feedback Catalogs | **91** `MushError` templates, **701** `Feedback` templates | `MushError.cs`, `Feedback.cs` |
-| Automated Test Suite | **469** tests across **95** test files | `PennMUSH.Core.Tests/` |
+| Automated Test Suite | **480** tests across **97** test files | `PennMUSH.Core.Tests/` |
 
 ---
 

@@ -11,17 +11,17 @@ Server configuration, runtime schema management, database maintenance, logging, 
 | `@disable` | — | `Wizard` | Disables `use_ws`, `use_dns`, `player_creation`, `guests`, `use_quota` |
 | `@flag` | — | `/debug` `Wizard`; mutating switches `God`; queries any | `/list`, `/decompile`, `/add`, `/delete`, `/alias`, `/restrict`, `/disable`, `/enable`, `/letter`, `/type`, `/debug` |
 | `@attribute` | — | Mutating switches `Wizard`; queries/`/decompile` any | `/access`, `/decompile`, `/delete`, `/rename`, `/limit`, `/enum`, `/retroactive` |
-| `@list` | — | — | Inspects runtime tables (some switches partial/ignored) |
-| `@stats` | — | — | Object counts & breakdown (some switches partial/ignored) |
+| `@list` | — | `/allocations` (`Wizard`) | `commands`, `flags`, `powers`, `functions`, `attribs`, `motd`, `locks`, `allocations`, `/lowercase`, `/builtin`, `/local` |
+| `@stats` | — | Memory switches `Wizard` | `/tables`, `/chunks`, `/regions`, `/paging`, `/freespace`, `/flags` |
 | `@dbck` | — | `Wizard` | Repairs dangling refs & warns on zone/room anomalies |
-| `@dump` | — | — | Saves database (`/paranoid`, `/debug`, `/nofork` partial/ignored) |
+| `@dump` | — | `Wizard` | Saves database (`/paranoid`, `/debug`, `/nofork`) |
 | `@uptime` | — | — | Process start time & elapsed uptime |
-| `@version` | — | — | Running server version info |
+| `@version` | — | — | Running server version (`ServerVersion.Text`) |
 | `@poor` | — | `God` | Resets every `Player`'s `Pennies` to `<amount>` |
 | `@motd` | `@listmotd`, `@wizmotd`, `@rejectmotd` | `Connect`: `Wizard`/`Announce`; `/wizard`/`/down`/`/full`: `Royalty`; `@wizmotd`/`@rejectmotd`: `Wizard` | `/list`, `/clear`, `/wizard`, `/down`, `/full` |
 | `@readcache` | — | `Wizard` | Reloads `HelpStore`, `ITextFileCache`, syncs `SuggestionVocabulary` |
 | `@suggest` | — | `Wizard` (`/add`, `/delete`); list any | `/add`, `/delete` |
-| `@sitelock` | — | `Wizard` | `/ban`, `/register`, `/check`, `/remove`, `/player`, `/name` *(stub)* |
+| `@sitelock` | — | `Wizard` | `/ban`, `/register`, `/check`, `/remove`, `/player`, `/name` |
 | `@log` | — | `Wizard`, `nogagged` | `/check`, `/cmd`, `/conn`, `/err`, `/trace`, `/wiz`, `/recall` |
 | `@logwipe` | — | `God`, `nogagged` + `WizardLog.WipePassword` | `/check`, `/cmd`, `/conn`, `/err`, `/trace`, `/wiz`, `/wipe`, `/rotate`, `/trim` |
 | `@sql` | — | `Wizard` or `Sql_Ok` power | Executes SQL query |
@@ -82,18 +82,14 @@ Inspects or modifies standard attribute definitions and access/validation metada
 ### `@list` / `@stats`
 `Source: ObjectReadWriteCommandHandlers.cs, ObjectLifecycleCommandHandlers.cs`
 
-Inspects built-in engine tables (`@list`) and database object counts (`@stats`).
-
-> [!NOTE]
-> **Partial / Ignored Switches** (see [PennMUSH 1.8 Parity & Differences](PennMUSH-1.8-Parity-and-Differences)):
-> - `@list`: `/locks`, `/allocations`, `/all`, `/builtin`, `/local` are partial/ignored, and `/lowercase` is ignored outside `attribs`.
-> - `@stats`: `/tables`, `/chunks`, `/regions`, `/paging`, `/freespace`, and `/flags` are partial/ignored.
+- **`@list[/lowercase][/builtin|/local] <table|type>`**: Inspects runtime `commands`, `flags`, `powers`, `functions`, `attribs`, `motd`, `locks` (`LockType.Names`), and `allocations` (`Wizard`: `GC.GetTotalMemory` + `Environment.WorkingSet`). Supports type as switch (e.g., `@list/locks`) or argument, `/lowercase` across tables, and `/builtin` / `/local` filters on `commands` and `functions`.
+- **`@stats[/tables|/chunks|/regions|/paging|/freespace|/flags]`**: Prints total and per-type object counts (`Player`, `Room`, `Exit`, `Thing`, `Garbage`). `/flags` prints per-flag object counts; memory switches (`/tables`, `/chunks`, `/regions`, `/paging`, `/freespace`) require `Wizard` and report .NET GC/process memory statistics.
 
 ### `@uptime` / `@version`
 `Source: ObjectReadWriteCommandHandlers.cs, ObjectLifecycleCommandHandlers.cs`
 
 - `@uptime`: Displays the current OS process start timestamp (`yyyy-MM-dd HH:mm:ss zzz`) and elapsed uptime (`Xh Ym`, `Xm Ys`, or `Xs`).
-- `@version`: Displays the running PennMUSH .NET build version string.
+- `@version`: Displays the git-stamped release string (`PennMUSH .NET <ServerVersion.Text>`, e.g., `0.1.<build>+g<commit>`).
 
 ---
 
@@ -106,13 +102,10 @@ Runs an integrity check and repair pass across the in-memory `ObjectDatabase`:
 - Repairs dangling zone, parent, owner, `Next`, creator, location, and exit references.
 - Warns object owners on circular zone chains, zone objects missing a `Zone` lock, and disconnected non-`FLOATING` rooms.
 
-### `@dump`
-`Source: ObjectReadWriteCommandHandlers.cs`
+### `@dump[/paranoid|/debug|/nofork]`
+`Requires: Wizard` · `Source: ObjectReadWriteCommandHandlers.cs`
 
-Triggers a manual database save.
-
-> [!NOTE]
-> **Partial / Ignored Switches**: `/paranoid`, `/debug`, and `/nofork` are accepted by the command switch table as compatibility no-ops in the synchronous .NET SQLite save path.
+Triggers a manual database save, forwarding `"paranoid"`, `"debug"`, `"nofork"`, or `"normal"` mode to the save callback and reporting the corresponding completion feedback.
 
 ### `@poor <amount>`
 `Requires: God` · `Source: ObjectReadWriteCommandHandlers.cs`
@@ -149,7 +142,7 @@ Manages spellcheck/typo suggestion vocabulary categories used by command and hel
 
 Inspects and persists IP/host access rules in `RuntimeStateStore.sitelocks`:
 - Supports `/ban`, `/register`, `/check`, `/remove`, and `/player` (cross-referencing `connlog.db`).
-- `/name` is currently stubbed.
+- `/name <name>` and `/name !<name>` lock or remove reserved names in `game/names.cnf` (`NameLockFile`).
 
 ---
 

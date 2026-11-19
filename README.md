@@ -5,7 +5,7 @@ A modernized, clean-room implementation of the **PennMUSH** virtual world engine
 - **Runtime**: .NET 10 (`net10.0`) across 4 projects (`PennMUSH.Core`, `PennMUSH.Extensions`, `PennMUSH.Server`, `PennMUSH.Core.Tests`)
 - **MUSHcode Functions**: **567** distinct built-in function registrations across 18 modules (**40** `noParse`, **29** `sideEffect`), plus **18** `function_alias` entries in `game/alias.cnf` (**578** total callable names under default config)
 - **Player Commands**: **139** handler registrations covering **201** distinct built-in C# command names/aliases, plus **21** `command_alias` entries in `game/alias.cnf` (**204** total command names under default config) and pre-login commands (`connect`/`conn`/`co`, `create`/`cr`, `WHO`, `QUIT`)
-- **Test Suite**: **469** tests across **95** test files
+- **Test Suite**: **480** tests across **97** test files
 
 ---
 
