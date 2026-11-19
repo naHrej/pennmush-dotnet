@@ -9,12 +9,14 @@ using PennMUSH.Core.Database;
 public class SiteLockCommandHandler : ICommandHandler
 {
     private readonly SiteLockTable _table;
+    private readonly ConnectionLogStore? _connLog;
 
     public string Name => "@sitelock";
 
-    public SiteLockCommandHandler(SiteLockTable table)
+    public SiteLockCommandHandler(SiteLockTable table, ConnectionLogStore? connLog = null)
     {
         _table = table;
+        _connLog = connLog;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -87,6 +89,9 @@ public class SiteLockCommandHandler : ICommandHandler
             context.Notify(Feedback.IDontSeeThatObject);
             return false;
         }
+        string? lastIp = _connLog?.GetLastIpForPlayer(target.Id);
+        if (!string.IsNullOrEmpty(lastIp))
+            return Add(context, lastIp, 0, SiteLockTable.Default, "banned");
         context.Notify(Feedback.UnableToSitelockNoKnownIpHostToBan, ("value", $"{target.Name}"));
         return false;
     }
