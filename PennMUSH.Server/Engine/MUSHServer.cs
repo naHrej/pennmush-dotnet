@@ -139,6 +139,10 @@ public class MUSHServer
         Functions.PlayerStart = Config.PlayerStart;
         Functions.DefaultHome = Config.DefaultHome;
         Functions.StartingMoney = Config.StartingMoney;
+        Functions.UseQuota = Config.UseQuota;
+        Functions.UseQuotaProvider = () => Config.UseQuota;
+        Functions.StartingQuota = Config.StartingQuota;
+        Functions.StartingQuotaProvider = () => Config.StartingQuota;
         Evaluator = new ExpressionEvaluator(Functions.Dispatch, Functions.Database);
         Functions.Evaluator = Evaluator;
 
@@ -218,11 +222,11 @@ public class MUSHServer
         Dispatcher.Register(_roomLook, "look", "l", "read");
         Func<Dbref, bool> online = id => _connections.Values.Any(conn => conn.PlayerId == id);
         Dispatcher.Register(new GoCommandHandler(_roomLook, Evaluator, Dispatcher, online), "go", "goto", "move");
-        Dispatcher.Register(new DigCommandHandler(_roomLook), "@dig");
-        Dispatcher.Register(new OpenCommandHandler(), "@open");
+        Dispatcher.Register(new DigCommandHandler(_roomLook, () => Config.UseQuota, () => Config.StartingQuota), "@dig");
+        Dispatcher.Register(new OpenCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@open");
         Dispatcher.Register(new LinkCommandHandler(), "@link");
         Dispatcher.Register(new UnlinkCommandHandler(), "@unlink");
-        Dispatcher.Register(new CreateCommandHandler(), "@create");
+        Dispatcher.Register(new CreateCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@create");
         Dispatcher.Register(new SetCommandHandler(), "@set");
         Dispatcher.Register(new PowerCommandHandler(), "@power");
         Dispatcher.Register(new NameCommandHandler(), "@name");
@@ -310,8 +314,8 @@ public class MUSHServer
         Dispatcher.Register(new CommentCommandHandler(), "@@");
 
         // Object Lifecycle & Admin
-        Dispatcher.Register(new DestroyCommandHandler(), "@destroy", "@recycle", "@nuke");
-        Dispatcher.Register(new PurgeCommandHandler(), "@purge");
+        Dispatcher.Register(new DestroyCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@destroy", "@recycle", "@nuke");
+        Dispatcher.Register(new PurgeCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@purge");
         Dispatcher.Register(new CopyAttributeCommandHandler(), "@cpattr", "@mvattr");
         Dispatcher.Register(new EditAttributeCommandHandler(), "@edit");
         Dispatcher.Register(new GrepCommandHandler(), "@grep");
@@ -327,18 +331,18 @@ public class MUSHServer
         Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
         Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
         Dispatcher.Register(new PoorCommandHandler(), "@poor");
-        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota), "@quota");
-        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota), "@squota");
-        Dispatcher.Register(new AllQuotaCommandHandler(Config.StartingQuota), "@allquota");
+        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@quota");
+        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@squota");
+        Dispatcher.Register(new AllQuotaCommandHandler(Config.StartingQuota, Config.UseQuota, () => Config.UseQuota, () => Config.StartingQuota), "@allquota");
         Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
         Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
         Dispatcher.Register(new SuggestCommandHandler(Suggestions), "@suggest");
         Dispatcher.Register(new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config)), "@readcache");
         Dispatcher.Register(new DumpCommandHandler(() => Storage.Save(Database, Cron)), "@dump");
         Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
-        Dispatcher.Register(new CloneCommandHandler(), "@clone");
-        Dispatcher.Register(new ChownCommandHandler(), "@chown");
-        Dispatcher.Register(new ChownAllCommandHandler(Config.StartingQuota), "@chownall");
+        Dispatcher.Register(new CloneCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@clone");
+        Dispatcher.Register(new ChownCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@chown");
+        Dispatcher.Register(new ChownAllCommandHandler(Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@chownall");
         Dispatcher.Register(new WipeCommandHandler(), "@wipe");
         Dispatcher.Register(new LockCommandHandler(), "@lock", "@elock", "@ulock");
         Dispatcher.Register(new UnlockCommandHandler(), "@unlock", "@eunlock", "@uunlock");

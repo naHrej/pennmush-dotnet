@@ -229,6 +229,12 @@ public static class Section9And18Functions
     {
         if (args.Length == 0 || reg.Database == null || string.IsNullOrWhiteSpace(args[0]))
             return MushError.Nothing.Text();
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (!QuotaRules.TryPay(reg.Database, actor, 1, reg.IsQuotaEnabled, reg.EffectiveStartingQuota))
+        {
+            DispatchNote(reg, NotificationScope.Self, Feedback.SorryYourBuildingQuotaHasRunOut.Text(), ctx.Executor);
+            return MushError.Nothing.Text();
+        }
         var thing = reg.Database.CreateObject(args[0].Trim(), ObjectType.Thing, ctx.Executor);
         reg.Database.MoveObject(thing.Id, ctx.Executor);
         return thing.Id.ToString();
@@ -239,6 +245,11 @@ public static class Section9And18Functions
         if (args.Length == 0 || reg.Database == null || string.IsNullOrWhiteSpace(args[0]))
             return MushError.Nothing.Text();
         var exec = reg.Database.GetObject(ctx.Executor);
+        if (!QuotaRules.TryPay(reg.Database, exec, 1, reg.IsQuotaEnabled, reg.EffectiveStartingQuota))
+        {
+            DispatchNote(reg, NotificationScope.Self, Feedback.SorryYourBuildingQuotaHasRunOut.Text(), ctx.Executor);
+            return MushError.Nothing.Text();
+        }
         Dbref srcRoom = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2])
             ? (ResolveObj(reg, ctx, args[2])?.Id ?? ctx.Location)
             : (exec?.Location.IsValid == true ? exec.Location : ctx.Location);
@@ -287,26 +298,29 @@ public static class Section9And18Functions
     {
         if (args.Length == 0 || reg.Database == null || string.IsNullOrWhiteSpace(args[0]))
             return MushError.Nothing.Text();
-        var room = reg.Database.CreateObject(args[0].Trim(), ObjectType.Room, ctx.Executor);
-        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        var exec = reg.Database.GetObject(ctx.Executor);
+        bool hasValidLoc = exec != null && exec.Location.IsValid;
+        bool createExitTo = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) && hasValidLoc;
+        bool createExitBack = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]) && hasValidLoc;
+        int quotaCost = 1 + (createExitTo ? 1 : 0) + (createExitBack ? 1 : 0);
+        if (!QuotaRules.TryPay(reg.Database, exec, quotaCost, reg.IsQuotaEnabled, reg.EffectiveStartingQuota))
         {
-            var exec = reg.Database.GetObject(ctx.Executor);
-            if (exec != null && exec.Location.IsValid)
-            {
-                var ex = reg.Database.CreateObject(args[1].Trim(), ObjectType.Exit, ctx.Executor);
-                reg.Database.AttachExit(exec.Location, ex.Id);
-                reg.Database.LinkExit(ex.Id, room.Id);
-            }
+            DispatchNote(reg, NotificationScope.Self, Feedback.SorryYourBuildingQuotaHasRunOut.Text(), ctx.Executor);
+            return MushError.Nothing.Text();
         }
-        if (args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]))
+
+        var room = reg.Database.CreateObject(args[0].Trim(), ObjectType.Room, ctx.Executor);
+        if (createExitTo)
         {
-            var exec = reg.Database.GetObject(ctx.Executor);
-            if (exec != null && exec.Location.IsValid)
-            {
-                var back = reg.Database.CreateObject(args[2].Trim(), ObjectType.Exit, ctx.Executor);
-                reg.Database.AttachExit(room.Id, back.Id);
-                reg.Database.LinkExit(back.Id, exec.Location);
-            }
+            var ex = reg.Database.CreateObject(args[1].Trim(), ObjectType.Exit, ctx.Executor);
+            reg.Database.AttachExit(exec!.Location, ex.Id);
+            reg.Database.LinkExit(ex.Id, room.Id);
+        }
+        if (createExitBack)
+        {
+            var back = reg.Database.CreateObject(args[2].Trim(), ObjectType.Exit, ctx.Executor);
+            reg.Database.AttachExit(room.Id, back.Id);
+            reg.Database.LinkExit(back.Id, exec!.Location);
         }
         return room.Id.ToString();
     }
@@ -319,6 +333,13 @@ public static class Section9And18Functions
         if (src == null) return MushError.NoMatch.Text();
         if (!AttributePermissions.CanExamine(actor, src))
             return MushError.PermissionDenied.Text();
+        if (src.Type == ObjectType.Player)
+            return MushError.PermissionDenied.Text();
+        if (!QuotaRules.TryPay(reg.Database, actor, 1, reg.IsQuotaEnabled, reg.EffectiveStartingQuota))
+        {
+            DispatchNote(reg, NotificationScope.Self, Feedback.SorryYourBuildingQuotaHasRunOut.Text(), ctx.Executor);
+            return MushError.Nothing.Text();
+        }
 
         string newName = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim() : src.Name;
         var clone = reg.Database.CreateObject(newName, src.Type, ctx.Executor);
