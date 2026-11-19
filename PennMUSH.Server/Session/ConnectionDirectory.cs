@@ -38,7 +38,21 @@ public sealed class ConnectionDirectory : ISessionDirectory
                 LastActivity = conn.LastActivity,
                 Commands = conn.Commands,
                 BytesSent = conn.BytesSent,
-                BytesReceived = conn.BytesReceived
+                BytesReceived = conn.BytesReceived,
+                TerminalType = conn.Capabilities.TerminalType,
+                Width = conn.Capabilities.TerminalWidth,
+                Height = conn.Capabilities.TerminalHeight,
+                SupportsTelnet = conn.TelnetEnabled,
+                SupportsGmcp = conn.Capabilities.SupportsGmcp,
+                IsSsl = conn.Capabilities.IsSsl,
+                IsWebSocket = conn.IsWebSocket,
+                SupportsHtml = conn.Capabilities.SupportsHtml,
+                SupportsPueblo = conn.Capabilities.SupportsPueblo,
+                StripAccents = conn.StripAccents,
+                PromptNewlines = conn.PromptNewlines,
+                SupportsXterm256 = conn.Capabilities.SupportsXterm256,
+                SupportsRgb24 = conn.Capabilities.SupportsRgb24,
+                ColorStyle = conn.ColorStyle
             })
             .ToList();
     }
@@ -221,15 +235,17 @@ public sealed class ConnectionDirectory : ISessionDirectory
             "hilite" or "highlight" => "hilite",
             "16color" => "16color",
             "xterm256" or "256" => "xterm256",
+            "rgb24" or "truecolor" => "rgb24",
             _ => null
         };
         if (style == null)
-            return "Unknown color style. Valid color styles: 'auto', 'plain', 'hilite', '16color', 'xterm256'.";
+            return "Unknown color style. Valid color styles: 'auto', 'plain', 'hilite', '16color', 'xterm256', 'rgb24'.";
         conn.ColorStyle = style;
         conn.Capabilities.ColorMode = style switch
         {
             "plain" => ColorDepth.None,
             "xterm256" => ColorDepth.Color256,
+            "rgb24" => ColorDepth.TrueColor,
             _ => ColorDepth.Standard16
         };
         return $"Colorstyle set to '{style}'";
@@ -238,7 +254,8 @@ public sealed class ConnectionDirectory : ISessionDirectory
     private static string DetectedColor(MUSHConnection conn) => conn.Capabilities.ColorMode switch
     {
         ColorDepth.None => "plain",
-        ColorDepth.Color256 or ColorDepth.TrueColor => "xterm256",
+        ColorDepth.TrueColor => "rgb24",
+        ColorDepth.Color256 => "xterm256",
         _ => "16color"
     };
 

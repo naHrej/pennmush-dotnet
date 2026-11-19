@@ -16,6 +16,20 @@ public sealed class SessionInfo
     public long BytesSent { get; set; }
     public long BytesReceived { get; set; }
     public int Pending { get; set; }
+    public string TerminalType { get; set; } = "UNKNOWN";
+    public int Width { get; set; } = 80;
+    public int Height { get; set; } = 24;
+    public bool SupportsTelnet { get; set; } = true;
+    public bool SupportsGmcp { get; set; }
+    public bool IsSsl { get; set; }
+    public bool IsWebSocket { get; set; }
+    public bool SupportsHtml { get; set; }
+    public bool SupportsPueblo { get; set; }
+    public bool StripAccents { get; set; }
+    public bool PromptNewlines { get; set; }
+    public bool SupportsXterm256 { get; set; }
+    public bool SupportsRgb24 { get; set; }
+    public string? ColorStyle { get; set; }
 
     public bool LoggedIn => PlayerId.IsValid;
 }

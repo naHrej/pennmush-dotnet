@@ -276,7 +276,7 @@ public static class TextFormatFunctions
     public static string HtmlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         var actor = reg.Database?.GetObject(ctx.Executor);
-        if (actor == null || !actor.IsWizard)
+        if (actor == null || (!actor.IsWizard && !actor.HasPower("Pueblo_Send")))
             return MushError.PermissionDenied.Text();
         return args.Length > 0 ? args[0] : string.Empty;
     }
@@ -315,7 +315,9 @@ public static class TextFormatFunctions
         }
         var snap = reg.ConnectionsProvider().FirstOrDefault(s => s.PlayerId == targetId);
         if (snap == null) return "#-1 NOT CONNECTED";
-        return snap.TerminalType.Contains("pueblo", StringComparison.OrdinalIgnoreCase)
+        return snap.SupportsPueblo
+            || snap.SupportsHtml
+            || snap.TerminalType.Contains("pueblo", StringComparison.OrdinalIgnoreCase)
             || snap.TerminalType.Contains("html", StringComparison.OrdinalIgnoreCase)
             ? "1"
             : "0";
@@ -349,7 +351,7 @@ public static class TextFormatFunctions
             var target = reg.Database.GetObject(DbFunctions.ParseDbref(spec, ctx))
                 ?? reg.Database.MatchObject(ctx.Executor, spec);
             if (target == null) continue;
-            if (actor == null || (!actor.IsWizard && !AttributePermissions.Controls(actor, target)))
+            if (actor == null || (!actor.IsWizard && !actor.HasPower("Send_OOB") && !AttributePermissions.Controls(actor, target)))
             {
                 sawDenied = true;
                 continue;
@@ -370,13 +372,12 @@ public static class TextFormatFunctions
 
     public static string WsHtmlFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        if (args.Length >= 2 && reg.Database != null && reg.NotificationDispatcher != null)
-        {
-            var target = reg.Database.GetObject(DbFunctions.ParseDbref(args[1], ctx));
-            if (target != null)
-                reg.NotificationDispatcher.Invoke(new Notification(NotificationScope.Target, args[0], Target: target.Id, ProtocolType: "wshtml", ProtocolPayload: args[0]));
-        }
-        return args[0];
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || (!actor.IsWizard && !actor.HasPower("Pueblo_Send")))
+            return MushError.PermissionDenied.Text();
+        if (args.Length == 0)
+            return string.Empty;
+        string fallback = args.Length > 1 ? args[1] : string.Empty;
+        return PennMUSH.Core.Protocol.WebSocketMarkup.EncodeHtml(args[0], fallback);
     }
 }

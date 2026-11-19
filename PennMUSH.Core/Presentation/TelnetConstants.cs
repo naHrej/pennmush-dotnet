@@ -27,4 +27,5 @@ public static class TelnetConstants
     public const byte TELOPT_NAWS = 31;
     public const byte TELOPT_CHARSET = 42;
     public const byte TELOPT_PUEBLO = 77;
+    public const byte TELOPT_GMCP = 201;
 }

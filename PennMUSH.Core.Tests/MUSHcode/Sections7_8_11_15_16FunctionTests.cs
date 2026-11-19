@@ -5,6 +5,7 @@ using Xunit;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Protocol;
 using PennMUSH.Core.Types;
 
 public class Sections7_8_11_15_16FunctionTests
@@ -162,7 +163,11 @@ public class Sections7_8_11_15_16FunctionTests
         Assert.Equal("\"admin\"", _evaluator.Evaluate($"[json_query({{{updated}}},get,$.role)]", _ctx));
 
         Assert.Equal("name=Alice age=30", _evaluator.Evaluate($"[json_map(me/JSON_CB,{{{obj}}})]", _ctx));
-        Assert.Equal(obj, _evaluator.Evaluate($"[wsjson({{{obj}}})]", _ctx));
+        string wsJson = _evaluator.Evaluate($"[wsjson({{{obj}}},fallback)]", _ctx);
+        var wsRendered = WebSocketMarkup.Render(wsJson, isWebSocket: true);
+        Assert.Equal(string.Empty, wsRendered.Text);
+        Assert.Equal(new[] { obj }, wsRendered.JsonPayloads);
+        Assert.Equal("fallback", WebSocketMarkup.Render(wsJson, isWebSocket: false).Text);
     }
 
     [Fact]

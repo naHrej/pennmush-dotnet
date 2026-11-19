@@ -16,7 +16,7 @@ public static class JsonFunctions
         registry.Register("JSON_QUERY", JsonQuery);
         registry.Register("JSON_MOD", JsonMod);
         registry.Register("JSON_MAP", (ctx, args) => JsonMap(registry, ctx, args));
-        registry.Register("WSJSON", WsJson);
+        registry.Register("WSJSON", (ctx, args) => WsJson(registry, ctx, args));
     }
 
     public static string IsJson(EvaluationContext ctx, string[] args)
@@ -319,6 +319,24 @@ public static class JsonFunctions
         return string.Join(osep, results);
     }
 
-    public static string WsJson(EvaluationContext ctx, string[] args)
-        => args.Length > 0 ? args[0] : string.Empty;
+    public static string WsJson(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var actor = reg.Database?.GetObject(ctx.Executor);
+        if (actor == null || (!actor.IsWizard && !actor.HasPower("Pueblo_Send")))
+            return MushError.PermissionDenied.Text();
+        if (args.Length == 0)
+            return string.Empty;
+
+        try
+        {
+            using var _ = JsonDocument.Parse(args[0]);
+        }
+        catch
+        {
+            return "#-1 INVALID JSON";
+        }
+
+        string fallback = args.Length > 1 ? args[1] : string.Empty;
+        return PennMUSH.Core.Protocol.WebSocketMarkup.EncodeJson(args[0], fallback);
+    }
 }
