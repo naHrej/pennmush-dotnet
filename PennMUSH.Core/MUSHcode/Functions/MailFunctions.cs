@@ -19,7 +19,7 @@ public static class MailFunctions
         registry.Register("MAILSUBJECT", (ctx, args) => MailField(registry, ctx, args, m => m.Subject));
         registry.Register("MAILTIME", (ctx, args) => MailField(registry, ctx, args, m => m.Timestamp.ToLocalTime().ToString("ddd MMM d HH:mm:ss yyyy", CultureInfo.InvariantCulture)));
         registry.Register("MAILSTATUS", (ctx, args) => MailField(registry, ctx, args, FormatStatus));
-        registry.Register("MAILSEND", (ctx, args) => MailSend(registry, ctx, args));
+        registry.Register("MAILSEND", (ctx, args) => MailSend(registry, ctx, args), sideEffect: true);
         registry.Register("MAILSTATS", (ctx, args) => MailStatsFunc(registry, ctx, args, detailed: false));
         registry.Register("MAILDSTATS", (ctx, args) => MailStatsFunc(registry, ctx, args, detailed: true));
         registry.Register("MAILFSTATS", (ctx, args) => MailFullStatsFunc(registry, ctx, args));
@@ -56,6 +56,14 @@ public static class MailFunctions
         return (target, folder, num);
     }
 
+    private static bool CanAccessMail(FunctionRegistry reg, EvaluationContext ctx, Dbref target)
+    {
+        if (target == ctx.Executor || reg.Database == null) return true;
+        var actor = reg.Database.GetObject(ctx.Executor);
+        var targetObj = reg.Database.GetObject(target);
+        return PennMUSH.Core.Attributes.AttributePermissions.Controls(actor, targetObj);
+    }
+
     public static string MailFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (reg.Mail == null) return "0 0 0";
@@ -64,6 +72,8 @@ public static class MailFunctions
             Dbref statsTarget = args.Length > 0
                 ? (reg.Database?.GetObject(DbFunctions.ParseDbref(args[0], ctx))?.Id ?? reg.Database?.FindPlayer(args[0].Trim())?.Id ?? ctx.Executor)
                 : ctx.Executor;
+            if (!CanAccessMail(reg, ctx, statsTarget))
+                return MushError.PermissionDenied.Text();
             var stats = reg.Mail.GetMailStats(statsTarget);
             return $"{stats.TotalCount} {stats.UnreadCount} {stats.ClearedCount}";
         }
@@ -74,6 +84,8 @@ public static class MailFunctions
             target = reg.Database?.GetObject(DbFunctions.ParseDbref(args[0], ctx))?.Id ?? reg.Database?.FindPlayer(args[0].Trim())?.Id ?? ctx.Executor;
             num = msgNum;
         }
+        if (!CanAccessMail(reg, ctx, target))
+            return MushError.PermissionDenied.Text();
         if (!num.HasValue) return string.Empty;
 
         var msg = reg.Mail.GetMessageByNumber(target, num.Value, folder);

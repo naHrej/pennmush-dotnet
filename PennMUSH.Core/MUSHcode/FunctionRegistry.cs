@@ -13,6 +13,7 @@ public class FunctionRegistry
 {
     private readonly Dictionary<string, MUSHFunction> _functions = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _noParseFunctions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _sideEffectFunctions = new(StringComparer.OrdinalIgnoreCase);
 
     public ObjectDatabase? Database { get; }
     private ExpressionEvaluator? _evaluator;
@@ -51,6 +52,7 @@ public class FunctionRegistry
     public Func<Dbref, string, bool>? PasswordVerifier { get; set; }
     public Func<string, IEnumerable<string>>? TextEntriesProvider { get; set; }
     public Func<string, string, string?>? TextFileEntryProvider { get; set; }
+    public bool SideEffectsEnabled { get; set; } = true;
 
     public FunctionRegistry(ObjectDatabase? database = null)
     {
@@ -58,11 +60,13 @@ public class FunctionRegistry
         RegisterBuiltins();
     }
 
-    public void Register(string name, MUSHFunction function, bool noParse = false)
+    public void Register(string name, MUSHFunction function, bool noParse = false, bool sideEffect = false)
     {
         _functions[name] = function;
         if (noParse)
             _noParseFunctions.Add(name);
+        if (sideEffect)
+            _sideEffectFunctions.Add(name);
     }
 
     public bool Unregister(string name)
@@ -140,6 +144,9 @@ public class FunctionRegistry
 
     public string DispatchBuiltin(string functionName, EvaluationContext context, string[] args)
     {
+        if (_sideEffectFunctions.Contains(functionName) && (!SideEffectsEnabled || context.NoSideFX))
+            return MushError.PermissionDenied.Text();
+
         if (_builtinGates.TryGetValue(functionName, out var gate))
         {
             string denied = gate.Deny(Database, context);
@@ -260,6 +267,8 @@ public sealed class FunctionGate
         if (Restrictions.Contains("NoFixed") && player != null && player.HasFlag("FIXED"))
             return MushError.PermissionDenied.Text();
         if (Restrictions.Contains("NoGuest") && player != null && player.HasFlag("GUEST"))
+            return MushError.PermissionDenied.Text();
+        if (Restrictions.Contains("NoSideFX"))
             return MushError.PermissionDenied.Text();
         return "";
     }

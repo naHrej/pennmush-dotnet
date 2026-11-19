@@ -27,6 +27,20 @@ public static class AttributePermissions
     public static bool CanSeeAll(MUSHObject? looker)
         => looker != null && (looker.IsGod || looker.IsWizard || looker.IsRoyalty || looker.HasPower("See_All"));
 
+    public static bool CanExamine(MUSHObject? looker, MUSHObject? target)
+        => looker != null && target != null && (Controls(looker, target) || CanSeeAll(looker) || target.HasFlag("VISUAL"));
+
+    public static bool CanLocate(MUSHObject? looker, MUSHObject? target)
+    {
+        if (looker == null || target == null) return false;
+        if (Controls(looker, target) || CanSeeAll(looker)) return true;
+        if (target.HasFlag("UNFINDABLE")) return false;
+        return IsNearby(looker, target) || target.HasFlag("VISUAL") || target.HasFlag("FINDABLE");
+    }
+
+    public static bool CanPrivWho(MUSHObject? looker)
+        => CanSeeAll(looker);
+
     private static bool CanReadSingleEntry(MUSHObject looker, MUSHObject target, AttributeEntry entry, bool canSeeObj, bool isNearby, bool seeAll)
     {
         if (entry.Flags.HasFlag(AttributeFlags.Internal))

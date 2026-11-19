@@ -18,23 +18,23 @@ public static class Section9And18Functions
     public static void Register(FunctionRegistry registry)
     {
         // Section 9: Side-effect commands & speak (pcreate is in DbFunctions)
-        registry.Register("EMIT", (ctx, args) => Emit(registry, ctx, args));
-        registry.Register("PEMIT", (ctx, args) => Pemit(registry, ctx, args, prompt: false));
-        registry.Register("PROMPT", (ctx, args) => Pemit(registry, ctx, args, prompt: true));
-        registry.Register("REMIT", (ctx, args) => Remit(registry, ctx, args));
-        registry.Register("OEMIT", (ctx, args) => Oemit(registry, ctx, args));
-        registry.Register("LEMIT", (ctx, args) => Lemit(registry, ctx, args));
-        registry.Register("MESSAGE", (ctx, args) => MessageFunc(registry, ctx, args));
-        registry.Register("SET", (ctx, args) => SetFunc(registry, ctx, args));
-        registry.Register("WIPE", (ctx, args) => WipeFunc(registry, ctx, args));
-        registry.Register("ATTRIB_SET", (ctx, args) => AttribSetFunc(registry, ctx, args));
-        registry.Register("LSET", (ctx, args) => LSetFunc(registry, ctx, args));
-        registry.Register("CREATE", (ctx, args) => CreateFunc(registry, ctx, args));
-        registry.Register("OPEN", (ctx, args) => OpenFunc(registry, ctx, args));
-        registry.Register("LINK", (ctx, args) => LinkFunc(registry, ctx, args));
-        registry.Register("TEL", (ctx, args) => TelFunc(registry, ctx, args));
-        registry.Register("DIG", (ctx, args) => DigFunc(registry, ctx, args));
-        registry.Register("CLONE", (ctx, args) => CloneFunc(registry, ctx, args));
+        registry.Register("EMIT", (ctx, args) => Emit(registry, ctx, args), sideEffect: true);
+        registry.Register("PEMIT", (ctx, args) => Pemit(registry, ctx, args, prompt: false), sideEffect: true);
+        registry.Register("PROMPT", (ctx, args) => Pemit(registry, ctx, args, prompt: true), sideEffect: true);
+        registry.Register("REMIT", (ctx, args) => Remit(registry, ctx, args), sideEffect: true);
+        registry.Register("OEMIT", (ctx, args) => Oemit(registry, ctx, args), sideEffect: true);
+        registry.Register("LEMIT", (ctx, args) => Lemit(registry, ctx, args), sideEffect: true);
+        registry.Register("MESSAGE", (ctx, args) => MessageFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("SET", (ctx, args) => SetFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("WIPE", (ctx, args) => WipeFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("ATTRIB_SET", (ctx, args) => AttribSetFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("LSET", (ctx, args) => LSetFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("CREATE", (ctx, args) => CreateFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("OPEN", (ctx, args) => OpenFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("LINK", (ctx, args) => LinkFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("TEL", (ctx, args) => TelFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("DIG", (ctx, args) => DigFunc(registry, ctx, args), sideEffect: true);
+        registry.Register("CLONE", (ctx, args) => CloneFunc(registry, ctx, args), sideEffect: true);
         registry.Register("SPEAK", (ctx, args) => SpeakFunc(registry, ctx, args));
 
         // Section 18: Queue inspection and @scan
@@ -270,9 +270,15 @@ public static class Section9And18Functions
     public static string TelFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Database == null) return MushError.TooFewArguments.Text();
+        var actor = reg.Database.GetObject(ctx.Executor);
         var victim = ResolveObj(reg, ctx, args[0]);
         var dest = ResolveObj(reg, ctx, args[1]);
-        if (victim == null || dest == null) return MushError.NoMatch.Text();
+        if (actor == null || victim == null || dest == null) return MushError.NoMatch.Text();
+        if (victim.Type == ObjectType.Room) return MushError.PermissionDenied.Text();
+        if (!AttributePermissions.Controls(actor, victim) && !actor.HasPower("Tel_Anything"))
+            return MushError.PermissionDenied.Text();
+        if (!AttributePermissions.Controls(actor, dest) && !dest.HasFlag("JUMP_OK") && !actor.HasPower("Tel_Anywhere"))
+            return MushError.PermissionDenied.Text();
         reg.Database.MoveObject(victim.Id, dest.Id);
         return string.Empty;
     }
@@ -308,8 +314,11 @@ public static class Section9And18Functions
     public static string CloneFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.Nothing.Text();
+        var actor = reg.Database.GetObject(ctx.Executor);
         var src = ResolveObj(reg, ctx, args[0]);
         if (src == null) return MushError.NoMatch.Text();
+        if (!AttributePermissions.CanExamine(actor, src))
+            return MushError.PermissionDenied.Text();
 
         string newName = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim() : src.Name;
         var clone = reg.Database.CreateObject(newName, src.Type, ctx.Executor);

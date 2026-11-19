@@ -309,7 +309,10 @@ public static class DbFunctions
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
-        return obj != null ? obj.Location.ToString() : MushError.NoMatch.Text();
+        if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
+        if (!AttributePermissions.CanLocate(looker, obj)) return MushError.Nothing.Text();
+        return obj.Location.ToString();
     }
 
     public static string Owner(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -349,8 +352,11 @@ public static class DbFunctions
 
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
-        var attr = obj.GetAttribute(attrName, reg.Database);
+        var attr = looker != null
+            ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
+            : obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
 
         string[] ufunArgs = args.Length > 1 ? args[1..] : Array.Empty<string>();
@@ -381,6 +387,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         string flagQuery = args[1].Trim();
         if (flagQuery.Length == 1)
@@ -410,6 +417,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         string powerQuery = args[1].Trim();
         var def = FlagTable.FindPower(powerQuery);
@@ -422,6 +430,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         var sb = new StringBuilder();
         // Type letter first
@@ -451,6 +460,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return string.Join(" ", obj.Flags.OrderBy(f => f));
     }
@@ -461,6 +471,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return string.Join(" ", obj.Powers.OrderBy(p => p));
     }
@@ -471,6 +482,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return obj.Contents.ToString();
     }
@@ -481,6 +493,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return string.Join(" ", reg.Database.GetExits(obj.Id).Select(e => e.Id.ToString()));
     }
@@ -491,6 +504,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return obj.Parent.ToString();
     }
@@ -501,6 +515,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return string.Join(" ", obj.Parents.Select(p => p.ToString()));
     }
@@ -511,6 +526,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return obj.Zone.ToString();
     }
@@ -521,6 +537,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return string.Join(" ", obj.Zones.Select(z => z.ToString()));
     }
@@ -565,6 +582,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         int levels = 1;
         if (args.Length > 1 && int.TryParse(args[1].Trim(), out int lvl) && lvl > 0)
@@ -587,6 +605,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         var curr = obj;
         var seen = new HashSet<Dbref>();
@@ -621,6 +640,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         Dbref loc;
         if (obj.Type == ObjectType.Exit)
@@ -640,6 +660,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return obj.Home.IsValid ? obj.Home.ToString() : "#0";
     }
@@ -782,10 +803,14 @@ public static class DbFunctions
         var obj = reg.Database?.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
 
-        var attr = obj.GetAttribute(attrName, reg.Database);
+        var looker = reg.Database?.GetObject(ctx.Executor);
+        var attr = looker != null
+            ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
+            : obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
 
-        return reg.Evaluator.Evaluate(attr.Value, ctx);
+        var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
+        return reg.Evaluator.Evaluate(attr.Value, childCtx);
     }
 
     public static string ObjEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -890,6 +915,7 @@ public static class DbFunctions
         var dbref = ParseDbref(args[0], ctx);
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
+        var looker = reg.Database.GetObject(ctx.Executor);
 
         return $"{obj.Id}:{obj.CreationTime.ToUnixTimeSeconds()}";
     }
@@ -1692,6 +1718,8 @@ public static class DbFunctions
         if (loc == null) return countOnly ? "0" : string.Empty;
 
         var looker = reg.Database.GetObject(ctx.Executor);
+        if (looker != null && !AttributePermissions.CanExamine(looker, loc) && looker.Location != loc.Id && ctx.Enactor != loc.Id)
+            return countOnly ? "0" : MushError.Nothing.Text();
         IEnumerable<MUSHObject> items = typeMask == ObjectType.Exit
             ? reg.Database.GetExits(loc.Id)
             : reg.Database.GetContents(loc.Id).Where(o => (typeMask & o.Type) != 0);
@@ -1732,7 +1760,7 @@ public static class DbFunctions
         var looker = reg.Database.GetObject(ctx.Executor);
         if (target == null || target.Type != ObjectType.Player) return MushError.Nothing.Text();
 
-        if (looker == null || (!AttributePermissions.CanSeeAll(looker) && looker.Id != target.Id))
+        if (looker == null || !AttributePermissions.CanSeeAll(looker))
             return MushError.Nothing.Text();
         return target.HasFlag("DARK") ? "1" : "0";
     }
@@ -2167,10 +2195,12 @@ public static class DbFunctions
 
     public static string GetEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        string raw = Get(reg, ctx, args);
-        if (string.IsNullOrEmpty(raw) || raw.StartsWith("#-") || reg.Evaluator == null)
-            return raw;
-        return reg.Evaluator.Evaluate(raw, ctx);
+        if (args.Length == 0 || reg.Database == null) return string.Empty;
+        var (obj, attr) = ResolveObjAttr(reg, ctx, args[0]);
+        if (obj == null || attr == null) return string.Empty;
+        if (reg.Evaluator == null) return attr.Value;
+        var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
+        return reg.Evaluator.Evaluate(attr.Value, childCtx);
     }
 
     public static string ZFunFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

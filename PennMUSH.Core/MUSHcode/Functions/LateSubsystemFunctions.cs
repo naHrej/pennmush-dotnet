@@ -49,6 +49,9 @@ public static class LateSubsystemFunctions
         var obj = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
             ?? reg.Database.MatchObject(ctx.Executor, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (!PennMUSH.Core.Attributes.AttributePermissions.Controls(actor, obj))
+            return MushError.PermissionDenied.Text();
         return obj.GetAttribute(attrName, reg.Database)?.Value ?? string.Empty;
     }
 
@@ -89,7 +92,7 @@ public static class LateSubsystemFunctions
     public static string WizardLogFunc(FunctionRegistry reg, EvaluationContext ctx)
     {
         var actor = reg.Database?.GetObject(ctx.Executor);
-        if (actor == null || !actor.IsWizard)
+        if (actor == null || (!actor.IsWizard && !actor.IsRoyalty))
             return MushError.PermissionDenied.Text();
         return string.Empty;
     }
@@ -97,7 +100,7 @@ public static class LateSubsystemFunctions
     public static string BeepFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         var actor = reg.Database?.GetObject(ctx.Executor);
-        if (actor == null || !actor.IsWizard)
+        if (actor == null || (!actor.IsWizard && !actor.IsRoyalty))
             return MushError.PermissionDenied.Text();
 
         int count = 1;
