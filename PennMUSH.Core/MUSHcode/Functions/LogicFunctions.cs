@@ -62,13 +62,13 @@ public static class LogicFunctions
         registry.Register("R", R);
 
         // Section 11: Evaluation frame, registers, switch stack
-        registry.Register("NULL", (ctx, args) => string.Empty, noParse: true);
+        registry.Register("NULL", (ctx, args) => string.Empty);
         registry.Register("@@", (ctx, args) => string.Empty, noParse: true);
         registry.Register("LIT", Lit, noParse: true);
         registry.Register("LETQ", (ctx, args) => Letq(registry, ctx, args), noParse: true);
         registry.Register("LOCALIZE", (ctx, args) => Localize(registry, ctx, args), noParse: true);
         registry.Register("LISTQ", Listq);
-        registry.Register("REGISTERS", Listq);
+        registry.Register("REGISTERS", Registers);
         registry.Register("UNSETQ", Unsetq);
         registry.Register("SLEV", Slev);
         registry.Register("STEXT", Stext);
@@ -225,8 +225,9 @@ public static class LogicFunctions
         return sb.ToString();
     }
 
-    private static bool WildOrRangeMatch(string pat, string target)
+    private static bool WildOrRangeMatch(string pat, string target, out string[] captures)
     {
+        captures = Array.Empty<string>();
         if (string.IsNullOrEmpty(pat) && string.IsNullOrEmpty(target))
             return true;
 
@@ -237,12 +238,12 @@ public static class LogicFunctions
             return pat[0] == '<' ? tNum < pNum : tNum > pNum;
         }
 
-        return PatternMatcher.Match(pat, target, out _);
+        return PatternMatcher.Match(pat, target, out captures);
     }
 
     private static string DoSwitch(FunctionRegistry registry, EvaluationContext ctx, string[] args, bool exact, bool findAll)
     {
-        if (args.Length < 2) return string.Empty;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
 
         string target = Eval(registry, ctx, args[0]);
         var sb = new StringBuilder();
@@ -254,14 +255,24 @@ public static class LogicFunctions
             for (int j = 1; j < args.Length - 1; j += 2)
             {
                 string pat = Eval(registry, ctx, args[j]);
+                string[] captures = Array.Empty<string>();
                 bool matched = exact
                     ? string.Equals(pat, target, StringComparison.Ordinal)
-                    : WildOrRangeMatch(pat, target);
+                    : WildOrRangeMatch(pat, target, out captures);
 
                 if (matched)
                 {
                     string action = exact ? args[j + 1] : args[j + 1].Replace("#$", target);
-                    sb.Append(Eval(registry, ctx, action));
+                    var savedArgs = ctx.Arguments;
+                    if (!exact) ctx.Arguments = captures;
+                    try
+                    {
+                        sb.Append(Eval(registry, ctx, action));
+                    }
+                    finally
+                    {
+                        ctx.Arguments = savedArgs;
+                    }
                     found = true;
                     if (!findAll) return sb.ToString();
                 }
@@ -283,7 +294,7 @@ public static class LogicFunctions
 
     private static string DoReSwitch(FunctionRegistry registry, EvaluationContext ctx, string[] args, bool ignoreCase, bool findAll)
     {
-        if (args.Length < 2) return string.Empty;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
 
         string target = Eval(registry, ctx, args[0]);
         var options = ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None;
@@ -309,7 +320,16 @@ public static class LogicFunctions
                 if (match.Success)
                 {
                     string action = args[j + 1].Replace("#$", target);
-                    sb.Append(Eval(registry, ctx, action));
+                    var savedRx = ctx.RegexCaptures;
+                    ctx.RegexCaptures = EvaluationContext.BuildRegexCaptures(match);
+                    try
+                    {
+                        sb.Append(Eval(registry, ctx, action));
+                    }
+                    finally
+                    {
+                        ctx.RegexCaptures = savedRx;
+                    }
                     found = true;
                     if (!findAll) return sb.ToString();
                 }
@@ -361,25 +381,55 @@ public static class LogicFunctions
         return string.Join(sep, results);
     }
 
-    public static string Setq(EvaluationContext ctx, string[] args)
+    public static bool IsValidQregName(string name)
+        => !string.IsNullOrEmpty(name) && name.Length <= 64 &&
+           !name.Any(c => char.IsWhiteSpace(c) || char.IsControl(c) || c is '<' or '>' or '=');
+
+    private static string SetqCore(EvaluationContext ctx, string[] args, string funcName)
     {
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (args.Length % 2 != 0) return $"#-1 FUNCTION ({funcName}) EXPECTS AN EVEN NUMBER OF ARGUMENTS";
+
         for (int i = 0; i + 1 < args.Length; i += 2)
         {
-            ctx.SetRegister(args[i].Trim(), args[i + 1]);
+            string regName = args[i].Trim();
+            if (!IsValidQregName(regName))
+                return "#-1 INVALID Q-REGISTER NAME";
+            ctx.SetRegister(regName, args[i + 1]);
         }
         return string.Empty;
     }
 
+    public static string Setq(EvaluationContext ctx, string[] args) => SetqCore(ctx, args, "SETQ");
+
     public static string Setr(EvaluationContext ctx, string[] args)
     {
-        Setq(ctx, args);
+        string err = SetqCore(ctx, args, "SETR");
+        if (err.Length > 0) return err;
         return args.Length >= 2 ? args[1] : string.Empty;
     }
 
     public static string R(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        return ctx.GetRegister(args[0].Trim());
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        string name = args[0].Trim();
+        string type = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+            ? args[1].Trim().ToLowerInvariant()
+            : "qregisters";
+
+        return type switch
+        {
+            "qregisters" => IsValidQregName(name) ? ctx.GetRegister(name) : "#-1 INVALID Q-REGISTER NAME",
+            "regexp" => ctx.GetRegexCapture(name),
+            "switch" => int.TryParse(name, out int swIdx) && swIdx >= 0 && swIdx < ctx.SwitchStack.Count
+                ? ctx.SwitchStack[^(swIdx + 1)]
+                : string.Empty,
+            "iter" => int.TryParse(name, out int itIdx) && itIdx >= 0 && itIdx < ctx.IterStack.Count
+                ? ctx.IterStack[^(itIdx + 1)].Text
+                : string.Empty,
+            "args" or "stack" => int.TryParse(name, out int argIdx) ? ctx.GetArgument(argIdx) : string.Empty,
+            _ => "#-1"
+        };
     }
 
     public static string Lit(EvaluationContext ctx, string[] args)
@@ -401,8 +451,8 @@ public static class LogicFunctions
 
     public static string Letq(FunctionRegistry registry, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        if (args.Length % 2 == 0) return MushError.TooFewArguments.Text();
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (args.Length % 2 == 0) return "#-1 FUNCTION (LETQ) EXPECTS AN ODD NUMBER OF ARGUMENTS";
 
         var saved = ctx.CloneRegisters();
         try
@@ -410,6 +460,8 @@ public static class LogicFunctions
             for (int i = 0; i + 1 < args.Length - 1; i += 2)
             {
                 string regName = Eval(registry, ctx, args[i]).Trim();
+                if (!IsValidQregName(regName))
+                    return "#-1 INVALID Q-REGISTER NAME";
                 string regVal = Eval(registry, ctx, args[i + 1]);
                 ctx.SetRegister(regName, regVal);
             }
@@ -424,9 +476,66 @@ public static class LogicFunctions
     public static string Listq(EvaluationContext ctx, string[] args)
     {
         string pattern = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) ? args[0].Trim() : "*";
-        return string.Join(" ", ctx.Registers.Keys
-            .Where(k => PatternMatcher.Match(pattern, k, out _))
+        return string.Join(" ", ctx.Registers
+            .Where(kv => !string.IsNullOrEmpty(kv.Value) && PatternMatcher.Match(pattern, kv.Key, out _))
+            .Select(kv => kv.Key)
             .OrderBy(k => k, StringComparer.OrdinalIgnoreCase));
+    }
+
+    public static string Registers(EvaluationContext ctx, string[] args)
+    {
+        string pattern = args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) ? args[0].Trim() : "*";
+        string typesArg = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+            ? args[1].Trim().ToLowerInvariant()
+            : "qregisters regexp switch iter args";
+        string osep = args.Length > 2 ? args[2] : " ";
+
+        var types = new HashSet<string>(typesArg.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        var results = new List<string>();
+
+        if (types.Contains("qregisters"))
+        {
+            foreach (var kv in ctx.Registers.Where(kv => !string.IsNullOrEmpty(kv.Value)))
+            {
+                string key = "Q" + kv.Key;
+                if (PatternMatcher.Match(pattern, key, out _)) results.Add(key);
+            }
+        }
+        if (types.Contains("regexp") && ctx.RegexCaptures != null)
+        {
+            foreach (var kv in ctx.RegexCaptures.Where(kv => !string.IsNullOrEmpty(kv.Value)))
+            {
+                string key = "R" + kv.Key;
+                if (PatternMatcher.Match(pattern, key, out _)) results.Add(key);
+            }
+        }
+        if (types.Contains("switch"))
+        {
+            for (int i = 0; i < ctx.SwitchStack.Count; i++)
+            {
+                string key = "S" + i;
+                if (PatternMatcher.Match(pattern, key, out _)) results.Add(key);
+            }
+        }
+        if (types.Contains("iter"))
+        {
+            for (int i = 0; i < ctx.IterStack.Count; i++)
+            {
+                string key = "T" + i;
+                if (PatternMatcher.Match(pattern, key, out _)) results.Add(key);
+            }
+        }
+        if (types.Contains("args") || types.Contains("stack"))
+        {
+            for (int i = 0; i < ctx.Arguments.Length; i++)
+            {
+                if (string.IsNullOrEmpty(ctx.Arguments[i])) continue;
+                string key = "A" + i;
+                if (PatternMatcher.Match(pattern, key, out _)) results.Add(key);
+            }
+        }
+
+        return string.Join(osep, results.OrderBy(k => k, StringComparer.OrdinalIgnoreCase));
     }
 
     public static string Unsetq(EvaluationContext ctx, string[] args)
@@ -451,11 +560,16 @@ public static class LogicFunctions
 
     public static string Stext(EvaluationContext ctx, string[] args)
     {
-        int level = 0;
-        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        string arg = args[0].Trim();
+        int level;
+        if (arg.Equals("l", StringComparison.OrdinalIgnoreCase))
         {
-            if (!int.TryParse(args[0].Trim(), out level))
-                return MushError.ArgumentMustBeInteger.Text();
+            level = ctx.SwitchStack.Count - 1;
+        }
+        else if (!int.TryParse(arg, out level))
+        {
+            return MushError.ArgumentMustBeInteger.Text();
         }
         if (level < 0 || level >= ctx.SwitchStack.Count)
             return MushError.OutOfRange.Text();
@@ -464,15 +578,31 @@ public static class LogicFunctions
 
     public static string Fn(FunctionRegistry registry, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        string fnName = Eval(registry, ctx, args[0]).Trim();
-        if (string.IsNullOrEmpty(fnName)) return string.Empty;
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        string rawSpec = Eval(registry, ctx, args[0]).Trim();
+        if (string.IsNullOrEmpty(rawSpec)) return MushError.FunctionNotFound.Text("function", string.Empty);
 
-        bool noParse = registry.IsNoParse(fnName);
+        var targetCtx = ctx;
+        string fnName = rawSpec;
+        int slash = rawSpec.IndexOf('/');
+        if (slash > 0 && slash < rawSpec.Length - 1 && registry.Database != null)
+        {
+            string objSpec = rawSpec.Substring(0, slash).Trim();
+            fnName = rawSpec.Substring(slash + 1).Trim();
+            var obj = registry.Database.GetObject(DbFunctions.ParseDbref(objSpec, ctx))
+                ?? registry.Database.MatchObject(ctx.Executor, objSpec);
+            var actor = registry.Database.GetObject(ctx.Executor);
+            if (obj == null) return MushError.NoMatch.Text();
+            if (actor == null || (!PennMUSH.Core.Attributes.AttributePermissions.Controls(actor, obj) && !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor)))
+                return MushError.PermissionDenied.Text();
+            targetCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, ctx.Arguments);
+        }
+
+        bool noParse = registry.IsBuiltinNoParse(fnName);
         var callArgs = new string[args.Length - 1];
         for (int i = 1; i < args.Length; i++)
             callArgs[i - 1] = noParse ? args[i] : Eval(registry, ctx, args[i]);
 
-        return registry.Dispatch(fnName, ctx, callArgs);
+        return registry.DispatchBuiltin(fnName, targetCtx, callArgs);
     }
 }

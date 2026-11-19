@@ -15,11 +15,11 @@ public static class RegexFunctions
     {
         registry.Register("REGMATCH", RegMatch);
         registry.Register("REGMATCHI", RegMatchI);
-        registry.Register("REGEDIT", RegEdit);
-        registry.Register("REGEDITI", RegEditI);
-        registry.Register("REGEDITALL", RegEditAll);
-        registry.Register("REGEDITALLI", RegEditAllI);
-        registry.Register("REGSUB", RegEdit);
+        registry.Register("REGEDIT", (ctx, args) => RegEditCore(registry, ctx, args, RegexOptions.None, replaceAll: false), noParse: true);
+        registry.Register("REGEDITI", (ctx, args) => RegEditCore(registry, ctx, args, RegexOptions.IgnoreCase, replaceAll: false), noParse: true);
+        registry.Register("REGEDITALL", (ctx, args) => RegEditCore(registry, ctx, args, RegexOptions.None, replaceAll: true), noParse: true);
+        registry.Register("REGEDITALLI", (ctx, args) => RegEditCore(registry, ctx, args, RegexOptions.IgnoreCase, replaceAll: true), noParse: true);
+        registry.Register("REGSUB", (ctx, args) => RegEditCore(registry, ctx, args, RegexOptions.None, replaceAll: false), noParse: true);
         registry.Register("REGRAB", RegGrab);
         registry.Register("REGRABI", RegGrabI);
         registry.Register("REGRABALL", RegGrabAll);
@@ -45,25 +45,71 @@ public static class RegexFunctions
 
     private static string DoRegMatch(EvaluationContext ctx, string[] args, RegexOptions options)
     {
-        if (args.Length < 2) return "0";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         string input = args[0];
         string pattern = args[1];
+
+        var specs = new List<(string? GroupKey, int PositionalIdx, string? RegName)>();
+        if (args.Length >= 3)
+        {
+            var tokens = string.Join(" ", args.Skip(2))
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < tokens.Length; i++)
+            {
+                string tok = tokens[i];
+                if (tok == "-")
+                {
+                    specs.Add((null, i, null));
+                    continue;
+                }
+                int colon = tok.IndexOf(':');
+                if (colon > 0 && colon < tok.Length - 1)
+                {
+                    string key = tok.Substring(0, colon);
+                    string reg = tok.Substring(colon + 1).TrimStart('%', 'q', 'Q');
+                    specs.Add((key, i, reg));
+                }
+                else
+                {
+                    string reg = tok.TrimStart('%', 'q', 'Q');
+                    specs.Add((null, i, reg));
+                }
+            }
+        }
+
+        // Initialize all listed registers to "" even if match fails
+        foreach (var spec in specs)
+        {
+            if (spec.RegName != null)
+                ctx.SetRegister(spec.RegName, string.Empty);
+        }
 
         try
         {
             var match = Regex.Match(input, pattern, options, DefaultRegexTimeout);
             if (!match.Success) return "0";
 
-            // If register names are provided in args[2..], store group captures
-            for (int i = 2; i < args.Length; i++)
+            foreach (var spec in specs)
             {
-                int groupIndex = i - 2;
-                if (groupIndex < match.Groups.Count)
+                if (spec.RegName == null) continue;
+                string value = string.Empty;
+                if (spec.GroupKey != null)
                 {
-                    string regName = args[i].Trim().TrimStart('%', 'q', 'Q');
-                    string captureValue = match.Groups[groupIndex].Value;
-                    ctx.SetRegister(regName, captureValue);
+                    if (int.TryParse(spec.GroupKey, out int gIdx))
+                    {
+                        if (gIdx >= 0 && gIdx < match.Groups.Count)
+                            value = match.Groups[gIdx].Value;
+                    }
+                    else if (match.Groups[spec.GroupKey].Success)
+                    {
+                        value = match.Groups[spec.GroupKey].Value;
+                    }
                 }
+                else if (spec.PositionalIdx < match.Groups.Count)
+                {
+                    value = match.Groups[spec.PositionalIdx].Value;
+                }
+                ctx.SetRegister(spec.RegName, value);
             }
 
             return "1";
@@ -72,38 +118,59 @@ public static class RegexFunctions
         {
             return MushError.RegexTimeout.Text();
         }
-        catch
+        catch (ArgumentException ex)
         {
-            return "0";
+            return $"#-1 REGEXP ERROR: {ex.Message}";
         }
     }
 
     public static string RegEdit(EvaluationContext ctx, string[] args)
-        => DoRegEdit(args, RegexOptions.None, replaceAll: false);
+        => DoRegEdit(null, ctx, args, RegexOptions.None, replaceAll: false, evalArgs: false);
 
     public static string RegEditI(EvaluationContext ctx, string[] args)
-        => DoRegEdit(args, RegexOptions.IgnoreCase, replaceAll: false);
+        => DoRegEdit(null, ctx, args, RegexOptions.IgnoreCase, replaceAll: false, evalArgs: false);
 
     public static string RegEditAll(EvaluationContext ctx, string[] args)
-        => DoRegEdit(args, RegexOptions.None, replaceAll: true);
+        => DoRegEdit(null, ctx, args, RegexOptions.None, replaceAll: true, evalArgs: false);
 
     public static string RegEditAllI(EvaluationContext ctx, string[] args)
-        => DoRegEdit(args, RegexOptions.IgnoreCase, replaceAll: true);
+        => DoRegEdit(null, ctx, args, RegexOptions.IgnoreCase, replaceAll: true, evalArgs: false);
 
-    private static string DoRegEdit(string[] args, RegexOptions options, bool replaceAll)
+    public static string RegEditCore(FunctionRegistry reg, EvaluationContext ctx, string[] args, RegexOptions options, bool replaceAll)
+        => DoRegEdit(reg, ctx, args, options, replaceAll, evalArgs: true);
+
+    private static string DoRegEdit(FunctionRegistry? reg, EvaluationContext ctx, string[] args, RegexOptions options, bool replaceAll, bool evalArgs)
     {
-        if (args.Length < 3) return args.Length > 0 ? args[0] : string.Empty;
-        string current = args[0];
+        if (args.Length < 3) return args.Length > 0 ? (evalArgs && reg?.Evaluator != null ? reg.Evaluator.Evaluate(args[0], ctx) : args[0]) : string.Empty;
+        string current = evalArgs && reg?.Evaluator != null ? reg.Evaluator.Evaluate(args[0], ctx) : args[0];
 
         try
         {
             for (int i = 1; i + 1 < args.Length; i += 2)
             {
-                var regex = new Regex(args[i], options, DefaultRegexTimeout);
-                string replacement = args[i + 1];
+                string pat = evalArgs && reg?.Evaluator != null ? reg.Evaluator.Evaluate(args[i], ctx) : args[i];
+                string replExpr = args[i + 1];
+                var regex = new Regex(pat, options, DefaultRegexTimeout);
+
+                string EvalMatch(Match m)
+                {
+                    if (!evalArgs || reg?.Evaluator == null)
+                        return replExpr;
+                    var savedRx = ctx.RegexCaptures;
+                    ctx.RegexCaptures = EvaluationContext.BuildRegexCaptures(m);
+                    try
+                    {
+                        return reg.Evaluator.Evaluate(replExpr, ctx);
+                    }
+                    finally
+                    {
+                        ctx.RegexCaptures = savedRx;
+                    }
+                }
+
                 current = replaceAll
-                    ? regex.Replace(current, replacement)
-                    : regex.Replace(current, replacement, 1);
+                    ? regex.Replace(current, EvalMatch)
+                    : regex.Replace(current, EvalMatch, 1);
             }
             return current;
         }
@@ -111,9 +178,9 @@ public static class RegexFunctions
         {
             return MushError.RegexTimeout.Text();
         }
-        catch
+        catch (ArgumentException ex)
         {
-            return current;
+            return $"#-1 REGEXP ERROR: {ex.Message}";
         }
     }
 

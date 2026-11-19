@@ -58,10 +58,10 @@ public static class DbFunctions
         registry.Register("NEARBY", (ctx, args) => NearbyFunc(registry, ctx, args));
         registry.Register("VISIBLE", (ctx, args) => VisibleFunc(registry, ctx, args));
         registry.Register("XGET", (ctx, args) => XgetFunc(registry, ctx, args));
-        registry.Register("DEFAULT", (ctx, args) => DefaultFunc(registry, ctx, args));
-        registry.Register("EDEFAULT", (ctx, args) => EDefaultFunc(registry, ctx, args));
+        registry.Register("DEFAULT", (ctx, args) => DefaultFunc(registry, ctx, args), noParse: true);
+        registry.Register("EDEFAULT", (ctx, args) => EDefaultFunc(registry, ctx, args), noParse: true);
         registry.Register("EVAL", (ctx, args) => EvalFunc(registry, ctx, args));
-        registry.Register("OBJEVAL", (ctx, args) => ObjEvalFunc(registry, ctx, args));
+        registry.Register("OBJEVAL", (ctx, args) => ObjEvalFunc(registry, ctx, args), noParse: true);
         registry.Register("V", (ctx, args) => VFunc(registry, ctx, args));
         registry.Register("S", (ctx, args) => SFunc(registry, ctx, args));
         registry.Register("LATTR", (ctx, args) => LattrFunc(registry, ctx, args, includeParents: false));
@@ -182,7 +182,7 @@ public static class DbFunctions
         registry.Register("ULOCAL", (ctx, args) => ULocalFunc(registry, ctx, args));
         registry.Register("UDEFAULT", (ctx, args) => UDefaultFunc(registry, ctx, args, localize: false), noParse: true);
         registry.Register("ULDEFAULT", (ctx, args) => UDefaultFunc(registry, ctx, args, localize: true), noParse: true);
-        registry.Register("ULAMBDA", (ctx, args) => ULambdaFunc(registry, ctx, args), noParse: true);
+        registry.Register("ULAMBDA", (ctx, args) => ULambdaFunc(registry, ctx, args));
         registry.Register("GET_EVAL", (ctx, args) => GetEvalFunc(registry, ctx, args));
         registry.Register("ZFUN", (ctx, args) => ZFunFunc(registry, ctx, args));
         registry.Register("PFUN", (ctx, args) => PFunFunc(registry, ctx, args));
@@ -670,24 +670,63 @@ public static class DbFunctions
         return attr != null ? attr.Value : string.Empty;
     }
 
+    private static (MUSHObject? Obj, AttributeEntry? Attr) ResolveObjAttr(FunctionRegistry reg, EvaluationContext ctx, string spec)
+    {
+        if (reg.Database == null) return (null, null);
+        int slash = spec.IndexOf('/');
+        MUSHObject? obj;
+        string attrName;
+        if (slash > 0 && slash < spec.Length - 1)
+        {
+            string objSpec = spec.Substring(0, slash).Trim();
+            obj = reg.Database.GetObject(ParseDbref(objSpec, ctx))
+                ?? reg.Database.MatchObject(ctx.Executor, objSpec);
+            attrName = spec.Substring(slash + 1).Trim();
+        }
+        else
+        {
+            obj = reg.Database.GetObject(ctx.Executor);
+            attrName = spec.Trim();
+        }
+
+        if (obj == null) return (null, null);
+        var looker = reg.Database.GetObject(ctx.Executor);
+        var attr = looker != null
+            ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
+            : obj.GetAttribute(attrName, reg.Database);
+        return (obj, attr);
+    }
+
     public static string DefaultFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return string.Empty;
-        string val = Get(reg, ctx, [args[0]]);
-        return (!string.IsNullOrEmpty(val) && !val.StartsWith("#-")) ? val : args[1];
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        string eval(string raw) => reg.Evaluator != null ? reg.Evaluator.Evaluate(raw, ctx) : raw;
+
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            string spec = eval(args[i]);
+            var (_, attr) = ResolveObjAttr(reg, ctx, spec);
+            if (attr != null)
+                return attr.Value;
+        }
+        return eval(args[^1]);
     }
 
     public static string EDefaultFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return string.Empty;
-        string val = Get(reg, ctx, [args[0]]);
-        if (!string.IsNullOrEmpty(val) && !val.StartsWith("#-")) return val;
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        string eval(string raw) => reg.Evaluator != null ? reg.Evaluator.Evaluate(raw, ctx) : raw;
 
-        if (reg.Evaluator != null)
+        string spec = eval(args[0]);
+        var (obj, attr) = ResolveObjAttr(reg, ctx, spec);
+        if (obj != null && attr != null)
         {
-            return reg.Evaluator.Evaluate(args[1], ctx);
+            if (reg.Evaluator == null) return attr.Value;
+            var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
+            return reg.Evaluator.Evaluate(attr.Value, childCtx);
         }
-        return args[1];
+
+        return eval(args[1]);
     }
 
     public static string EvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -708,19 +747,42 @@ public static class DbFunctions
     public static string ObjEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Evaluator == null) return string.Empty;
-        var dbref = ParseDbref(args[0], ctx);
+        string targetSpec = reg.Evaluator.Evaluate(args[0], ctx);
+        var dbref = ParseDbref(targetSpec, ctx);
+        var target = reg.Database?.GetObject(dbref) ?? reg.Database?.MatchObject(ctx.Executor, targetSpec);
+        var actor = reg.Database?.GetObject(ctx.Executor);
 
-        var childCtx = ctx.CreateChildContext(dbref, ctx.Enactor, ctx.Arguments);
+        Dbref evalAs = (target != null && actor != null && AttributePermissions.Controls(actor, target))
+            ? target.Id
+            : ctx.Executor;
+
+        var childCtx = ctx.CreateChildContext(evalAs, ctx.Executor, ctx.Arguments);
         return reg.Evaluator.Evaluate(args[1], childCtx);
     }
 
     public static string VFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return string.Empty;
+        if (args.Length == 0) return string.Empty;
+        string name = args[0].Trim();
+        if (name.Length == 1)
+        {
+            switch (char.ToLowerInvariant(name[0]))
+            {
+                case '#': return ctx.Enactor.ToString();
+                case '@': return ctx.Caller.ToString();
+                case '!': return ctx.Executor.ToString();
+                case 'l': return ctx.Location.ToString();
+                case 'n': return reg.Database?.GetObject(ctx.Enactor)?.Name ?? string.Empty;
+            }
+        }
+        if (int.TryParse(name, out int argIdx) && argIdx >= 0)
+            return ctx.GetArgument(argIdx);
+
+        if (reg.Database == null) return string.Empty;
         var obj = reg.Database.GetObject(ctx.Executor);
         if (obj == null) return string.Empty;
 
-        var attr = obj.GetAttribute(args[0].Trim(), reg.Database);
+        var attr = obj.GetAttribute(name, reg.Database);
         return attr != null ? attr.Value : string.Empty;
     }
 
@@ -2033,22 +2095,9 @@ public static class DbFunctions
     public static string ULambdaFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return string.Empty;
-        string eval(string raw) => reg.Evaluator != null ? reg.Evaluator.Evaluate(raw, ctx) : raw;
+        string first = args[0].TrimStart();
+        var evalArgs = args.Skip(1).ToArray();
 
-        var evalArgs = new string[args.Length - 1];
-        for (int i = 1; i < args.Length; i++)
-            evalArgs[i - 1] = eval(args[i]);
-
-        string rawFirst = args[0].TrimStart();
-        if (rawFirst.StartsWith("#lambda/", StringComparison.OrdinalIgnoreCase))
-        {
-            string body = rawFirst.Substring("#lambda/".Length);
-            if (reg.Evaluator == null) return body;
-            var childCtx = ctx.CreateChildContext(ctx.Executor, ctx.Executor, evalArgs);
-            return reg.Evaluator.Evaluate(body, childCtx);
-        }
-
-        string first = eval(args[0]);
         if (first.StartsWith("#lambda/", StringComparison.OrdinalIgnoreCase))
         {
             string body = first.Substring("#lambda/".Length);
@@ -2057,10 +2106,7 @@ public static class DbFunctions
             return reg.Evaluator.Evaluate(body, childCtx);
         }
 
-        var uargs = new string[args.Length];
-        uargs[0] = first;
-        Array.Copy(evalArgs, 0, uargs, 1, evalArgs.Length);
-        return Ufun(reg, ctx, uargs);
+        return Ufun(reg, ctx, args);
     }
 
     public static string GetEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
