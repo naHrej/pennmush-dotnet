@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PennMUSH.Core;
 using PennMUSH.Server.Engine;
 using PennMUSH.Server.Network;
 using PennMUSH.Server.Session;
@@ -42,7 +43,7 @@ app.MapGet("/health", (MUSHServerHost host) =>
     return Results.Ok(new
     {
         status = "Healthy",
-        version = "PennMUSH .NET 10 (Modernized)",
+        version = $"PennMUSH .NET {ServerVersion.Text}",
         objects = host.Database.Count,
         connectedSessions = host.Connections.Count,
         channels = host.Channels.GetAllChannels().Select(c => c.Name)

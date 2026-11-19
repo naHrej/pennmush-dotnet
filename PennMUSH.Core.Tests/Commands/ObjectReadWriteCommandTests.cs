@@ -39,7 +39,7 @@ public class ObjectReadWriteCommandTests
         _dispatcher.Register(new UptimeCommandHandler(), "@uptime");
         _dispatcher.Register(new PoorCommandHandler(), "@poor");
         _dispatcher.Register(new ListCommandHandler(_dispatcher), "@list");
-        _dispatcher.Register(new DumpCommandHandler(() => _saves++), "@dump");
+        _dispatcher.Register(new DumpCommandHandler(_ => _saves++), "@dump");
         _dispatcher.Register(new SetCommandHandler(), "@set");
         _dispatcher.Register(new LockCommandHandler(), "@lock");
         _dispatcher.Register(new ExamineCommandHandler(), "examine", "brief");

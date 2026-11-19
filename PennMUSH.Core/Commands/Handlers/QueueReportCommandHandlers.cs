@@ -54,6 +54,8 @@ public class PsCommandHandler : ICommandHandler
             }
 
             context.Notify(Format(db, entry));
+            if (context.Switches.Contains("debug"))
+                NotifyEnvironment(context, entry);
             return true;
         }
 
@@ -77,13 +79,15 @@ public class PsCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify(all ? Feedback.QueueForAll.Text() : Feedback.QueueFor.Text(("value", actor.Name)));
+        bool quick = context.Switches.Contains("quick");
+        if (!quick)
+            context.Notify(all ? Feedback.QueueForAll.Text() : Feedback.QueueFor.Text(("value", actor.Name)));
         if (entries.Count == 0)
             context.Notify(Feedback.Empty);
         else
         {
             foreach (var entry in entries.OrderBy(item => item.Pid))
-                context.Notify(Format(db, entry));
+                context.Notify(quick ? $"#{entry.Pid} {entry.Command}" : Format(db, entry));
         }
 
         context.Notify(totals);
@@ -104,6 +108,20 @@ public class PsCommandHandler : ICommandHandler
         }
 
         return $"#{entry.Pid}  {name}  {when}  {entry.Command}";
+    }
+
+    private static void NotifyEnvironment(CommandContext context, QueueEntry entry)
+    {
+        context.Notify($"Enactor: #{entry.Enactor.Value}");
+        context.Notify("Args: " + string.Join(" ", entry.Arguments));
+        if (entry.Registers.Count == 0)
+        {
+            context.Notify("Registers: (none)");
+            return;
+        }
+
+        foreach (var register in entry.Registers.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase))
+            context.Notify($"%{register.Key}: {register.Value}");
     }
 }
 

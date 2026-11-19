@@ -54,7 +54,7 @@ Registered. No new table and no new field. Attribute edits are stored by the exi
 | --- | --- | --- |
 | 🟢 1 | `@cpattr` | Read one attribute, write it onto each target. Copy the stored flags. |
 | 🟢 2 | `@mvattr` | `@cpattr`, then clear the source. |
-| 🔵 3 | `@edit` | Replace text inside one attribute. `/regexp` can wait until the plain replace works. |
+| 🟢 3 | `@edit` | Replace text inside one attribute. `/first` replaces the first literal. `/regexp` replaces the first match, and `/all` replaces every match. `/nocase` folds case. `/check` reports the result and leaves the attribute. `/quiet` suppresses the report. |
 | 🟢 4 | `@grep` | Read attributes on one object and print matches. |
 | 🟢 5 | `@atrlock` | Set or clear `AttributeFlags.Locked` and report it. A later `@set` leaves the attribute unchanged unless the setter is a wizard. |
 | 🟢 6 | `@atrchown` | Change the attribute creator. The same operation as `@chown` on one attribute. |
@@ -68,10 +68,10 @@ Registered. No new table and no new field. Attribute edits are stored by the exi
 | 🟢 14 | `@whereis` | A player's location. Also tell the target. |
 | 🟢 15 | `brief` | `examine` with contents and the long attribute dump omitted. |
 | 🟢 16 | `@drain` | The `@wait` semaphore list. `@notify` wakes one waiter; `@drain` drops them. |
-| 🟢 17 | `@dump` | The existing SQLite save, on demand. |
+| 🟢 17 | `@dump` | The existing SQLite save, on demand. `/paranoid`, `/debug`, and `/nofork` select that mode's sentence around the same in-process save. |
 | 🟢 18 | `@uptime` | Process start time. One timestamp recorded at startup. |
 | 🟢 19 | `@poor` | Set every player's pennies. God only. Quota is not involved. |
-| 🔵 20 | `@list` | Print the command table, flag table, power names, and builtin functions. Skip list types that have no table yet. |
+| 🟢 20 | `@list` | Print commands, flags, powers, functions, attributes, the message of the day, locks, and process allocations. `/builtin` and `/local` limit commands and functions. `/lowercase` lowercases the list. |
 | 🟢 21 | `@entrances` | Objects whose home or link points at a place. Type switches only filter the walk. |
 | 🟢 22 | `@firstexit` | Move one exit to the front of the room's exit chain. |
 
@@ -118,7 +118,7 @@ Each block starts with the foundation. The commands under it come after that fou
 | 🔵 32 | `@scan` | Lists the $-commands that match the text, in the room, its contents, what you carry, yourself, the zone, or the master room. Speech still does not run zone or master-room commands. |
 | 🔵 33 | `@sweep` | Lists listeners, puppets, and connected players in the room, inventory, or exits. Hearing is players and puppets, and a player is connected after login. |
 | 🔵 34 | `with` | Runs the first matching $-command on a nearby object, one you control, or your zone object. `with/room` runs every match in a room, including your zone room and the master room. `/noeval` is ignored. |
-| 🔵 35 | `@search` | Walks the database and keeps objects by owner, type, name, zone, parent, flags, and powers. No eval, lock, command, or listen search. |
+| 🟢 35 | `@search` | Walks the database and keeps objects by owner, type, name, zone, parent, flags, powers, eval, lock, command, listen, and the evaluated type forms. |
 
 ### Destroy finishes what `@destroy` starts
 
@@ -135,7 +135,7 @@ Each block starts with the foundation. The commands under it come after that fou
 
 | Order | Command | Depends on |
 | --- | --- | --- |
-| 🔵 38 | `@ps` | Lists your queue. `/all` lists every entry for a wizard, `/summary` and `/count` shorten the report, and a pid shows one entry. No load average and no `/debug` environment. |
+| 🔵 38 | `@ps` | Lists your queue. `/all` lists every entry for a wizard, `/summary` and `/count` shorten the report, `/quick` prints the short lines, and a pid shows one entry. `/debug` on a pid adds the enactor, arguments, and registers. No load average. |
 | 🔵 39 | `@kick` | A wizard runs the next N queued commands immediately, including waits whose time has not come. Commands waiting on a semaphore stay queued. |
 
 `@assert`, `@break`, and `@retry` stop or rerun the list `@include` is running. `@verb` runs one object's attribute as another object. `@trigger` today runs a single dispatched command.
@@ -231,7 +231,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | 🔵 62 | `@retry` | A true check reruns the list. The right-hand side replaces `%0` through `%9`. A gagged player cannot retry. A list stops after 50 retries. |
 | 🔵 63 | `@verb` | One object speaks and acts as another. The victim's attribute is evaluated, the room hears the others message, and the action attribute runs as the victim with the actor as enactor. |
 
-`@include` runs the commands in one attribute immediately. `;` and a newline separate commands, and braces keep a `;` inside one command. A `$` or `^` prefix is skipped through the first colon. The right-hand side fills `%0` through `%9`, and the commands run as the player who typed `@include`. An attribute on a parent is included. `/localize` and `/clearregs` are accepted and do not change registers. `/nobreak` keeps a break inside the included attribute from stopping the caller. An attribute is included when it can be named, with no read check. A caller's `%0` through `%9` are not passed along when the command has no `=`. An ambiguous name is not reported.
+`@include` runs the commands in one attribute immediately. `;` and a newline separate commands, and braces keep a `;` inside one command. A `$` or `^` prefix is skipped through the first colon. The right-hand side fills `%0` through `%9`, and the commands run as the player who typed `@include`. An attribute on a parent is included. `/localize` keeps the caller's registers. `/clearregs` starts the included commands with empty registers and leaves the caller unchanged. `/nobreak` keeps a break inside the included attribute from stopping the caller. An attribute is included when it can be named, with no read check. A caller's `%0` through `%9` are not passed along when the command has no `=`. An ambiguous name is not reported.
 
 ### Passwords that survive a restart
 
@@ -248,7 +248,7 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | 🔵 67 | `@function` | Adds, lists, reports, updates, aliases, restricts, enables, disables, and deletes a global soft function. Calling it runs the named attribute. The table is not saved. `/clone` and `/restore` do not copy or restore a builtin. `/preserve` and `/builtin` are ignored. A builtin cannot be deleted. A call enforces Nobody, Wizard, God, Admin, NoGagged, and NoFixed. Other restriction names appear on the report and leave the call unchanged. NoGuest is stored, and the flag table has no GUEST flag. A builtin report leaves out the argument count. |
 | 🔵 68 | `@disable`, `@enable` | A wizard turns a boolean configuration option on or off. The options are use_ws, use_dns, player_creation, guests, and use_quota. The new value stays in memory. `@quota` and `@squota` read use_quota on each command. A gagged wizard can disable an option and cannot enable one. Other stored options report that they are not on/off switches. An unknown name reports that there is no such option. The change is not written to mush.cnf or the wizard log. |
 | 🔵 69 | `@command` | A wizard adds a stub command, aliases it, clones it, and can enable, disable, or restrict it. God deletes a command added this way. A disabled command is skipped. `@command` stays enabled. Restrictions are nobody, noguest, nofixed, nogagged, god, wizard, and admin. The table stays in memory. |
-| 🔵 70 | `@hook` | A wizard, or someone with the Hook power, sets before, after, ignore, override, and extend. Ignore skips the command when the attribute is false. Override and extend run a `$` pattern in place of the command. Before and after evaluate the attribute. `/inline` and `/inplace` are stored, and the hook still runs immediately. `@password` and `@newpassword` cannot be hooked. |
+| 🔵 70 | `@hook` | A wizard, or someone with the Hook power, sets before, after, ignore, override, and extend. Ignore skips the command when the attribute is false. Override and extend run a `$` pattern in place of the command. Before and after evaluate the attribute. `/localize` and `/clearregs` on override and extend control registers when the hook runs. `/inline` and `/inplace` are stored, and the hook still runs immediately. `@password` and `@newpassword` cannot be hooked. |
 
 ### Definitions, warnings, mail aliases, config, and vendors
 
@@ -268,8 +268,8 @@ A multi-line attribute must run as a sequence of commands in one queue frame. `@
 | --- | --- | --- |
 | 🔵 78 | `@dbck` | A wizard repairs invalid owners, homes, locations, zones, parents, exit destinations, and attribute creators. A mortal hears `Silly mortal, chicks are for kids!` Owners hear about a circular zone, a zone with no zone lock, and a disconnected room. The check does not write the wizard log. |
 | 🔵 79 | `@shutdown` | A wizard saves and then stops the process. Everyone sees `GAME: Shutdown by` the owner's name. `/panic` is God only and adds `EMERGENCY SHUTDOWN: @shutdown/panic`. The save is the normal database. `/reboot` reloads the engine without dropping sockets and says `GAME: Reboot finished.` It does not re-exec the process, and `@reboot` keeps its own messages. A switch typed after a space, such as `@shutdown /reboot`, counts too. `/paranoid` uses the same save. A failed save still stops, except `/reboot`, which cancels and says `GAME: Reboot failed.` |
-| 🔵 80 | `@sitelock` | A wizard keeps an in-memory ban table. `/ban` refuses connect and create from a matching host, and the player hears `Player connections not allowed.` A plain `@sitelock` refuses create and still allows connect. `/register` refuses create the same way. `/check` and a bare `@sitelock` list the rules. `/remove` deletes by pattern or rule number. The table is not written to the access file, so a process restart clears it. A reload keeps the same table. `/player` has no stored last address. `/name` does not edit a names file. Access options after `=` are not parsed. A connection with no recorded host is not checked. |
-| 🔵 81 | `@sockset` | Shows and sets options on one connected descriptor: prefix, suffix, Pueblo, telnet, width, height, terminal type, accents, color style, prompt newlines, and noquota. Width, height, color, Pueblo, and telnet update that connection. Prefix, suffix, accent stripping, prompt newlines, and noquota are stored and are not applied to output. Setting Pueblo does not send the Pueblo handshake. The options last for the connection. |
+| 🔵 80 | `@sitelock` | A wizard keeps an in-memory ban table. `/ban` refuses connect and create from a matching host, and the player hears `Player connections not allowed.` A plain `@sitelock` refuses create and still allows connect. `/register` refuses create the same way. `/check` and a bare `@sitelock` list the rules. `/remove` deletes by pattern or rule number. The table is not written to the access file, so a process restart clears it. A reload keeps the same table. `/player` bans the last address stored in the connection log. `/name` locks or deletes a line in the names file and keeps the comments. Access options after `=` are not parsed. A connection with no recorded host is not checked. |
+| 🔵 81 | `@sockset` | Shows and sets options on one connected descriptor: prefix, suffix, Pueblo, telnet, width, height, terminal type, accents, color style, prompt newlines, and noquota. Width, height, color, Pueblo, and telnet update that connection. Prefix and suffix wrap each line. Accent stripping, prompt newlines, and noquota are applied. Noquota skips that connection's queue limit. Setting Pueblo does not send the Pueblo handshake. The options last for the connection. |
 | 🔵 82 | `@log`, `@logwipe` | A wizard writes `Logged.` and a line on one of six files in `game/log`. `/recall` prints `Begin log recall.`, the lines written since this process started, and `End log recall.` God wipes a file with password `zap!` and hears `Log wiped.` A wrong password hears `Wrong password.` `/rotate` keeps one uncompressed copy named `.1`. `/trim` keeps the last tenth of the lines. The password is not read from `mush.cnf`. Recall does not reread the file. These commands do not log every command or connection. |
 | 🔵 83 | `@clock` | Sets or clears the join, speak, see, hide, and modify locks on a channel. A failed join lock says `Permission to join denied.` A wizard joins anyway. A failed speak lock refuses the message. A failed see lock hides the channel. A member who passes the hide lock is left off `who`. A key is dbrefs combined with `&`, `|`, and `!`. The locks stay in memory. |
 | 🔵 84 | `@restart` | Halts queues and queues each object's own `STARTUP`. A bare `@restart` says `Halted:`. Naming an object says `Restarting:`. `/all` needs a wizard or the Halt power, and every player hears `Your objects are being globally restarted by` the name. A switch after a space counts. `STARTUP` waits on the queue. Halting does not refund queue pennies. This does not reboot the process. |

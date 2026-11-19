@@ -2,6 +2,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Communication;
 using PennMUSH.Core.Database;
@@ -10,6 +11,7 @@ using PennMUSH.Core.Flags;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Presentation;
+using PennMUSH.Core.Queue;
 using PennMUSH.Core.Types;
 
 public class CopyAttributeCommandHandler : ICommandHandler
@@ -207,10 +209,49 @@ public class EditAttributeCommandHandler : ICommandHandler
             return false;
         }
 
-        string updated = entry.Value.Replace(oldText, newText, StringComparison.Ordinal);
+        bool quiet = context.Switches.Contains("quiet");
+        bool check = context.Switches.Contains("check");
+        string updated;
+        if (context.Switches.Contains("regexp"))
+        {
+            var options = context.Switches.Contains("nocase") ? RegexOptions.IgnoreCase : RegexOptions.None;
+            Regex regex;
+            try
+            {
+                regex = new Regex(oldText, options, TimeSpan.FromSeconds(1));
+            }
+            catch (ArgumentException)
+            {
+                context.Notify(Feedback.InvalidRegularExpression);
+                return false;
+            }
+
+            int count = context.Switches.Contains("all") ? int.MaxValue : 1;
+            updated = regex.Replace(entry.Value, newText, count);
+        }
+        else if (context.Switches.Contains("first"))
+        {
+            int at = entry.Value.IndexOf(oldText, StringComparison.Ordinal);
+            updated = at < 0
+                ? entry.Value
+                : string.Concat(entry.Value.AsSpan(0, at), newText, entry.Value.AsSpan(at + oldText.Length));
+        }
+        else
+        {
+            updated = entry.Value.Replace(oldText, newText, StringComparison.Ordinal);
+        }
+
         if (updated == entry.Value)
         {
-            context.Notify(Feedback.NothingToChange);
+            if (!quiet)
+                context.Notify(Feedback.NothingToChange);
+            return true;
+        }
+
+        if (check)
+        {
+            if (!quiet)
+                context.Notify(Feedback.WouldEditTo, ("value", updated));
             return true;
         }
 
@@ -226,7 +267,8 @@ public class EditAttributeCommandHandler : ICommandHandler
             return false;
         }
 
-        context.Notify(Feedback.Edited);
+        if (!quiet)
+            context.Notify(Feedback.Edited);
         return true;
     }
 }
@@ -251,9 +293,30 @@ public class GrepCommandHandler : ICommandHandler
         }
 
         string needle = context.RightArg;
-        var hits = target.Attributes
-            .Where(attr => attr.Name.Contains(needle, StringComparison.OrdinalIgnoreCase)
-                || attr.Value.Contains(needle, StringComparison.OrdinalIgnoreCase))
+        bool list = context.Switches.Contains("list") || context.Switches.Contains("ilist");
+        bool print = context.Switches.Contains("print") || context.Switches.Contains("iprint") || !list;
+        bool ignoreCase = context.Switches.Contains("nocase")
+            || context.Switches.Contains("ilist")
+            || context.Switches.Contains("iprint");
+        bool regexp = context.Switches.Contains("regexp");
+        bool wild = context.Switches.Contains("wild");
+        Regex? regex = null;
+        if (regexp)
+        {
+            try
+            {
+                regex = new Regex(needle, ignoreCase ? RegexOptions.IgnoreCase : RegexOptions.None, TimeSpan.FromSeconds(1));
+            }
+            catch (ArgumentException)
+            {
+                context.Notify(Feedback.InvalidRegularExpression);
+                return false;
+            }
+        }
+
+        var comparison = ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        var hits = Attributes(target, db, context.Switches.Contains("parent"))
+            .Where(attr => Matches(attr, needle, comparison, regex, wild))
             .OrderBy(attr => attr.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (hits.Count == 0)
@@ -262,8 +325,49 @@ public class GrepCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify(string.Join("\n", hits.Select(attr => $"{attr.Name}: {attr.Value}")));
+        context.Notify(string.Join("\n", hits.Select(attr => print ? $"{attr.Name}: {attr.Value}" : attr.Name)));
         return true;
+    }
+
+    private static bool Matches(AttributeEntry attr, string needle, StringComparison comparison, Regex? regex, bool wild)
+    {
+        if (regex != null)
+            return regex.IsMatch(attr.Name) || regex.IsMatch(attr.Value);
+        if (wild)
+            return PatternMatcher.Match(needle, attr.Name, out _) || PatternMatcher.Match(needle, attr.Value, out _);
+        return attr.Name.Contains(needle, comparison) || attr.Value.Contains(needle, comparison);
+    }
+
+    private static IEnumerable<AttributeEntry> Attributes(MUSHObject target, ObjectDatabase db, bool parents)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var attr in target.Attributes)
+        {
+            if (seen.Add(attr.Name))
+                yield return attr;
+        }
+
+        if (!parents)
+            yield break;
+
+        var queue = new Queue<Dbref>(target.Parents);
+        var walked = new HashSet<Dbref> { target.Id };
+        while (queue.Count > 0)
+        {
+            var parentRef = queue.Dequeue();
+            if (!walked.Add(parentRef))
+                continue;
+            var parent = db.GetObject(parentRef);
+            if (parent == null)
+                continue;
+            foreach (var attr in parent.Attributes)
+            {
+                if (seen.Add(attr.Name))
+                    yield return attr;
+            }
+            foreach (var next in parent.Parents)
+                queue.Enqueue(next);
+        }
     }
 }
 
@@ -811,18 +915,37 @@ public class ListCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
-        string which = context.Arguments.Trim().ToLowerInvariant();
         bool lower = context.Switches.Contains("lowercase");
-        if (context.Switches.Contains("attribs") || which == "attribs")
+        string which = TypeSwitch(context) ?? context.Arguments.Trim().ToLowerInvariant();
+        if (which is "attribs")
         {
             string body = string.Join(" ", StandardAttributes.CanonicalNames().OrderBy(name => name, StringComparer.Ordinal));
-            if (lower)
-                body = body.ToLowerInvariant();
-            context.Notify(Feedback.AttribsList, ("value", body));
+            context.Notify(Feedback.AttribsList, ("value", Case(body, lower)));
             return true;
         }
 
-        if (context.Switches.Contains("motd") || which == "motd")
+        if (which is "locks")
+        {
+            context.Notify(Feedback.ListLocks, ("value", Case(string.Join(" ", LockType.Names), lower)));
+            return true;
+        }
+
+        if (which is "allocations")
+        {
+            var actor = db.GetObject(context.Executor);
+            if (actor == null || !actor.IsWizard)
+            {
+                context.Notify(Feedback.PermissionDenied);
+                return false;
+            }
+
+            context.Notify(Feedback.MemoryAllocations);
+            context.Notify(Feedback.GcHeap, ("value", $"{GC.GetTotalMemory(false)}"));
+            context.Notify(Feedback.WorkingSet, ("value", $"{Environment.WorkingSet}"));
+            return true;
+        }
+
+        if (which is "motd")
         {
             var actor = db.GetObject(context.Executor);
             if (_motd == null || actor == null)
@@ -835,12 +958,14 @@ public class ListCommandHandler : ICommandHandler
             return true;
         }
 
+        bool builtinOnly = context.Switches.Contains("builtin") && !context.Switches.Contains("local");
+        bool localOnly = context.Switches.Contains("local") && !context.Switches.Contains("builtin");
         IEnumerable<string>? names = which switch
         {
-            "commands" => _dispatcher.Table.PrimaryNames,
+            "commands" => CommandNames(builtinOnly, localOnly),
             "flags" => FlagTable.Definitions.Select(flag => flag.Name),
             "powers" => FlagTable.PowerNames,
-            "functions" => _functions?.Names,
+            "functions" => FunctionNames(builtinOnly, localOnly),
             _ => null
         };
         if (names == null)
@@ -851,19 +976,56 @@ public class ListCommandHandler : ICommandHandler
             return false;
         }
 
-        var list = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+        var list = names.Select(name => Case(name, lower)).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
         context.Notify(list.Count == 0 ? Feedback.Empty.Text() : string.Join("\n", list));
         return true;
     }
+
+    private static string? TypeSwitch(CommandContext context)
+    {
+        foreach (string name in new[] { "commands", "flags", "powers", "functions", "attribs", "motd", "locks", "allocations" })
+        {
+            if (context.Switches.Contains(name))
+                return name;
+        }
+        return null;
+    }
+
+    private IEnumerable<string> CommandNames(bool builtinOnly, bool localOnly)
+    {
+        foreach (string name in _dispatcher.Table.PrimaryNames)
+        {
+            bool userAdded = _dispatcher.Catalog.TryFacts(name, out var facts) && facts.UserAdded;
+            if (builtinOnly && userAdded)
+                continue;
+            if (localOnly && !userAdded)
+                continue;
+            yield return name;
+        }
+    }
+
+    private IEnumerable<string>? FunctionNames(bool builtinOnly, bool localOnly)
+    {
+        if (_functions == null)
+            return null;
+        IEnumerable<string> names = Array.Empty<string>();
+        if (!localOnly)
+            names = names.Concat(_functions.Names);
+        if (!builtinOnly)
+            names = names.Concat(_functions.ListSoft().Select(function => function.Name));
+        return names.Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string Case(string text, bool lower) => lower ? text.ToLowerInvariant() : text;
 }
 
 public class DumpCommandHandler : ICommandHandler
 {
-    private readonly Action _save;
+    private readonly Action<string> _save;
 
     public string Name => "@dump";
 
-    public DumpCommandHandler(Action save)
+    public DumpCommandHandler(Action<string> save)
     {
         _save = save;
     }
@@ -877,9 +1039,13 @@ public class DumpCommandHandler : ICommandHandler
             return false;
         }
 
+        string mode = context.Switches.Contains("paranoid") ? "paranoid"
+            : context.Switches.Contains("debug") ? "debug"
+            : context.Switches.Contains("nofork") ? "nofork"
+            : "normal";
         try
         {
-            _save();
+            _save(mode);
         }
         catch (Exception ex)
         {
@@ -887,7 +1053,13 @@ public class DumpCommandHandler : ICommandHandler
             return false;
         }
 
-        context.Notify(Feedback.DatabaseSaved);
+        context.Notify(mode switch
+        {
+            "paranoid" => Feedback.ParanoidDumpComplete.Text(),
+            "debug" => Feedback.DebugDumpComplete.Text(),
+            "nofork" => Feedback.DatabaseSavedWithoutForking.Text(),
+            _ => Feedback.DatabaseSaved.Text()
+        });
         return true;
     }
 }

@@ -3,6 +3,7 @@ namespace PennMUSH.Core.Commands.Handlers;
 using System;
 using System.Linq;
 using System.Text;
+using PennMUSH.Core;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Locks;
@@ -465,6 +466,27 @@ public class StatsCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
+        if (context.Switches.Contains("flags"))
+        {
+            context.Notify(FlagReport(db));
+            return true;
+        }
+
+        if (context.Switches.Contains("tables") || context.Switches.Contains("chunks")
+            || context.Switches.Contains("regions") || context.Switches.Contains("paging")
+            || context.Switches.Contains("freespace"))
+        {
+            var actor = db.GetObject(context.Executor);
+            if (actor == null || !actor.IsWizard)
+            {
+                context.Notify(Feedback.PermissionDenied);
+                return false;
+            }
+
+            context.Notify(MemoryReport(context.Switches));
+            return true;
+        }
+
         int players = 0, rooms = 0, exits = 0, things = 0, garbage = 0;
         foreach (var obj in db.GetAllObjects())
         {
@@ -483,6 +505,54 @@ public class StatsCommandHandler : ICommandHandler
         sb.AppendLine($"  Players: {players,-6} Rooms: {rooms,-6} Exits: {exits,-6} Things: {things,-6} Garbage: {garbage}");
         context.Notify(sb.ToString().TrimEnd());
         return true;
+    }
+
+    private static string FlagReport(ObjectDatabase db)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var obj in db.GetAllObjects())
+        {
+            foreach (string flag in obj.Flags)
+                counts[flag] = counts.TryGetValue(flag, out int count) ? count + 1 : 1;
+        }
+
+        if (counts.Count == 0)
+            return "Flags: (none)";
+        return "Flags:\n" + string.Join("\n", counts.OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => $"{pair.Key}: {pair.Value}"));
+    }
+
+    private static string MemoryReport(IReadOnlySet<string> switches)
+    {
+        var info = GC.GetGCMemoryInfo();
+        long heap = GC.GetTotalMemory(false);
+        if (switches.Contains("freespace"))
+            return $"Freespace: {info.TotalAvailableMemoryBytes} bytes available";
+        if (switches.Contains("paging"))
+        {
+            using var process = System.Diagnostics.Process.GetCurrentProcess();
+            return $"Paging: working set {process.WorkingSet64} bytes, paged {process.PagedMemorySize64} bytes";
+        }
+        if (switches.Contains("regions") || (switches.Contains("chunks") && switches.Contains("regions")))
+        {
+            return string.Join("\n", new[]
+            {
+                "Regions:",
+                $"Gen0 collections: {GC.CollectionCount(0)}",
+                $"Gen1 collections: {GC.CollectionCount(1)}",
+                $"Gen2 collections: {GC.CollectionCount(2)}",
+                $"Heap: {heap} bytes"
+            });
+        }
+        if (switches.Contains("chunks"))
+            return $"Chunks: heap {heap} bytes, fragmentable {info.FragmentedBytes} bytes";
+        return string.Join("\n", new[]
+        {
+            "Tables:",
+            $"Heap: {heap} bytes",
+            $"High memory load threshold: {info.HighMemoryLoadThresholdBytes} bytes",
+            $"Total available: {info.TotalAvailableMemoryBytes} bytes"
+        });
     }
 }
 
@@ -531,7 +601,7 @@ public class VersionCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
-        context.Notify(Feedback.PennMUSHNetC13Net10);
+        context.Notify(Feedback.PennMUSHNetVersion, ("version", ServerVersion.Text));
         context.Notify(Feedback.ModernVirtualWorldEngineWithC3DagInheritanceAsyncSoftcodeAndCronScheduler);
         context.Notify(Feedback.FeatureParityReimplementationOfPennMUSH18);
         return true;

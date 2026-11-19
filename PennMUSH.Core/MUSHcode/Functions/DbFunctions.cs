@@ -1127,7 +1127,7 @@ public static class DbFunctions
 
         if ("locks".StartsWith(type, StringComparison.Ordinal))
         {
-            return "Basic Enter Use Zone Page Tport Teleport Speech Listen Command Parent Link Leave Drop Give From Receive Pay Chown Chzone Forward Control Dropto Destroy Interact Mail Follow Examine";
+            return string.Join(" ", LockType.Names);
         }
 
         return MushError.Nothing.Text();

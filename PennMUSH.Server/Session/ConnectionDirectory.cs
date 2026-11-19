@@ -20,6 +20,9 @@ public sealed class ConnectionDirectory : ISessionDirectory
         _drop = drop;
     }
 
+    public bool IgnoresQuota(Dbref player) =>
+        _connections.Values.Any(conn => conn.PlayerId == player && conn.NoQuota);
+
     public int? SourceDescriptor { get; set; }
     public string Poll { get; set; } = "Doing";
 
