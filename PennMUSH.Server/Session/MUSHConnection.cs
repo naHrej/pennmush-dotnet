@@ -2,7 +2,6 @@ namespace PennMUSH.Server.Session;
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -109,16 +108,11 @@ public class MUSHConnection
 
     public async Task SendLineAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
     {
-        text = Present(text);
-        if (!string.IsNullOrEmpty(OutputPrefix))
-            await DeliverTextAsync(OutputPrefix + "\r\n", ct);
         // JSON envelopes are recognized by the client only when the text still
         // starts with '{' and ends with '}'. Leave those on the wire unchanged.
         if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
         {
             await DeliverTextAsync(text + "\r\n", ct);
-            if (!string.IsNullOrEmpty(OutputSuffix))
-                await DeliverTextAsync(OutputSuffix + "\r\n", ct);
             return;
         }
 
@@ -137,8 +131,6 @@ public class MUSHConnection
         if (!Capabilities.SupportsHtml)
         {
             await DeliverTextAsync(rendered.Text + "\r\n", ct, preserveHtml: rendered.HasHtmlFrames);
-            if (!string.IsNullOrEmpty(OutputSuffix))
-                await DeliverTextAsync(OutputSuffix + "\r\n", ct);
             return;
         }
 
@@ -161,8 +153,6 @@ public class MUSHConnection
             ct,
             preserveHtml: true,
             plainText: hadAnsi ? AnsiToHtmlTranslator.StripAnsi(rendered.Text) : null);
-        if (!string.IsNullOrEmpty(OutputSuffix))
-            await DeliverTextAsync(OutputSuffix + "\r\n", ct);
     }
 
     public async Task SendRawAsync(string text, CancellationToken ct = default)
@@ -398,20 +388,6 @@ public class MUSHConnection
         }
         FlushSpaces();
         return sb.ToString();
-    }
-
-    private string Present(string text)
-    {
-        if (!StripAccents || string.IsNullOrEmpty(text))
-            return text;
-        string decomposed = text.Normalize(NormalizationForm.FormD);
-        var sb = new StringBuilder(decomposed.Length);
-        foreach (char ch in decomposed)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
-                sb.Append(ch);
-        }
-        return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private static bool IsProtocolText(string text)

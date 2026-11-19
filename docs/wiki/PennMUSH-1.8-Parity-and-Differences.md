@@ -21,7 +21,7 @@ Features implemented in PennMUSH .NET that extend or modernize stock PennMUSH 1.
 
 ## 2. Completed Parity Summary
 
-All major parity waves (PRs #1–#54) have landed on `main`:
+All major parity waves (PRs #1–#56) have landed on `main`:
 - **Commands**: All 167 stock PennMUSH command names (plus 4 host/extension commands = **201** distinct C# command names/aliases across **139** handler registrations, plus **3** extra `alias.cnf` command aliases `@gedit`, `@attrlock`, `@attrchown` = **204** under default config).
 - **Functions**: **567** distinct built-in MUSHcode function registrations across 18 modules (**40** `noParse`, **29** `sideEffect`), plus **18** `function_alias` entries in `game/alias.cnf` (**578** callable names under default config).
 - **Backends 1–8 (PRs #47–#54)**:
@@ -43,15 +43,7 @@ Audited directly against each C# handler:
 | Command | Works Today | Missing / Ignored Switches & Modes |
 |---|---|---|
 | `@slave` | Bare `@slave` replies `"I'm sorry, Dave..."`; `@slave/restart` replies `"No such service."` | Stock `info` / `ssl` daemon restarts do not run external daemons (see Section 5) |
-| `@ps` | Plain `@ps`, `/all`, `/summary`, `/count`, and `<pid>` inspect queues | `/quick` and `/debug` switches are ignored |
-| `@dump` | Saves DB (`SqliteStore` + `RuntimeStateStore`) | `/paranoid`, `/debug`, `/nofork` switches are ignored (all perform standard save) |
-| `@edit` | Literal substring replacement in an attribute | `/first`, `/regexp`, `/all`, `/nocase`, `/check`, `/quiet` switches are not read |
-| `@grep` | Case-insensitive substring search on an object's own attributes | `/list`, `/print`, `/ilist`, `/iprint`, `/regexp`, `/wild`, `/nocase`, `/parent` switches are not read |
-| `@list` | `commands`, `flags`, `powers`, `functions`, `attribs` (with `/lowercase`), `motd` | `/locks`, `/allocations`, `/all`, `/builtin`, `/local` fall through to usage; `/lowercase` only applies to `attribs` |
-| `@include` & `@hook` | `@include` + `/nobreak`; `@hook` stores/runs `/before`, `/after`, `/ignore`, `/override`, `/extend` + `/inplace`/`/inline` | `@include/localize`, `@include/clearregs` are ignored; `@hook` stores `Localize`/`ClearRegs` flags on `CommandHook` display text, but hook execution does not localize/clear Q-registers |
-| `@search` | Owner, dbref range, `type`, `name`, `zone`, `parent`, `flags`, `lflags`, `powers`, `exits`/`things`/`objects`/`rooms`/`players`, `mindb`/`maxdb`/`start`/`count` | `eval`, `elock`, `command`, `listen`, `eplayer`, `eroom`, `eexit`, `ething`, `eobject` return `"That search is not available."` |
-| `@sitelock` | `/ban`, `/register`, `/check`, `/remove`, `/player` (via `connlog.db`), bare `@sitelock`, persisted in SQLite `sitelocks` | `/name` reports it cannot open/lock/delete the names file |
-| `@stats` | Prints total, player, room, exit, thing, and garbage counts | `/tables`, `/chunks`, `/regions`, `/paging`, `/freespace`, `/flags` switches are ignored |
+| `@function` | Softcode function CRUD, `/delete`, `/enable`, `/disable`, `/restrict`, `/alias` | `/clone` and `/restore` report `"That's not a builtin function."` |
 | Alias-file-only commands | `@gedit`, `@attrlock`, `@attrchown` work when `game/alias.cnf` is loaded | Not registered directly in C# `MUSHServer.RegisterCommands()` if running without `alias.cnf` |
 | Lock expressions | Boolean `&`, `|`, `!`, `(...)` over dbref keys (`#n`, `=#n`, `n`) | Stock attribute/flag/eval/owner/indirect lock atoms default to unlocked (`ConstantLockNode(true)`) in `LockParser.cs` |
 
@@ -70,5 +62,5 @@ Audited directly against each C# handler:
 
 - External `info_slave` / `ssl_slave` child daemon processes (`TelnetListenerService` and `MushServer` run in-process on .NET async sockets/DNS).
 - POSIX `fork()` dump processes (`SqliteStore` writes atomically in-process).
-- C memory/chunk allocator statistics (`/chunks`, `/regions`, `/paging` in stock PennMUSH `@stats`).
+- C memory/chunk allocator internals (`/chunks`, `/regions`, `/paging`, `/tables`, `/freespace` in `@stats` report managed .NET GC and process memory metrics instead of C arenas).
 - MySQL / PostgreSQL native database drivers (superseded by managed embedded SQLite via `Microsoft.Data.Sqlite`).

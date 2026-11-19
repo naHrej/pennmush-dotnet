@@ -5,7 +5,7 @@ A modernized, clean-room implementation of the **PennMUSH** virtual world engine
 - **Runtime**: .NET 10 (`net10.0`) across 4 projects (`PennMUSH.Core`, `PennMUSH.Extensions`, `PennMUSH.Server`, `PennMUSH.Core.Tests`)
 - **MUSHcode Functions**: **567** distinct built-in function registrations across 18 modules (**40** `noParse`, **29** `sideEffect`), plus **18** `function_alias` entries in `game/alias.cnf` (**578** total callable names under default config)
 - **Player Commands**: **139** handler registrations covering **201** distinct built-in C# command names/aliases, plus **21** `command_alias` entries in `game/alias.cnf` (**204** total command names under default config) and pre-login commands (`connect`/`conn`/`co`, `create`/`cr`, `WHO`, `QUIT`)
-- **Test Suite**: **469** tests across **95** test files
+- **Test Suite**: **480** tests across **97** test files
 
 ---
 
@@ -160,13 +160,12 @@ Browse the live **[GitHub Wiki](https://github.com/naHrej/pennmush-dotnet/wiki)*
 | **MUSHcode Language Guide** | Evaluation order, `noParse`, `%`-substitutions, Q-registers, `MushError` | [MUSHcode-Language-Guide](docs/wiki/MUSHcode-Language-Guide.md) |
 | **Flags, Powers, Attributes & Locks** | All 45 flags, 31 powers, standard attributes, 13 lock types | [Flags-Powers-Attributes-and-Locks](docs/wiki/Flags-Powers-Attributes-and-Locks.md) |
 | **Colors, Markup & Presentation** | 927-color palette, `@moniker`/`%k`, ANSI-to-HTML, `@sockset`, `wshtml()`/`wsjson()` | [Colors-Markup-and-Presentation](docs/wiki/Colors-Markup-and-Presentation.md) |
+| **Functions Index & API Reference** | Master A–Z index and 15 domain guides for all **567** built-in C# functions (**578** with `alias.cnf`) | [Functions-Index](docs/wiki/Functions-Index.md) |
 | **Commands Index & Reference** | Master A–Z index and 8 domain guides for all **201** C# command names (**204** with `alias.cnf`) + pre-login commands | [Commands-Index](docs/wiki/Commands-Index.md) |
 | **MUjs Protocol Reference** | WebSocket/GMCP JSON envelopes, editor & UI dock payloads | [MUjs-Protocol-Reference](docs/wiki/MUjs-Protocol-Reference.md) |
 | **Server Configuration & Persistence** | `mush.cnf` options, SQLite schemas, `ITextFileCache`, HTTP & CI/CD | [Server-Configuration-and-Persistence](docs/wiki/Server-Configuration-and-Persistence.md) |
 | **Plugin Development Guide** | Authoring & hot-reloading `.NET 10` extensions via `PennMUSH.Extensions` | [Plugin-Development-Guide](docs/wiki/Plugin-Development-Guide.md) |
 | **PennMUSH 1.8 Parity & Differences** | Code-verified summary of extensions, partial switches, and omissions | [PennMUSH-1.8-Parity-and-Differences](docs/wiki/PennMUSH-1.8-Parity-and-Differences.md) |
-
-> **Upcoming Reference PRs**: The full MUSHcode Function API Reference (**567** built-in functions / **578** with `alias.cnf`) is linked in the Wiki sidebar and tracked in follow-up documentation PRs 3–4.
 
 ---
 
