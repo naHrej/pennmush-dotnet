@@ -6,6 +6,8 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using PennMUSH.Core.Presentation;
+using PennMUSH.Core.Protocol;
 using PennMUSH.Core.Queue;
 
 public static class StringFunctions
@@ -643,9 +645,11 @@ public static class StringFunctions
 
     public static string Strip(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        // Strip ANSI escape sequences: \x1B\[[0-9;]*[a-zA-Z]
-        return Regex.Replace(args[0], @"\x1B\[[0-9;]*[a-zA-Z]", "");
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        string raw = WebSocketMarkup.ContainsFrames(args[0])
+            ? WebSocketMarkup.Render(args[0], isWebSocket: false).Text
+            : args[0];
+        return AnsiColorTable.StripAnsi(raw);
     }
 
     public static string Secure(EvaluationContext ctx, string[] args)
@@ -1095,7 +1099,11 @@ public static class StringFunctions
         public bool TruncEach;
         public bool TruncAll;
         public bool NoColSep;
+        public string? AnsiOpen;
+        public string? AnsiClose;
         public string Text = string.Empty;
+        public List<AnsiString.Glyph> Glyphs = new();
+        public string TrailingMarkup = string.Empty;
         public int Pos;
     }
 
@@ -1120,7 +1128,11 @@ public static class StringFunctions
         string lineSep = args.Length >= n + 4 ? args[n + 3] : "\n";
 
         for (int i = 0; i < n; i++)
+        {
             cols[i].Text = args[i + 1].Replace("\r\n", "\n", StringComparison.Ordinal);
+            cols[i].Glyphs = AnsiString.Parse(cols[i].Text, out string trailing);
+            cols[i].TrailingMarkup = trailing;
+        }
 
         return RenderAlignedColumns(cols, filler, fieldSep, lineSep);
     }
@@ -1149,7 +1161,11 @@ public static class StringFunctions
         string lineSep = args.Length > 5 ? args[5] : "\n";
 
         for (int i = 0; i < cols.Count; i++)
+        {
             cols[i].Text = items[i].Replace("\r\n", "\n", StringComparison.Ordinal);
+            cols[i].Glyphs = AnsiString.Parse(cols[i].Text, out string trailing);
+            cols[i].TrailingMarkup = trailing;
+        }
 
         return RenderAlignedColumns(cols, filler, fieldSep, lineSep);
     }
@@ -1180,7 +1196,7 @@ public static class StringFunctions
 
             int widthStart = i;
             while (i < spec.Length && char.IsDigit(spec[i])) i++;
-            if (i == widthStart || !int.TryParse(spec.AsSpan(widthStart, i - widthStart), out int w) || w <= 0)
+            if (i == widthStart || !int.TryParse(spec.AsSpan(widthStart, i - widthStart), out int w) || w < 0)
             {
                 error = MushError.InvalidAlignString.Text();
                 return false;
@@ -1216,6 +1232,14 @@ public static class StringFunctions
                             error = MushError.InvalidAlignString.Text();
                             return false;
                         }
+                        string ansiSpec = spec.Substring(i + 1, close - (i + 1)).Trim();
+                        if (!string.IsNullOrEmpty(ansiSpec)
+                            && AnsiColorTable.TryBuildAnsiSgr(ansiSpec, out string open, out string closeSeq, out bool hasAnsi)
+                            && hasAnsi)
+                        {
+                            col.AnsiOpen = open;
+                            col.AnsiClose = closeSeq;
+                        }
                         i = close;
                         break;
                 }
@@ -1242,6 +1266,7 @@ public static class StringFunctions
     {
         var output = new StringBuilder();
         int lineNum = 0;
+        int fieldSepVisLen = AnsiString.VisibleLength(fieldSep);
 
         while (true)
         {
@@ -1265,17 +1290,17 @@ public static class StringFunctions
                     if (widths[j] > 0) { nextActive = j; break; }
                 }
 
-                if (nextActive >= 0 && !cols[nextActive].Repeat && cols[nextActive].CoalesceLeft && cols[nextActive].Pos >= cols[nextActive].Text.Length)
+                if (nextActive >= 0 && !cols[nextActive].Repeat && cols[nextActive].CoalesceLeft && cols[nextActive].Pos >= cols[nextActive].Glyphs.Count)
                 {
-                    widths[i] += widths[nextActive] + fieldSep.Length;
+                    widths[i] += widths[nextActive] + fieldSepVisLen;
                     widths[nextActive] = 0;
                     if (cols[nextActive].NoFill) col.NoFill = true;
                     if (cols[nextActive].NoColSep) col.NoColSep = true;
                 }
 
-                if (col.Pos >= col.Text.Length)
+                if (col.Pos >= col.Glyphs.Count)
                 {
-                    if (col.Repeat && col.Text.Length > 0)
+                    if (col.Repeat && col.Glyphs.Count > 0)
                     {
                         col.Pos = 0;
                         colsDone++;
@@ -1284,14 +1309,19 @@ public static class StringFunctions
                     {
                         if (col.CoalesceRight && nextActive >= 0)
                         {
-                            widths[nextActive] += widths[i] + fieldSep.Length;
+                            widths[nextActive] += widths[i] + fieldSepVisLen;
                             widths[i] = 0;
                             colsDone++;
                             continue;
                         }
                         if (needSep && fieldSep.Length > 0) line.Append(fieldSep);
                         needSep = !col.NoColSep;
-                        if (!col.NoFill) line.Append(filler, widths[i]);
+                        if (!col.NoFill)
+                        {
+                            if (col.AnsiOpen != null) line.Append(col.AnsiOpen);
+                            line.Append(filler, widths[i]);
+                            if (col.AnsiClose != null) line.Append(col.AnsiClose);
+                        }
                         colsDone++;
                         continue;
                     }
@@ -1301,16 +1331,16 @@ public static class StringFunctions
                     colsDone++;
                 }
 
-                string seg = TakeAlignSegment(col, widths[i], out bool skipLeadingSpaces);
+                string seg = TakeAlignSegment(col, widths[i], out int visLen, out bool skipLeadingSpaces);
                 if (skipLeadingSpaces)
                 {
-                    while (col.Pos < col.Text.Length && col.Text[col.Pos] != '\n' && char.IsWhiteSpace(col.Text[col.Pos]))
+                    while (col.Pos < col.Glyphs.Count && col.Glyphs[col.Pos].Char != '\n' && char.IsWhiteSpace(col.Glyphs[col.Pos].Char))
                         col.Pos++;
                 }
 
                 if (needSep && fieldSep.Length > 0) line.Append(fieldSep);
                 needSep = !col.NoColSep;
-                FormatAlignSegment(line, seg, col.Mode, widths[i], filler, col.NoFill);
+                FormatAlignSegment(line, seg, visLen, col.Mode, widths[i], filler, col.NoFill, col.AnsiOpen, col.AnsiClose);
             }
 
             if (colsDone == cols.Count) break;
@@ -1322,87 +1352,175 @@ public static class StringFunctions
         return output.ToString();
     }
 
-    private static string TakeAlignSegment(AlignColumn col, int width, out bool skipSpaces)
+    private static string TakeAlignSegment(AlignColumn col, int width, out int visLen, out bool skipSpaces)
     {
-        string text = col.Text;
+        var glyphs = col.Glyphs;
         int start = col.Pos;
         int len = 0;
         int lastSpace = -1;
         skipSpaces = false;
 
         int cur = start;
-        while (len < width && cur < text.Length && text[cur] != '\n')
+        while (len < width && cur < glyphs.Count && glyphs[cur].Char != '\n')
         {
-            if (char.IsWhiteSpace(text[cur])) lastSpace = cur;
+            if (char.IsWhiteSpace(glyphs[cur].Char)) lastSpace = cur;
             cur++;
             len++;
         }
-        if (cur < text.Length && char.IsWhiteSpace(text[cur]) && text[cur] != '\n')
+        if (cur < glyphs.Count && char.IsWhiteSpace(glyphs[cur].Char) && glyphs[cur].Char != '\n')
             lastSpace = cur;
 
-        if (cur >= text.Length)
+        if (cur >= glyphs.Count)
         {
             col.Pos = cur;
-            return text.Substring(start, len);
+            visLen = len;
+            return BuildGlyphSlice(col, start, len);
         }
 
-        if (text[cur] == '\n')
+        if (glyphs[cur].Char == '\n')
         {
-            col.Pos = col.TruncAll ? text.Length : cur + 1;
-            return text.Substring(start, len);
+            col.Pos = col.TruncAll ? glyphs.Count : cur + 1;
+            visLen = len;
+            return BuildGlyphSlice(col, start, len);
         }
 
         if (lastSpace >= start && !col.TruncAll && !col.TruncEach)
         {
             int end = lastSpace;
-            while (end >= start && char.IsWhiteSpace(text[end])) end--;
+            while (end >= start && char.IsWhiteSpace(glyphs[end].Char)) end--;
             int segLen = Math.Max(0, end - start + 1);
             col.Pos = lastSpace;
             skipSpaces = true;
-            return text.Substring(start, segLen);
+            visLen = segLen;
+            return BuildGlyphSlice(col, start, segLen);
         }
 
         if (col.TruncAll)
         {
-            col.Pos = text.Length;
+            col.Pos = glyphs.Count;
         }
         else if (col.TruncEach)
         {
-            int nl = text.IndexOf('\n', cur);
-            col.Pos = nl < 0 ? text.Length : nl + 1;
+            int nl = -1;
+            for (int k = cur; k < glyphs.Count; k++)
+            {
+                if (glyphs[k].Char == '\n') { nl = k; break; }
+            }
+            col.Pos = nl < 0 ? glyphs.Count : nl + 1;
         }
         else
         {
             col.Pos = cur;
         }
-        return text.Substring(start, len);
+        visLen = len;
+        return BuildGlyphSlice(col, start, len);
     }
 
-    private static void FormatAlignSegment(StringBuilder line, string seg, AlignMode mode, int width, char filler, bool noFill)
+    private static string BuildGlyphSlice(AlignColumn col, int start, int count)
     {
-        int pad = Math.Max(0, width - seg.Length);
+        if (count <= 0)
+            return string.Empty;
+
+        var glyphs = col.Glyphs;
+        var sb = new StringBuilder(count * 2);
+        bool hasOpenAnsi = false;
+
+        // Track active ANSI sequences before `start`, discarding sequences cleared by \x1B[0m
+        var carried = new StringBuilder();
+        for (int i = 0; i < start; i++)
+        {
+            string pfx = glyphs[i].Prefix;
+            if (pfx.Length == 0) continue;
+
+            int lastReset = pfx.LastIndexOf("\x1B[0m", StringComparison.Ordinal);
+            if (lastReset >= 0)
+            {
+                carried.Clear();
+                string afterReset = pfx.Substring(lastReset + 4);
+                if (afterReset.Length > 0)
+                    carried.Append(afterReset);
+            }
+            else
+            {
+                carried.Append(pfx);
+            }
+        }
+
+        if (carried.Length > 0)
+        {
+            sb.Append(carried);
+            hasOpenAnsi = true;
+        }
+
+        for (int i = start; i < start + count; i++)
+        {
+            string pfx = glyphs[i].Prefix;
+            if (pfx.Length > 0)
+            {
+                sb.Append(pfx);
+                hasOpenAnsi = !pfx.EndsWith("\x1B[0m", StringComparison.Ordinal);
+            }
+            sb.Append(glyphs[i].Char);
+        }
+
+        if (start + count == glyphs.Count && col.TrailingMarkup.Length > 0)
+        {
+            sb.Append(col.TrailingMarkup);
+        }
+        else if (hasOpenAnsi)
+        {
+            sb.Append("\x1B[0m");
+        }
+
+        return sb.ToString();
+    }
+
+    private static void FormatAlignSegment(
+        StringBuilder line,
+        string seg,
+        int visLen,
+        AlignMode mode,
+        int width,
+        char filler,
+        bool noFill,
+        string? ansiOpen,
+        string? ansiClose)
+    {
+        int pad = Math.Max(0, width - visLen);
+        bool wrapAnsi = !string.IsNullOrEmpty(ansiOpen);
+        if (wrapAnsi)
+            line.Append(ansiOpen);
+
+        string segOut = wrapAnsi && seg.Contains("\x1B[0m", StringComparison.Ordinal)
+            ? seg.Replace("\x1B[0m", "\x1B[0m" + ansiOpen, StringComparison.Ordinal)
+            : seg;
+
         switch (mode)
         {
             case AlignMode.Right:
-                if (seg.Length > 0 || !noFill) line.Append(filler, pad);
-                line.Append(seg);
+                if (visLen > 0 || !noFill) line.Append(filler, pad);
+                line.Append(segOut);
                 break;
             case AlignMode.Center:
                 int leftPad = pad >> 1;
                 line.Append(filler, leftPad);
-                line.Append(seg);
+                line.Append(segOut);
                 if (!noFill) line.Append(filler, (pad >> 1) + (pad & 1));
                 break;
             case AlignMode.Full:
             case AlignMode.WpFull:
                 bool isWp = mode == AlignMode.WpFull;
-                int numSpaces = seg.Count(c => char.IsWhiteSpace(c));
+                int numSpaces = 0;
+                for (int i = 0; i < segOut.Length; i++)
+                {
+                    if (char.IsWhiteSpace(segOut[i])) numSpaces++;
+                }
                 if (pad > 0 && numSpaces > 0 && (!isWp || (width / pad) >= 2))
                 {
                     int extra = pad / numSpaces;
                     int rem = pad % numSpaces;
                     int seen = 0;
-                    foreach (char c in seg)
+                    foreach (char c in segOut)
                     {
                         line.Append(c);
                         if (char.IsWhiteSpace(c))
@@ -1412,15 +1530,45 @@ public static class StringFunctions
                             seen++;
                         }
                     }
+                    if (wrapAnsi)
+                        AppendAlignAnsiClose(line, ansiOpen!, ansiClose!);
                     return;
                 }
-                line.Append(seg);
+                line.Append(segOut);
                 if (!noFill) line.Append(filler, pad);
                 break;
             default:
-                line.Append(seg);
+                line.Append(segOut);
                 if (!noFill) line.Append(filler, pad);
                 break;
         }
+
+        if (wrapAnsi)
+            AppendAlignAnsiClose(line, ansiOpen!, ansiClose!);
+    }
+
+    private static void AppendAlignAnsiClose(StringBuilder line, string ansiOpen, string ansiClose)
+    {
+        // Avoid redundant <ansiOpen><ansiClose> if the cell ended right at an internal reset
+        string redundantSuffix = "\x1B[0m" + ansiOpen;
+        if (line.Length >= redundantSuffix.Length)
+        {
+            bool match = true;
+            int offset = line.Length - redundantSuffix.Length;
+            for (int k = 0; k < redundantSuffix.Length; k++)
+            {
+                if (line[offset + k] != redundantSuffix[k])
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if (match)
+            {
+                line.Remove(line.Length - ansiOpen.Length, ansiOpen.Length);
+                return;
+            }
+        }
+        line.Append(ansiClose);
     }
 }

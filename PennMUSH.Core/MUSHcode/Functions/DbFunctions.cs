@@ -2059,6 +2059,8 @@ public static class DbFunctions
             "locktype" => !string.IsNullOrWhiteSpace(val) ? "1" : "0",
             "passwd" => !string.IsNullOrEmpty(val) ? "1" : "0",
             "qreg" => !string.IsNullOrWhiteSpace(val) && val.Trim().All(c => char.IsLetterOrDigit(c) || c == '_') ? "1" : "0",
+            "colorname" => Presentation.AnsiColorTable.TryGetNamedColor(val.Trim().TrimStart('+'), out _) ? "1" : "0",
+            "ansicolor" => !string.IsNullOrWhiteSpace(val) && Presentation.AnsiColorTable.TryParseAnsiSpec(val.Trim(), out _) ? "1" : "0",
             _ => "0"
         };
     }

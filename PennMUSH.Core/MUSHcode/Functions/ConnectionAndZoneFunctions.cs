@@ -6,6 +6,7 @@ using System.Linq;
 using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Presentation;
 using PennMUSH.Core.Types;
 
 public sealed record ConnectionSnapshot(
@@ -32,7 +33,39 @@ public sealed record ConnectionSnapshot(
     bool SupportsRgb24 = false,
     int Width = 80,
     int Height = 24,
-    string? ColorStyle = null);
+    string? ColorStyle = null)
+{
+    public ClientCapabilities ToClientCapabilities()
+    {
+        ColorDepth depth = ColorStyle?.ToLowerInvariant() switch
+        {
+            "plain" => ColorDepth.None,
+            "16color" or "hilite" => ColorDepth.Standard16,
+            "xterm256" => ColorDepth.Color256,
+            "rgb24" or "truecolor" => ColorDepth.TrueColor,
+            _ => SupportsRgb24
+                ? ColorDepth.TrueColor
+                : SupportsXterm256
+                    ? ColorDepth.Color256
+                    : ColorDepth.Standard16
+        };
+
+        return new ClientCapabilities
+        {
+            SupportsHtml = SupportsHtml,
+            SupportsPueblo = SupportsPueblo,
+            SupportsGmcp = SupportsGmcp,
+            IsSsl = IsSsl,
+            IsWebSocket = IsWebSocket,
+            StripAccents = StripAccents,
+            PromptNewlines = PromptNewlines,
+            ColorMode = depth,
+            TerminalWidth = Width,
+            TerminalHeight = Height,
+            TerminalType = TerminalType
+        };
+    }
+}
 
 public static class ConnectionAndZoneFunctions
 {

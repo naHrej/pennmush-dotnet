@@ -116,11 +116,11 @@ public static class HtmlToAnsiTranslator
                 return FormatRgb(r, g, b, colorMode);
             }
 
-            var matchName = Regex.Match(tag, @"(color|fg)\s*=\s*""([a-zA-Z]+)""", RegexOptions.IgnoreCase);
+            var matchName = Regex.Match(tag, @"(color|fg)\s*=\s*""([a-zA-Z0-9\s]+)""", RegexOptions.IgnoreCase);
             if (matchName.Success)
             {
-                string name = matchName.Groups[2].Value.ToLowerInvariant();
-                return GetNamedColorAnsi(name);
+                string name = matchName.Groups[2].Value.Trim().ToLowerInvariant();
+                return GetNamedColorAnsi(name, colorMode);
             }
         }
 
@@ -158,7 +158,7 @@ public static class HtmlToAnsiTranslator
         return "\x1B[37m"; // White
     }
 
-    private static string GetNamedColorAnsi(string name)
+    private static string GetNamedColorAnsi(string name, ColorDepth colorMode)
     {
         return name switch
         {
@@ -170,7 +170,9 @@ public static class HtmlToAnsiTranslator
             "cyan" => "\x1B[36m",
             "white" => "\x1B[37m",
             "black" => "\x1B[30m",
-            _ => string.Empty
+            _ => AnsiColorTable.TryGetNamedColor(name, out var entry)
+                ? FormatRgb(entry.R, entry.G, entry.B, colorMode)
+                : string.Empty
         };
     }
 }

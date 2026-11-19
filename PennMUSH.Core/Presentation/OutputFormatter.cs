@@ -5,17 +5,22 @@ using System;
 public static class OutputFormatter
 {
     public static string FormatOutput(string message, ClientCapabilities capabilities)
+        => FormatOutput(message, capabilities, escapeHtml: false);
+
+    public static string FormatOutput(string message, ClientCapabilities capabilities, bool escapeHtml)
     {
         if (string.IsNullOrEmpty(message)) return string.Empty;
 
         if (capabilities.SupportsHtml)
         {
-            // Direct HTML delivery directly into text stream
-            return message;
+            return AnsiToHtmlTranslator.Translate(message, escapeHtml, capabilities.ColorMode);
         }
 
         // Fallback: Translate HTML to ANSI / plaintext
-        return HtmlToAnsiTranslator.Translate(message, capabilities.ColorMode);
+        string translated = HtmlToAnsiTranslator.Translate(message, capabilities.ColorMode);
+        return capabilities.ColorMode == ColorDepth.None
+            ? AnsiToHtmlTranslator.StripAnsi(translated)
+            : translated;
     }
 
     public static string BuildPuebloInit(string stylesheetUrl)

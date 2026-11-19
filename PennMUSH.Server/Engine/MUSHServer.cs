@@ -353,7 +353,7 @@ public class MUSHServer
         Dispatcher.Register(new AttributeChownCommandHandler(), "@atrchown");
         Dispatcher.Register(new LockFlagCommandHandler(), "@lset");
         Dispatcher.Register(new DecompileCommandHandler(), "@decompile");
-        Dispatcher.Register(new MonikerCommandHandler(), "@moniker");
+        Dispatcher.Register(new MonikerCommandHandler(Evaluator), "@moniker");
         Dispatcher.Register(new MessageCommandHandler(Evaluator), "@message");
         Dispatcher.Register(new FindCommandHandler(), "@find");
         Dispatcher.Register(new WhereIsCommandHandler(), "@whereis");

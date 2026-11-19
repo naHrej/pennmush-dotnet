@@ -9,6 +9,7 @@ using PennMUSH.Core.Entities;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
+using PennMUSH.Core.Presentation;
 using PennMUSH.Core.Types;
 
 public class CopyAttributeCommandHandler : ICommandHandler
@@ -444,7 +445,14 @@ public class LockFlagCommandHandler : ICommandHandler
 
 public class MonikerCommandHandler : ICommandHandler
 {
+    private readonly ExpressionEvaluator? _evaluator;
+
     public string Name => "@moniker";
+
+    public MonikerCommandHandler(ExpressionEvaluator? evaluator = null)
+    {
+        _evaluator = evaluator;
+    }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
@@ -484,7 +492,16 @@ public class MonikerCommandHandler : ICommandHandler
             return true;
         }
 
-        var err = target.SetAttribute("MONIKER", context.RightArg, context.Executor, wizardOverride: actor.IsWizard);
+        var evalCtx = new EvaluationContext(context.Executor, context.Enactor, context.Executor, actor.Location);
+        string raw = _evaluator != null ? _evaluator.Evaluate(context.RightArg, evalCtx) : context.RightArg;
+        string sanitized = AnsiColorTable.SanitizeMoniker(raw, out bool hasAnsi);
+        if (!hasAnsi)
+        {
+            context.Notify(Feedback.YouNeedToSpecifyAMonikerWithSomeAnsi);
+            return false;
+        }
+
+        var err = target.SetAttribute("MONIKER", sanitized, context.Executor, wizardOverride: actor.IsWizard);
         if (err == AttributeErrorCode.Locked)
         {
             context.Notify(Feedback.MonikerIsLocked);
