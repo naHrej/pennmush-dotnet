@@ -52,6 +52,7 @@ public class FunctionRegistry
     public Func<Dbref, string, bool>? PasswordVerifier { get; set; }
     public Func<string, IEnumerable<string>>? TextEntriesProvider { get; set; }
     public Func<string, string, string?>? TextFileEntryProvider { get; set; }
+    public SqlDatabase? SqlDatabase { get; set; }
     public bool SideEffectsEnabled { get; set; } = true;
 
     public FunctionRegistry(ObjectDatabase? database = null)
