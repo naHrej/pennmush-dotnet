@@ -35,6 +35,7 @@ public class MUSHServer
     private readonly ConnectionDirectory _sessions;
     private readonly ConcurrentDictionary<Dbref, string> _playerPasswords = new();
     private readonly CancellationTokenSource _cts = new();
+    private readonly object _outboundLock = new();
     private Task _outbound = Task.CompletedTask;
     private bool _shutdownRequested;
     private bool _quietRebootRequested;
@@ -164,6 +165,7 @@ public class MUSHServer
         SyncSuggestionsFromCache();
         Functions.TextCache = TextCache;
         Functions.Suggestions = Suggestions;
+        Functions.ConnectionsProvider = BuildConnectionSnapshots;
 
         Dispatcher = new CommandDispatcher(Evaluator);
         Extensions = new ExtensionManager(this);
@@ -457,7 +459,7 @@ public class MUSHServer
             host,
             host,
             conn.ConnectedAt.ToUnixTimeSeconds(),
-            ssl: false,
+            ssl: conn.Capabilities.IsSsl,
             websocket: conn.IsWebSocket);
 
         // If player is already authenticated or re-registering across a hot-reboot, do not re-show login screen
@@ -552,6 +554,9 @@ public class MUSHServer
         _sessions.SourceDescriptor = conn.Descriptor;
         try
         {
+            if (!string.IsNullOrEmpty(conn.OutputPrefix))
+                await conn.SendLineAsync(conn.OutputPrefix, ct);
+
             var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
             bool shutdown = _shutdownRequested;
             bool quietReboot = _quietRebootRequested;
@@ -561,6 +566,10 @@ public class MUSHServer
             {
                 DispatchNotification(note);
             }
+            await FlushOutbound();
+
+            if (!string.IsNullOrEmpty(conn.OutputSuffix))
+                await conn.SendLineAsync(conn.OutputSuffix, ct);
 
             if (context.CommandName.StartsWith('@'))
             {
@@ -805,16 +814,41 @@ public class MUSHServer
         string line = WithNospoof(player, speaker, spoofable, message);
         foreach (var c in _connections.Values)
         {
-            if (c.PlayerId == player)
+            if (c.PlayerId != player)
+                continue;
+
+            if (protocolType != null)
             {
-                if (protocolType != null && protocolPayload != null && c.ProtocolMode == ClientProtocolMode.MujsWebSocket)
+                if (c.IsWebSocket)
                 {
-                    _ = c.SendEnvelopeAsync(protocolType, protocolPayload);
+                    object payloadObj = protocolPayload ?? string.Empty;
+                    if (protocolPayload is string jsonText && !string.IsNullOrWhiteSpace(jsonText))
+                    {
+                        try
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(jsonText);
+                            payloadObj = doc.RootElement.Clone();
+                        }
+                        catch
+                        {
+                            payloadObj = jsonText;
+                        }
+                    }
+
+                    TrackOutbound(c.SendEnvelopeAsync(protocolType, payloadObj));
                 }
-                else
+                else if (c.Capabilities.SupportsGmcp && c.TelnetEnabled)
                 {
-                    _ = prompt ? c.SendRawAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml);
+                    TrackOutbound(c.SendGmcpAsync(protocolType, protocolPayload?.ToString() ?? string.Empty));
                 }
+                else if (!string.IsNullOrEmpty(line))
+                {
+                    TrackOutbound(prompt ? c.SendPromptAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml));
+                }
+            }
+            else
+            {
+                TrackOutbound(prompt ? c.SendPromptAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml));
             }
         }
     }
@@ -839,9 +873,28 @@ public class MUSHServer
                 if (hello != null)
                 {
                     conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+                    conn.Capabilities.IsWebSocket = true;
+                    conn.Capabilities.SupportsHtml = true;
+                    if (!string.IsNullOrWhiteSpace(hello.Client))
+                        conn.Capabilities.TerminalType = hello.Client;
+
                     foreach (var cap in hello.Capabilities)
                     {
                         conn.ClientCapabilities.Add(cap);
+                        if (cap.Equals("gmcp", StringComparison.OrdinalIgnoreCase))
+                        {
+                            conn.Capabilities.SupportsGmcp = true;
+                        }
+                        else if (cap.Equals("rgb24", StringComparison.OrdinalIgnoreCase)
+                            || cap.Equals("truecolor", StringComparison.OrdinalIgnoreCase))
+                        {
+                            conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.TrueColor;
+                        }
+                        else if (cap.Equals("xterm256", StringComparison.OrdinalIgnoreCase)
+                            && conn.Capabilities.ColorMode < PennMUSH.Core.Presentation.ColorDepth.Color256)
+                        {
+                            conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.Color256;
+                        }
                     }
 
                     string token = Convert.ToBase64String(System.Security.Cryptography.HMACSHA256.HashData(
@@ -933,7 +986,7 @@ public class MUSHServer
                 var p = Database.GetObject(c.PlayerId);
                 if (p != null && p.Location == roomRef)
                 {
-                    _ = c.SendLineAsync(WithNospoof(c.PlayerId, speaker, spoofable, message));
+                    TrackOutbound(c.SendLineAsync(WithNospoof(c.PlayerId, speaker, spoofable, message)));
                 }
             }
         }
@@ -944,14 +997,64 @@ public class MUSHServer
         foreach (var c in _connections.Values)
         {
             if (c.PlayerId.IsValid)
-                _outbound = Task.WhenAll(_outbound, c.SendLineAsync(message));
+                TrackOutbound(c.SendLineAsync(message));
         }
+    }
+
+    private void TrackOutbound(Task task)
+    {
+        if (task.IsCompletedSuccessfully)
+            return;
+
+        lock (_outboundLock)
+        {
+            _outbound = _outbound.IsCompleted
+                ? task
+                : Task.WhenAll(_outbound, task);
+        }
+    }
+
+    private IReadOnlyList<ConnectionSnapshot> BuildConnectionSnapshots()
+    {
+        return _connections.Values
+            .Where(c => c.PlayerId.IsValid)
+            .OrderBy(c => c.Descriptor)
+            .Select(c => new ConnectionSnapshot(
+                PlayerId: c.PlayerId,
+                Descriptor: c.Descriptor,
+                Host: string.IsNullOrWhiteSpace(c.Host) ? "localhost" : c.Host,
+                IpAddress: string.IsNullOrWhiteSpace(c.Host) ? "127.0.0.1" : c.Host,
+                TerminalType: c.Capabilities.TerminalType,
+                ConnectedAt: c.ConnectedAt,
+                LastActivityAt: c.LastActivity,
+                IsHidden: c.Hidden,
+                BytesSent: c.BytesSent,
+                BytesReceived: c.BytesReceived,
+                CommandCount: c.Commands,
+                SupportsTelnet: c.TelnetEnabled,
+                SupportsGmcp: c.Capabilities.SupportsGmcp,
+                IsSsl: c.Capabilities.IsSsl,
+                IsWebSocket: c.IsWebSocket,
+                SupportsHtml: c.Capabilities.SupportsHtml,
+                SupportsPueblo: c.Capabilities.SupportsPueblo,
+                StripAccents: c.StripAccents,
+                PromptNewlines: c.PromptNewlines,
+                SupportsXterm256: c.Capabilities.SupportsXterm256,
+                SupportsRgb24: c.Capabilities.SupportsRgb24,
+                Width: c.Capabilities.TerminalWidth,
+                Height: c.Capabilities.TerminalHeight,
+                ColorStyle: c.ColorStyle))
+            .ToList();
     }
 
     private async Task FlushOutbound()
     {
-        var pending = _outbound;
-        _outbound = Task.CompletedTask;
+        Task pending;
+        lock (_outboundLock)
+        {
+            pending = _outbound;
+            _outbound = Task.CompletedTask;
+        }
         try
         {
             await pending;
@@ -971,7 +1074,7 @@ public class MUSHServer
                 var p = Database.GetObject(c.PlayerId);
                 if (p != null && (p.IsWizard || p.IsGod))
                 {
-                    _ = c.SendLineAsync(message);
+                    TrackOutbound(c.SendLineAsync(message));
                 }
             }
         }

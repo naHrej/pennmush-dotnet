@@ -78,6 +78,7 @@ var handleWebSocket = async (HttpContext context, MUSHServerHost host) =>
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var conn = new MUSHConnection(webSocket);
         conn.Host = context.Connection.RemoteIpAddress?.ToString() ?? "";
+        conn.Capabilities.IsSsl = context.Request.IsHttps;
         conn.PublicBaseUrl = $"{context.Request.Scheme}://{context.Request.Host}";
         host.RegisterConnection(conn);
 

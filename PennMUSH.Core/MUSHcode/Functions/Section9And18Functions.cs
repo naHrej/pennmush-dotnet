@@ -45,7 +45,7 @@ public static class Section9And18Functions
     }
 
     private static void DispatchNote(FunctionRegistry reg, NotificationScope scope, string message, Dbref target, Dbref location = default, Dbref speaker = default, bool prompt = false)
-        => reg.NotificationDispatcher?.Invoke(new Notification(scope, message, Target: scope == NotificationScope.Room && location != default ? location : target, Prompt: prompt, Speaker: speaker));
+        => reg.NotificationDispatcher?.Invoke(new Notification(scope, message, Target: scope == NotificationScope.Room && location.IsValid ? location : target, Prompt: prompt, Speaker: speaker));
 
     private static MUSHObject? ResolveObj(FunctionRegistry reg, EvaluationContext ctx, string spec)
         => reg.Database == null ? null : (reg.Database.GetObject(DbFunctions.ParseDbref(spec, ctx)) ?? reg.Database.MatchObject(ctx.Executor, spec));

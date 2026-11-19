@@ -209,7 +209,8 @@ public static class CryptoFunctions
         var actor = reg.Database.GetObject(ctx.Executor);
         if (snap.PlayerId != ctx.Executor && !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
             return MushError.PermissionDenied.Text();
-        return snap.TerminalType.Contains("ssl", StringComparison.OrdinalIgnoreCase)
+        return snap.IsSsl
+            || snap.TerminalType.Contains("ssl", StringComparison.OrdinalIgnoreCase)
             || snap.TerminalType.Contains("tls", StringComparison.OrdinalIgnoreCase)
             ? "1"
             : "0";

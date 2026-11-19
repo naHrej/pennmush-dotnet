@@ -6,6 +6,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using PennMUSH.Core.Presentation;
@@ -33,7 +34,16 @@ public class MUSHConnection
     public string Host { get; set; } = "";
     public long ConnLogId { get; set; }
     public string? PublicBaseUrl { get; set; }
-    public bool IsWebSocket => _webSocket != null;
+    public bool IsWebSocket
+    {
+        get => _webSocket != null || Capabilities.IsWebSocket || ProtocolMode == ClientProtocolMode.MujsWebSocket;
+        set => Capabilities.IsWebSocket = value;
+    }
+    public bool IsSsl
+    {
+        get => Capabilities.IsSsl;
+        set => Capabilities.IsSsl = value;
+    }
     public bool Hidden { get; set; }
     public DateTimeOffset ConnectedAt { get; } = DateTimeOffset.UtcNow;
     public DateTimeOffset LastActivity { get; private set; }
@@ -43,8 +53,16 @@ public class MUSHConnection
     public string OutputPrefix { get; set; } = "";
     public string OutputSuffix { get; set; } = "";
     public bool TelnetEnabled { get; set; } = true;
-    public bool StripAccents { get; set; }
-    public bool PromptNewlines { get; set; }
+    public bool StripAccents
+    {
+        get => Capabilities.StripAccents;
+        set => Capabilities.StripAccents = value;
+    }
+    public bool PromptNewlines
+    {
+        get => Capabilities.PromptNewlines;
+        set => Capabilities.PromptNewlines = value;
+    }
     public bool NoQuota { get; set; }
     public string? ColorStyle { get; set; }
 
@@ -66,6 +84,7 @@ public class MUSHConnection
     {
         LastActivity = ConnectedAt;
         _webSocket = webSocket;
+        Capabilities.IsWebSocket = true;
         Capabilities.SupportsHtml = true;
         Capabilities.SupportsPueblo = true;
         Capabilities.ColorMode = ColorDepth.TrueColor;
@@ -91,16 +110,31 @@ public class MUSHConnection
     {
         // JSON envelopes are recognized by the client only when the text still
         // starts with '{' and ends with '}'. Leave those on the wire unchanged.
-        if (!Capabilities.SupportsHtml || IsProtocolText(text))
+        if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
         {
             await DeliverTextAsync(text + "\r\n", ct);
             return;
         }
 
-        if (escapeHtml)
-            text = System.Net.WebUtility.HtmlEncode(text);
+        var rendered = WebSocketMarkup.Render(
+            text,
+            isWebSocket: IsWebSocket,
+            escapeLiteralHtml: Capabilities.SupportsHtml && escapeHtml,
+            stripAccents: StripAccents);
 
-        string html = "<div>" + ApplyHtmlBreaks(text) + "</div>";
+        if (rendered.JsonPayloads.Count > 0)
+            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
+
+        if (rendered.HadFrames && rendered.Text.Length == 0)
+            return;
+
+        if (!Capabilities.SupportsHtml)
+        {
+            await DeliverTextAsync(rendered.Text + "\r\n", ct, preserveHtml: rendered.HasHtmlFrames);
+            return;
+        }
+
+        string html = "<div>" + ApplyHtmlBreaks(rendered.Text) + "</div>";
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
         {
             // A div is a block, so the next line starts on its own. Keep a wire
@@ -109,21 +143,97 @@ public class MUSHConnection
             html += "\r\n";
         }
 
-        await DeliverTextAsync(html, ct);
+        await DeliverTextAsync(html, ct, preserveHtml: true);
     }
 
     public async Task SendRawAsync(string text, CancellationToken ct = default)
     {
-        if (Capabilities.SupportsHtml && !IsProtocolText(text))
+        if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
         {
-            text = ApplyHtmlBreaks(text);
+            await DeliverTextAsync(text, ct);
+            return;
+        }
+
+        var rendered = WebSocketMarkup.Render(
+            text,
+            isWebSocket: IsWebSocket,
+            escapeLiteralHtml: false,
+            stripAccents: StripAccents);
+
+        if (rendered.JsonPayloads.Count > 0)
+            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
+
+        if (rendered.HadFrames && rendered.Text.Length == 0)
+            return;
+
+        string outText = rendered.Text;
+        if (Capabilities.SupportsHtml)
+        {
+            outText = ApplyHtmlBreaks(outText);
             if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
             {
-                text += "\r\n";
+                outText += "\r\n";
             }
         }
 
-        await DeliverTextAsync(text, ct);
+        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames);
+    }
+
+    public async Task SendPromptAsync(string text, CancellationToken ct = default)
+    {
+        if (PromptNewlines)
+        {
+            await SendLineAsync(text, ct);
+            return;
+        }
+
+        if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
+        {
+            await DeliverTextAsync(text, ct);
+            return;
+        }
+
+        var rendered = WebSocketMarkup.Render(
+            text,
+            isWebSocket: IsWebSocket,
+            escapeLiteralHtml: false,
+            stripAccents: StripAccents);
+
+        if (rendered.JsonPayloads.Count > 0)
+            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
+
+        if (rendered.HadFrames && rendered.Text.Length == 0)
+            return;
+
+        string outText = Capabilities.SupportsHtml
+            ? ApplyHtmlBreaks(rendered.Text)
+            : rendered.Text;
+
+        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames);
+    }
+
+    public async Task SendGmcpAsync(string package, string payload, CancellationToken ct = default)
+    {
+        if (!Capabilities.SupportsGmcp || !TelnetEnabled || IsWebSocket || string.IsNullOrWhiteSpace(package))
+            return;
+
+        string body = string.IsNullOrEmpty(payload) ? package.Trim() : $"{package.Trim()} {payload}";
+        byte[] bodyBytes = Encoding.UTF8.GetBytes(body);
+        var packet = new List<byte>(bodyBytes.Length + 6)
+        {
+            TelnetConstants.IAC,
+            TelnetConstants.SB,
+            TelnetConstants.TELOPT_GMCP
+        };
+        foreach (byte b in bodyBytes)
+        {
+            packet.Add(b);
+            if (b == TelnetConstants.IAC)
+                packet.Add(TelnetConstants.IAC);
+        }
+        packet.Add(TelnetConstants.IAC);
+        packet.Add(TelnetConstants.SE);
+        await SendRawAsync(packet.ToArray(), ct);
     }
 
     public async Task SendMarkupAsync(string markup, CancellationToken ct = default)
@@ -136,14 +246,31 @@ public class MUSHConnection
 
         // One record. A line-oriented client would split a stylesheet or an
         // HTML screen on raw newlines, so newlines become spaces instead of <br/>.
-        string compact = markup.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\n', ' ');
+        string compact = StripAccents ? AccentStripper.Strip(markup) : markup;
+        compact = compact.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\n', ' ');
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
             compact += "\r\n";
 
-        await DeliverTextAsync(compact, ct);
+        await DeliverTextAsync(compact, ct, preserveHtml: true);
     }
 
-    private async Task DeliverTextAsync(string text, CancellationToken ct)
+    private async Task SendWebSocketJsonPayloadsAsync(IReadOnlyList<string> payloads, CancellationToken ct)
+    {
+        foreach (string jsonText in payloads)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(jsonText);
+                await SendEnvelopeAsync("ws.json", doc.RootElement.Clone(), null, ct);
+            }
+            catch
+            {
+                // Ignore malformed JSON frames
+            }
+        }
+    }
+
+    private async Task DeliverTextAsync(string text, CancellationToken ct, bool preserveHtml = false)
     {
         if (ProtocolMode == ClientProtocolMode.MujsWebSocket)
         {
@@ -156,7 +283,7 @@ public class MUSHConnection
             return;
         }
 
-        string formatted = OutputFormatter.FormatOutput(text, Capabilities);
+        string formatted = preserveHtml ? text : OutputFormatter.FormatOutput(text, Capabilities);
         if (_onSendLine != null)
         {
             BytesSent += Encoding.UTF8.GetByteCount(formatted);

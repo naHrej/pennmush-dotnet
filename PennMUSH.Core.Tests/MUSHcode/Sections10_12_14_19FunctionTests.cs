@@ -9,6 +9,7 @@ using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.MUSHcode.Functions;
+using PennMUSH.Core.Protocol;
 using PennMUSH.Core.Types;
 
 public class Sections10_12_14_19FunctionTests
@@ -175,8 +176,10 @@ public class Sections10_12_14_19FunctionTests
         _notifications.Clear();
         Assert.Equal("1", _evaluator.Evaluate($"[oob({_alice.Id},GMCP.Char,\"hello\")]", _ctx));
         Assert.Contains(_notifications, n => n.Target == _alice.Id && n.ProtocolType == "GMCP.Char" && (string?)n.ProtocolPayload == "\"hello\"");
-        Assert.Equal("<span>ok</span>", _evaluator.Evaluate($"[wshtml(<span>ok</span>,{_alice.Id})]", _ctx));
-        Assert.Contains(_notifications, n => n.Target == _alice.Id && n.ProtocolType == "wshtml");
+        string wsHtml = _evaluator.Evaluate("[wshtml(<span>ok</span>,ok)]", _ctx);
+        Assert.Equal("<span>ok</span>", WebSocketMarkup.Render(wsHtml, isWebSocket: true).Text);
+        Assert.Equal("ok", WebSocketMarkup.Render(wsHtml, isWebSocket: false).Text);
+        Assert.Equal("#-1 PERMISSION DENIED", _evaluator.Evaluate("[wshtml(<span>ok</span>,ok)]", _mortalCtx));
     }
 
     [Fact]

@@ -19,7 +19,20 @@ public sealed record ConnectionSnapshot(
     bool IsHidden = false,
     long BytesSent = 0,
     long BytesReceived = 0,
-    int CommandCount = 0);
+    int CommandCount = 0,
+    bool SupportsTelnet = false,
+    bool SupportsGmcp = false,
+    bool IsSsl = false,
+    bool IsWebSocket = false,
+    bool SupportsHtml = false,
+    bool SupportsPueblo = false,
+    bool StripAccents = false,
+    bool PromptNewlines = false,
+    bool SupportsXterm256 = false,
+    bool SupportsRgb24 = false,
+    int Width = 80,
+    int Height = 24,
+    string? ColorStyle = null);
 
 public static class ConnectionAndZoneFunctions
 {
@@ -169,7 +182,29 @@ public static class ConnectionAndZoneFunctions
         var looker = reg.Database?.GetObject(ctx.Executor);
         if (snap.PlayerId != ctx.Executor && !AttributePermissions.CanSeeAll(looker))
             return MushError.Nothing.Text();
-        return snap.TerminalType;
+
+        var tokens = new List<string>
+        {
+            string.IsNullOrWhiteSpace(snap.TerminalType) ? "unknown" : snap.TerminalType
+        };
+
+        if (snap.SupportsPueblo) tokens.Add("pueblo");
+        if (snap.SupportsHtml) tokens.Add("html");
+        if (snap.IsWebSocket) tokens.Add("websocket");
+        if (snap.SupportsTelnet) tokens.Add("telnet");
+        if (snap.SupportsGmcp) tokens.Add("gmcp");
+        if (snap.IsSsl) tokens.Add("ssl");
+        if (snap.PromptNewlines) tokens.Add("prompt_newlines");
+        if (snap.StripAccents) tokens.Add("stripaccents");
+        if (snap.SupportsXterm256) tokens.Add("xterm256");
+        if (snap.SupportsRgb24) tokens.Add("rgb24");
+        if (!string.IsNullOrWhiteSpace(snap.ColorStyle)
+            && !tokens.Contains(snap.ColorStyle, StringComparer.OrdinalIgnoreCase))
+        {
+            tokens.Add(snap.ColorStyle);
+        }
+
+        return string.Join(" ", tokens);
     }
 
     public static string PortsList(FunctionRegistry reg, EvaluationContext ctx, string[] args)

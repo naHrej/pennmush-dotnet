@@ -38,7 +38,8 @@ public class TelnetNegotiator
         {
             TelnetConstants.IAC, TelnetConstants.DO, TelnetConstants.TELOPT_NAWS,
             TelnetConstants.IAC, TelnetConstants.DO, TelnetConstants.TELOPT_TTYPE,
-            TelnetConstants.IAC, TelnetConstants.WILL, TelnetConstants.TELOPT_SGA
+            TelnetConstants.IAC, TelnetConstants.WILL, TelnetConstants.TELOPT_SGA,
+            TelnetConstants.IAC, TelnetConstants.WILL, TelnetConstants.TELOPT_GMCP
         };
     }
 
@@ -174,15 +175,25 @@ public class TelnetNegotiator
                 TelnetConstants.IAC, TelnetConstants.SB, TelnetConstants.TELOPT_TTYPE, 1, TelnetConstants.IAC, TelnetConstants.SE
             });
         }
+        else if (option == TelnetConstants.TELOPT_GMCP)
+        {
+            Capabilities.SupportsGmcp = true;
+        }
     }
 
     private void HandleDo(byte option)
     {
-        // Server will SGA
+        if (option == TelnetConstants.TELOPT_GMCP)
+            Capabilities.SupportsGmcp = true;
     }
 
     private void ProcessSubnegotiation(byte option, byte[] data)
     {
+        if (option == TelnetConstants.TELOPT_GMCP)
+        {
+            Capabilities.SupportsGmcp = true;
+            return;
+        }
         if (option == TelnetConstants.TELOPT_NAWS && data.Length >= 4)
         {
             int width = (data[0] << 8) | data[1];
