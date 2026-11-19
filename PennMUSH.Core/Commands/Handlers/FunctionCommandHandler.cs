@@ -44,7 +44,7 @@ public class FunctionCommandHandler : ICommandHandler
             return Alias(context, wizard, name, hasEquals);
         if (context.Switches.Contains("clone") || context.Switches.Contains("restore"))
         {
-            context.Notify(wizard ? "That's not a builtin function." : "Permission denied.");
+            context.Notify(wizard ? Feedback.ThatsNotABuiltinFunction : Feedback.PermissionDenied);
             return false;
         }
 
@@ -67,7 +67,7 @@ public class FunctionCommandHandler : ICommandHandler
         if (!global)
         {
             string names = string.Join(" ", functions.Select(function => function.Name).OrderBy(item => item, StringComparer.Ordinal));
-            context.Notify("User functions: " + names);
+            context.Notify(Feedback.UserFunctions, ("value", names));
             return true;
         }
 
@@ -168,7 +168,7 @@ public class FunctionCommandHandler : ICommandHandler
         if (!string.IsNullOrWhiteSpace(restrictions))
             FunctionRestrictions.Apply(function.Gate, restrictions);
         _functions.SaveSoft(function);
-        context.Notify(existing == null ? "Function added." : "Function updated.");
+        context.Notify(existing == null ? Feedback.FunctionAdded : Feedback.FunctionUpdated);
         return true;
     }
 
@@ -256,7 +256,7 @@ public class FunctionCommandHandler : ICommandHandler
         }
 
         bool changed = FunctionRestrictions.Apply(gate, context.RightArg);
-        context.Notify(label + (changed ? " - Restrictions modified." : " - Restrictions unchanged."));
+        context.Notify(changed ? Feedback.RestrictionsModified : Feedback.RestrictionsUnchanged, ("label", label));
         return true;
     }
 
@@ -277,13 +277,13 @@ public class FunctionCommandHandler : ICommandHandler
         if (soft != null)
         {
             soft.Gate.Disabled = !enabled;
-            context.Notify(enabled ? "Enabled." : "Disabled.");
+            context.Notify(enabled ? Feedback.Enabled : Feedback.Disabled);
             return true;
         }
         if (_functions.HasBuiltin(name))
         {
             _functions.BuiltinGate(name.ToUpperInvariant()).Disabled = !enabled;
-            context.Notify(enabled ? "Enabled." : "Disabled.");
+            context.Notify(enabled ? Feedback.Enabled : Feedback.Disabled);
             return true;
         }
 
@@ -308,7 +308,7 @@ public class FunctionCommandHandler : ICommandHandler
         var soft = _functions.FindSoft(name);
         if (soft == null)
         {
-            context.Notify(_functions.HasBuiltin(name) ? "You can't delete that @function." : "No such function.");
+            context.Notify(_functions.HasBuiltin(name) ? Feedback.YouCantDeleteThatFunction : Feedback.NoSuchFunction);
             return false;
         }
 

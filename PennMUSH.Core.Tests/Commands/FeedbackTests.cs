@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using PennMUSH.Core.Commands;
 
+[Collection("FeedbackTemplates")]
 public class FeedbackTests
 {
     [Fact]

@@ -51,7 +51,7 @@ public class SiteLockCommandHandler : ICommandHandler
                 return true;
             }
             var (rule, number) = _table.Check(site);
-            context.Notify(rule == null ? "No matching access rule" : SiteLockTable.Describe(rule, number));
+            context.Notify(rule == null ? Feedback.NoMatchingAccessRule.Text() : SiteLockTable.Describe(rule, number));
             return rule != null;
         }
         if (site.Length == 0)

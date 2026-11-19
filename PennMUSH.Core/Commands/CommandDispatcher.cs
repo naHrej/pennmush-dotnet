@@ -310,37 +310,37 @@ public class CommandDispatcher
             string r = rule.ToLowerInvariant();
             if (r == "nobody")
             {
-                context.Notify(customError ?? "Command disabled.");
+                context.Notify(customError ?? Feedback.CommandDisabled.Text());
                 return false;
             }
             if (r == "noguest" && executor.HasFlag("GUEST"))
             {
-                context.Notify(customError ?? "Guests are not allowed to do that.");
+                context.Notify(customError ?? Feedback.GuestsAreNotAllowedToDoThat.Text());
                 return false;
             }
             if (r == "nofixed" && executor.HasFlag("FIXED"))
             {
-                context.Notify(customError ?? "You can't do that while fixed!");
+                context.Notify(customError ?? Feedback.YouCantDoThatWhileFixed.Text());
                 return false;
             }
             if (r == "nogagged" && executor.HasFlag("GAGGED"))
             {
-                context.Notify(customError ?? "You cannot do that while gagged.");
+                context.Notify(customError ?? Feedback.YouCannotDoThatWhileGagged.Text());
                 return false;
             }
             if (r == "god" && !executor.IsGod)
             {
-                context.Notify(customError ?? "Only God can do that.");
+                context.Notify(customError ?? Feedback.OnlyGodCanDoThat.Text());
                 return false;
             }
             if (r == "wizard" && !executor.IsWizard)
             {
-                context.Notify(customError ?? "Permission denied.");
+                context.Notify(customError ?? Feedback.PermissionDenied.Text());
                 return false;
             }
             if (r == "admin" && !(executor.IsWizard || executor.IsRoyalty))
             {
-                context.Notify(customError ?? "Permission denied.");
+                context.Notify(customError ?? Feedback.PermissionDenied.Text());
                 return false;
             }
         }

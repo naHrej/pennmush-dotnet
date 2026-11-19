@@ -95,8 +95,8 @@ public class PageCommandHandler : ICommandHandler
             return false;
         }
 
-        string outgoing = $"You page {target.Name} with '{message}'.";
-        string incoming = $"{senderName} pages: {message}";
+        string outgoing = Feedback.YouPageWith.Text(("target", target.Name), ("message", message));
+        string incoming = Feedback.PagesMessage.Text(("sender", senderName), ("message", message));
         string targetRef = target.Id.ToString();
         if (execObj != null)
         {

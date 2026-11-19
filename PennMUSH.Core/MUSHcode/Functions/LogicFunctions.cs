@@ -388,13 +388,13 @@ public static class LogicFunctions
     private static string SetqCore(EvaluationContext ctx, string[] args, string funcName)
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
-        if (args.Length % 2 != 0) return $"#-1 FUNCTION ({funcName}) EXPECTS AN EVEN NUMBER OF ARGUMENTS";
+        if (args.Length % 2 != 0) return MushError.FunctionExpectsEvenArguments.Text("function", funcName);
 
         for (int i = 0; i + 1 < args.Length; i += 2)
         {
             string regName = args[i].Trim();
             if (!IsValidQregName(regName))
-                return "#-1 INVALID Q-REGISTER NAME";
+                return MushError.InvalidQRegisterName.Text();
             ctx.SetRegister(regName, args[i + 1]);
         }
         return string.Empty;
@@ -419,7 +419,7 @@ public static class LogicFunctions
 
         return type switch
         {
-            "qregisters" => IsValidQregName(name) ? ctx.GetRegister(name) : "#-1 INVALID Q-REGISTER NAME",
+            "qregisters" => IsValidQregName(name) ? ctx.GetRegister(name) : MushError.InvalidQRegisterName.Text(),
             "regexp" => ctx.GetRegexCapture(name),
             "switch" => int.TryParse(name, out int swIdx) && swIdx >= 0 && swIdx < ctx.SwitchStack.Count
                 ? ctx.SwitchStack[^(swIdx + 1)]
@@ -428,7 +428,7 @@ public static class LogicFunctions
                 ? ctx.IterStack[^(itIdx + 1)].Text
                 : string.Empty,
             "args" or "stack" => int.TryParse(name, out int argIdx) ? ctx.GetArgument(argIdx) : string.Empty,
-            _ => "#-1"
+            _ => MushError.Nothing.Text()
         };
     }
 
@@ -452,7 +452,7 @@ public static class LogicFunctions
     public static string Letq(FunctionRegistry registry, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return MushError.TooFewArguments.Text();
-        if (args.Length % 2 == 0) return "#-1 FUNCTION (LETQ) EXPECTS AN ODD NUMBER OF ARGUMENTS";
+        if (args.Length % 2 == 0) return MushError.FunctionExpectsOddArguments.Text("function", "LETQ");
 
         var saved = ctx.CloneRegisters();
         try
@@ -461,7 +461,7 @@ public static class LogicFunctions
             {
                 string regName = Eval(registry, ctx, args[i]).Trim();
                 if (!IsValidQregName(regName))
-                    return "#-1 INVALID Q-REGISTER NAME";
+                    return MushError.InvalidQRegisterName.Text();
                 string regVal = Eval(registry, ctx, args[i + 1]);
                 ctx.SetRegister(regName, regVal);
             }

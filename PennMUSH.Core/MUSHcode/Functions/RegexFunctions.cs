@@ -120,7 +120,7 @@ public static class RegexFunctions
         }
         catch (ArgumentException ex)
         {
-            return $"#-1 REGEXP ERROR: {ex.Message}";
+            return MushError.RegexpError.Text("error", ex.Message);
         }
     }
 
@@ -180,7 +180,7 @@ public static class RegexFunctions
         }
         catch (ArgumentException ex)
         {
-            return $"#-1 REGEXP ERROR: {ex.Message}";
+            return MushError.RegexpError.Text("error", ex.Message);
         }
     }
 

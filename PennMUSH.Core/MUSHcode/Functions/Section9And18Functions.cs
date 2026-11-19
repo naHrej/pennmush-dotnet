@@ -359,13 +359,13 @@ public static class Section9And18Functions
         var speaker = ResolveObj(reg, ctx, args[0]);
         string speakerName = speaker?.Name ?? args[0];
         string text = args[1];
-        string sayStr = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : "says,";
+        string sayStr = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : Feedback.SpeakDefaultSayVerb.Text();
 
         if (text.StartsWith(':'))
             return $"{speakerName} {text.Substring(1).TrimStart()}";
         if (text.StartsWith(';'))
             return $"{speakerName}{text.Substring(1)}";
-        return $"{speakerName} {sayStr} \"{text}\"";
+        return Feedback.SpeakSays.Text(("speaker", speakerName), ("verb", sayStr), ("text", text));
     }
 
     public static string PidInfoFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

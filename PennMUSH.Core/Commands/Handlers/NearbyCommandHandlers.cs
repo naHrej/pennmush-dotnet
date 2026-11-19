@@ -292,7 +292,7 @@ public class SweepCommandHandler : ICommandHandler
             else
             {
                 var owner = db.GetObject(obj.Owner);
-                context.Notify($"{obj.Name} [owner: {owner?.Name ?? "???"}] is listening.");
+                context.Notify(Feedback.IsListeningWithOwner, ("value", obj.Name), ("owner", owner?.Name ?? "???"));
             }
             return;
         }
@@ -305,9 +305,9 @@ public class SweepCommandHandler : ICommandHandler
             context.Notify(Feedback.ValueValueSpeechValue, ("value", $"{obj.Name}"), ("value2", $"{where}"), ("value3", $"{online}"));
         }
         if (obj.Attributes.Any(attr => ListenerSearch.IsCommand(attr.Value)))
-            context.Notify($"{obj.Name}{(thisRoom ? " (this room)" : string.Empty)} [commands].");
+            context.Notify(thisRoom ? Feedback.CommandsEntryThisRoom : Feedback.CommandsEntry, ("value", obj.Name));
         if (obj.HasFlag("AUDIBLE"))
-            context.Notify($"{obj.Name}{(thisRoom ? " (this room)" : string.Empty)} [broadcasting].");
+            context.Notify(thisRoom ? Feedback.BroadcastingThisRoom : Feedback.Broadcasting, ("value", obj.Name));
     }
 
     private static bool ConnectedListener(ObjectDatabase db, MUSHObject obj)
@@ -464,7 +464,7 @@ public class SearchCommandHandler : ICommandHandler
 
         if (!TryParse(context, out string ownerToken, out int? minDb, out int? maxDb, out var criteria, out string? error))
         {
-            context.Notify(error ?? "I don't understand that search.");
+            context.Notify(error ?? Feedback.IDontUnderstandThatSearch.Text());
             return false;
         }
 
@@ -578,7 +578,7 @@ public class SearchCommandHandler : ICommandHandler
             {
                 if (!int.TryParse(words[i], out int number))
                 {
-                    error = "I don't understand that search.";
+                    error = Feedback.IDontUnderstandThatSearch.Text();
                     return false;
                 }
                 numbers.Add(number);
@@ -587,7 +587,7 @@ public class SearchCommandHandler : ICommandHandler
 
         if (numbers.Count > 2)
         {
-            error = "I don't understand that search.";
+            error = Feedback.IDontUnderstandThatSearch.Text();
             return false;
         }
         if (numbers.Count > 0)
@@ -599,12 +599,12 @@ public class SearchCommandHandler : ICommandHandler
         {
             if (Unsupported.Contains(pair.Key))
             {
-                error = "That search is not available.";
+                error = Feedback.ThatSearchIsNotAvailable.Text();
                 return false;
             }
             if (!Supported.Contains(pair.Key))
             {
-                error = "I don't understand that search.";
+                error = Feedback.IDontUnderstandThatSearch.Text();
                 return false;
             }
         }

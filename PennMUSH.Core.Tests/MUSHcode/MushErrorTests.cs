@@ -39,8 +39,13 @@ public class MushErrorTests
         {
             [MushError.FunctionNotFound] = new[] { ("function", "ADD") },
             [MushError.FunctionExpects] = new[] { ("function", "ADD"), ("range", "2"), ("got", "1") },
+            [MushError.FunctionExpectsEvenArguments] = new[] { ("function", "SETQ") },
+            [MushError.FunctionExpectsOddArguments] = new[] { ("function", "LETQ") },
+            [MushError.SqlError] = new[] { ("error", "syntax error") },
+            [MushError.RegexpError] = new[] { ("error", "unmatched paren") },
         };
 
+        var plain = new Dictionary<string, MushError>();
         foreach (MushError error in Enum.GetValues<MushError>())
         {
             var tokens = sample.TryGetValue(error, out var needed)
@@ -49,6 +54,11 @@ public class MushErrorTests
             var text = error.Text(tokens);
             Assert.StartsWith("#-1", text);
             Assert.DoesNotContain("{{", text);
+            if (tokens.Length == 0)
+            {
+                Assert.False(plain.ContainsKey(text), $"{error} duplicates {plain.GetValueOrDefault(text)}");
+                plain[text] = error;
+            }
         }
     }
 

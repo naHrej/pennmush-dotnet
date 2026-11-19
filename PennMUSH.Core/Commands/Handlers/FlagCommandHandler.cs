@@ -364,7 +364,7 @@ public class FlagCommandHandler : ICommandHandler
         flag.Permissions = disable
             ? flag.Permissions | FlagPrivileges.Disabled
             : flag.Permissions & ~FlagPrivileges.Disabled;
-        context.Notify(disable ? $"Flag {flag.Name} disabled." : $"Flag {flag.Name} enabled.");
+        context.Notify(disable ? Feedback.FlagDisabled : Feedback.FlagEnabled, ("flag", flag.Name));
         return true;
     }
 
@@ -440,21 +440,21 @@ public class FlagCommandHandler : ICommandHandler
     {
         if (name.Length == 0)
         {
-            context.Notify(alias ? "You must provide a name for the alias." : "You must provide a name for the flag.");
+            context.Notify(alias ? Feedback.YouMustProvideANameForTheAlias : Feedback.YouMustProvideANameForTheFlag);
             return false;
         }
 
         if (name.Contains(' '))
         {
-            context.Notify(alias ? "Flag aliases may not contain spaces." : "Flag names may not contain spaces.");
+            context.Notify(alias ? Feedback.FlagAliasesMayNotContainSpaces : Feedback.FlagNamesMayNotContainSpaces);
             return false;
         }
 
         if (name.Length <= 1)
         {
             context.Notify(alias
-                ? "Flag aliases must be longer than one character."
-                : "Flag names must be longer than one character.");
+                ? Feedback.FlagAliasesMustBeLongerThanOneCharacter
+                : Feedback.FlagNamesMustBeLongerThanOneCharacter);
             return false;
         }
 

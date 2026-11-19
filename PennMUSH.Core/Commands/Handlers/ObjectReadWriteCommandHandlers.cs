@@ -324,7 +324,7 @@ public class AttributeLockCommandHandler : ICommandHandler
         }
 
         bool locked = flags.HasFlag(AttributeFlags.Locked);
-        context.Notify($"{entry.Name} is {(locked ? "locked" : "unlocked")}.");
+        context.Notify(locked ? Feedback.IsLocked2 : Feedback.IsUnlocked, ("value", entry.Name));
         return true;
     }
 }
@@ -475,7 +475,7 @@ public class MonikerCommandHandler : ICommandHandler
         if (!setting)
         {
             var current = target.GetAttribute("MONIKER");
-            context.Notify(current == null ? "No moniker set." : current.Value);
+            context.Notify(current == null ? Feedback.NoMonikerSet.Text() : current.Value);
             return true;
         }
 
@@ -750,7 +750,7 @@ public class UptimeCommandHandler : ICommandHandler
     {
         var start = new DateTimeOffset(System.Diagnostics.Process.GetCurrentProcess().StartTime);
         var elapsed = DateTimeOffset.Now - start;
-        context.Notify($"Up since {start:yyyy-MM-dd HH:mm:ss zzz} ({FormatSpan(elapsed)}).");
+        context.Notify(Feedback.UpSince, ("start", $"{start:yyyy-MM-dd HH:mm:ss zzz}"), ("elapsed", FormatSpan(elapsed)));
         return true;
     }
 
@@ -818,7 +818,7 @@ public class ListCommandHandler : ICommandHandler
             string body = string.Join(" ", StandardAttributes.CanonicalNames().OrderBy(name => name, StringComparer.Ordinal));
             if (lower)
                 body = body.ToLowerInvariant();
-            context.Notify("Attribs: " + body);
+            context.Notify(Feedback.AttribsList, ("value", body));
             return true;
         }
 
@@ -846,13 +846,13 @@ public class ListCommandHandler : ICommandHandler
         if (names == null)
         {
             context.Notify(which == "functions"
-                ? "Functions are not available."
-                : "Usage: @list commands|flags|powers|functions|attribs");
+                ? Feedback.FunctionsAreNotAvailable
+                : Feedback.UsageListCommandsFlagsPowersFunctionsAttribs);
             return false;
         }
 
         var list = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
-        context.Notify(list.Count == 0 ? "(empty)" : string.Join("\n", list));
+        context.Notify(list.Count == 0 ? Feedback.Empty.Text() : string.Join("\n", list));
         return true;
     }
 }

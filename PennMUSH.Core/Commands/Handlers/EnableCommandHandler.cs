@@ -34,7 +34,7 @@ public class EnableCommandHandler : ICommandHandler
             context.Notify(failure);
             return false;
         }
-        context.Notify(_enable ? "Enabled." : "Disabled.");
+        context.Notify(_enable ? Feedback.Enabled : Feedback.Disabled);
         return true;
     }
 }

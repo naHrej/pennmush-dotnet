@@ -264,7 +264,7 @@ public static class MathFunctions
 
         int numStart = idx + 1;
         if (numStart >= raw.Length || !long.TryParse(raw.AsSpan(numStart), NumberStyles.Integer, CultureInfo.InvariantCulture, out long val))
-            return "#-1 ARGUMENT MUST END IN AN INTEGER";
+            return MushError.ArgumentMustEndInAnInteger.Text();
 
         string prefix = raw.Substring(0, numStart);
         return prefix + (val + delta).ToString(CultureInfo.InvariantCulture);
@@ -353,7 +353,7 @@ public static class MathFunctions
         {
             if (!double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out b))
                 return MushError.ArgumentsMustBeNumbers.Text();
-            if (b <= 1) return "#-1 BASE OUT OF RANGE";
+            if (b <= 1) return MushError.BaseOutOfRange.Text();
         }
         return FormatNumber(Math.Log(val, b));
     }
@@ -584,11 +584,11 @@ public static class MathFunctions
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         for (int i = 1; i < args.Length; i++)
         {
             if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
-                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+                return MushError.ArgumentsMustBeUnsignedIntegers.Text();
             acc &= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -598,11 +598,11 @@ public static class MathFunctions
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         for (int i = 1; i < args.Length; i++)
         {
             if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
-                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+                return MushError.ArgumentsMustBeUnsignedIntegers.Text();
             acc |= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -612,11 +612,11 @@ public static class MathFunctions
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         for (int i = 1; i < args.Length; i++)
         {
             if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
-                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+                return MushError.ArgumentsMustBeUnsignedIntegers.Text();
             acc ^= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -627,7 +627,7 @@ public static class MathFunctions
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
             !ulong.TryParse(args[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         return (a & ~b).ToString(CultureInfo.InvariantCulture);
     }
 
@@ -635,7 +635,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a))
-            return "#-1 ARGUMENT MUST BE UNSIGNED INTEGER";
+            return MushError.ArgumentMustBeUnsignedInteger.Text();
         return (~a).ToString(CultureInfo.InvariantCulture);
     }
 
@@ -644,7 +644,7 @@ public static class MathFunctions
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
             !int.TryParse(args[1].Trim(), out int b))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         if (b < 0 || b > 63) return "0";
         return (a << b).ToString(CultureInfo.InvariantCulture);
     }
@@ -654,7 +654,7 @@ public static class MathFunctions
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
             !int.TryParse(args[1].Trim(), out int b))
-            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+            return MushError.ArgumentsMustBeUnsignedIntegers.Text();
         if (b < 0 || b > 63) return "0";
         return (a >> b).ToString(CultureInfo.InvariantCulture);
     }

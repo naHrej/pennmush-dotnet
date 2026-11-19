@@ -22,14 +22,14 @@ public class FollowCommandHandler : ICommandHandler
 
         if (string.IsNullOrWhiteSpace(context.Arguments))
         {
-            context.Notify("You are following: " + FollowerList.Names(db, FollowerList.Read(actor, FollowerList.Following)));
-            context.Notify("You are followed by: " + FollowerList.Names(db, FollowerList.Read(actor, FollowerList.Followers)));
+            context.Notify(Feedback.YouAreFollowing, ("value", FollowerList.Names(db, FollowerList.Read(actor, FollowerList.Following))));
+            context.Notify(Feedback.YouAreFollowedBy, ("value", FollowerList.Names(db, FollowerList.Read(actor, FollowerList.Followers))));
             return true;
         }
 
         if (!FollowerList.TryMatch(db, actor, context.Arguments, true, out var leader, out bool ambiguous) || leader == null)
         {
-            context.Notify(ambiguous ? "I can't tell which one to follow." : "You don't see that here.");
+            context.Notify(ambiguous ? Feedback.ICantTellWhichOneToFollow : Feedback.YouDontSeeThatHere);
             return false;
         }
 
@@ -61,13 +61,13 @@ public class FollowCommandHandler : ICommandHandler
 
         if (!leader.EvalLock(LockType.Follow, actor.Id, db))
         {
-            context.Notify(FollowerList.Spoken(leader, "FOLLOW_LOCK`FAILURE", "You're not allowed to follow."));
+            context.Notify(FollowerList.Spoken(leader, "FOLLOW_LOCK`FAILURE", Feedback.YoureNotAllowedToFollow.Text()));
             return false;
         }
 
         FollowerList.Add(leader, actor);
         context.NotifyTarget(leader.Id, Feedback.BeginsFollowingYou.Text(("value", $"{actor.Name}")));
-        context.Notify(FollowerList.Spoken(leader, "FOLLOW", $"You begin following {leader.Name}."));
+        context.Notify(FollowerList.Spoken(leader, "FOLLOW", Feedback.YouBeginFollowing.Text(("value", leader.Name))));
         FollowerList.TellOthers(context, db, actor, leader, "OFOLLOW");
         return true;
     }
@@ -92,7 +92,7 @@ public class UnfollowCommandHandler : ICommandHandler
 
         if (!FollowerList.TryMatch(db, actor, context.Arguments, false, out var leader, out bool ambiguous) || leader == null)
         {
-            context.Notify(ambiguous ? "I can't tell which one to stop following." : "I don't see that here.");
+            context.Notify(ambiguous ? Feedback.ICantTellWhichOneToStopFollowing : Feedback.IDontSeeThatHere);
             return false;
         }
 
@@ -109,7 +109,7 @@ public class UnfollowCommandHandler : ICommandHandler
     internal static void Stop(CommandContext context, MUSHObject leader, MUSHObject follower)
     {
         FollowerList.Delete(leader, follower);
-        context.NotifyTarget(follower.Id, FollowerList.Spoken(leader, "UNFOLLOW", $"You stop following {leader.Name}."));
+        context.NotifyTarget(follower.Id, FollowerList.Spoken(leader, "UNFOLLOW", Feedback.YouStopFollowing.Text(("value", leader.Name))));
         context.NotifyTarget(leader.Id, Feedback.StopsFollowingYou.Text(("value", $"{follower.Name}")));
     }
 }
@@ -139,7 +139,7 @@ public class DismissCommandHandler : ICommandHandler
 
         if (follower == null || !FollowerList.IsFollowing(follower, actor.Id))
         {
-            context.Notify($"{(follower == null ? context.Arguments.Trim() : follower.Name)} isn't following you.");
+            context.Notify(Feedback.IsntFollowingYou, ("value", follower == null ? context.Arguments.Trim() : follower.Name));
             return false;
         }
 

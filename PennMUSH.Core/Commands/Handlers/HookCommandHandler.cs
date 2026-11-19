@@ -125,7 +125,7 @@ public class HookCommandHandler : ICommandHandler
             string list = names.Count == 1
                 ? names[0]
                 : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
-            context.Notify("The following commands have hooks: " + list);
+            context.Notify(Feedback.TheFollowingCommandsHaveHooks, ("value", list));
             return;
         }
 

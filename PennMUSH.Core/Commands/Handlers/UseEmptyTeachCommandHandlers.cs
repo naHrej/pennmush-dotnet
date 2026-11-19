@@ -47,11 +47,11 @@ public class UseCommandHandler : ICommandHandler
 
         if (!thing.EvalLock(LockType.Use, context.Executor, db))
         {
-            context.Notify(Text(thing, "FAILURE", context, execObj.Location) ?? "Permission denied.");
+            context.Notify(Text(thing, "FAILURE", context, execObj.Location) ?? Feedback.PermissionDenied.Text());
             return false;
         }
 
-        context.Notify(Text(thing, "USE", context, execObj.Location) ?? "Used.");
+        context.Notify(Text(thing, "USE", context, execObj.Location) ?? Feedback.Used.Text());
         var others = Text(thing, "OUSE", context, execObj.Location);
         if (others != null)
             context.NotifyExcept(execObj.Location, context.Executor, others);

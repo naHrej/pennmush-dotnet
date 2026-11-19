@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using PennMUSH.Core.Attributes;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.MUSHcode;
@@ -43,7 +44,7 @@ public static class LateSubsystemFunctions
             ? (reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.MatchObject(ctx.Executor, args[0]))
             : actor;
         if (obj == null) return MushError.NoMatch.Text();
-        if (obj.Type != ObjectType.Player) return "#-1 NOT A PLAYER";
+        if (obj.Type != ObjectType.Player) return MushError.NotAPlayer.Text();
         if (actor != null && !QuotaRules.CanSee(actor, obj))
             return MushError.PermissionDenied.Text();
         if (!reg.IsQuotaEnabled || QuotaRules.IsUnlimited(obj, reg.Database))
@@ -97,7 +98,7 @@ public static class LateSubsystemFunctions
 
         var target = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
             ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
-        if (target == null || target.Type != PennMUSH.Core.Types.ObjectType.Player) return "#-1 NO SUCH PLAYER";
+        if (target == null || target.Type != PennMUSH.Core.Types.ObjectType.Player) return MushError.NoSuchPlayer.Text();
         if (reg.PasswordVerifier != null)
             return reg.PasswordVerifier(target.Id, args[1]) ? "1" : "0";
         return PennMUSH.Core.Database.PasswordHash.Accepts(target, args[1], null) ? "1" : "0";
@@ -109,7 +110,7 @@ public static class LateSubsystemFunctions
         if (actor == null || (!actor.IsWizard && !actor.HasPower("Sql_Ok")))
             return MushError.PermissionDenied.Text();
         if (reg.SqlDatabase == null || !reg.SqlDatabase.IsConnected)
-            return "#-1 SQL IS NOT ENABLED";
+            return MushError.SqlIsNotEnabled.Text();
         if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             return MushError.TooFewArguments.Text();
 
@@ -117,7 +118,7 @@ public static class LateSubsystemFunctions
         string colSep = args.Length > 2 ? args[2] : " ";
 
         var res = reg.SqlDatabase.Query(args[0]);
-        if (res.Error != null) return $"#-1 SQL ERROR: {res.Error}";
+        if (res.Error != null) return MushError.SqlError.Text("error", res.Error);
         if (res.Fields.Count == 0) return string.Empty;
 
         return string.Join(rowSep, res.Rows.Select(row =>
@@ -130,7 +131,7 @@ public static class LateSubsystemFunctions
         if (actor == null || (!actor.IsWizard && !actor.HasPower("Sql_Ok")))
             return MushError.PermissionDenied.Text();
         if (reg.SqlDatabase == null || !reg.SqlDatabase.IsConnected)
-            return "#-1 SQL IS NOT ENABLED";
+            return MushError.SqlIsNotEnabled.Text();
         if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
             return MushError.TooFewArguments.Text();
 
@@ -138,7 +139,7 @@ public static class LateSubsystemFunctions
         bool includeColNames = args.Length > 3 && LogicFunctions.IsTruthy(args[3]);
 
         var res = reg.SqlDatabase.Query(args[1]);
-        if (res.Error != null) return $"#-1 SQL ERROR: {res.Error}";
+        if (res.Error != null) return MushError.SqlError.Text("error", res.Error);
         if (res.Fields.Count == 0) return string.Empty;
 
         var results = new List<string>();
@@ -196,7 +197,7 @@ public static class LateSubsystemFunctions
             countOnly = true;
             i = 1;
         }
-        if (args.Length <= i + 1) return "#-1 MISSING ARGUMENTS";
+        if (args.Length <= i + 1) return MushError.MissingArguments.Text();
 
         string mode = args[i].Trim();
         string pat = args[i + 1].Trim();
@@ -246,7 +247,7 @@ public static class LateSubsystemFunctions
             return MushError.ArgumentMustBeInteger.Text();
 
         var rec = reg.ConnectionLog.GetRecord(id);
-        if (rec == null) return "#-1 NO SUCH RECORD";
+        if (rec == null) return MushError.NoSuchRecord.Text();
 
         string sep = args.Length > 1 ? args[1] : " ";
         return string.Join(sep, new[]
@@ -303,7 +304,10 @@ public static class LateSubsystemFunctions
             if (us > maxUs) maxUs = us;
         }
         double avgUs = sumUs / count;
-        string report = $"Average: {Math.Round(avgUs, 2).ToString("G", CultureInfo.InvariantCulture)}   Min: {Math.Round(minUs, 2).ToString("G", CultureInfo.InvariantCulture)}   Max: {Math.Round(maxUs, 2).ToString("G", CultureInfo.InvariantCulture)}";
+        string report = Feedback.BenchmarkReport.Text(
+            ("avg", Math.Round(avgUs, 2).ToString("G", CultureInfo.InvariantCulture)),
+            ("min", Math.Round(minUs, 2).ToString("G", CultureInfo.InvariantCulture)),
+            ("max", Math.Round(maxUs, 2).ToString("G", CultureInfo.InvariantCulture)));
 
         if (args.Length >= 3 && !string.IsNullOrWhiteSpace(args[2]) && reg.Database != null && reg.NotificationDispatcher != null)
         {
@@ -403,7 +407,7 @@ public static class LateSubsystemFunctions
         if (reg.TextCache == null)
             return string.Empty;
         if (!reg.TextCache.HasCategory(file))
-            return "#-1 NO SUCH FILE";
+            return MushError.NoSuchFile.Text();
 
         bool admin = IsAdmin(reg, ctx);
         if (reg.TextCache.IsAdminOnly(file) && !admin)
@@ -425,13 +429,13 @@ public static class LateSubsystemFunctions
         if (reg.TextCache == null)
             return MushError.Nothing.Text();
         if (!reg.TextCache.HasCategory(file))
-            return "#-1 NO SUCH FILE";
+            return MushError.NoSuchFile.Text();
 
         bool admin = IsAdmin(reg, ctx);
         if (reg.TextCache.IsAdminOnly(file) && !admin)
             return MushError.PermissionDenied.Text();
 
-        return reg.TextCache.GetEntry(file, topic, admin, allowPrefix: true) ?? "#-1 NO ENTRY";
+        return reg.TextCache.GetEntry(file, topic, admin, allowPrefix: true) ?? MushError.NoEntry.Text();
     }
 
     public static string TextSearchFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -457,7 +461,7 @@ public static class LateSubsystemFunctions
         if (reg.TextCache == null)
             return string.Empty;
         if (!reg.TextCache.HasCategory(file))
-            return "#-1 NO SUCH FILE";
+            return MushError.NoSuchFile.Text();
 
         bool admin = IsAdmin(reg, ctx);
         if (reg.TextCache.IsAdminOnly(file) && !admin)
@@ -473,12 +477,12 @@ public static class LateSubsystemFunctions
             return MushError.ArgumentMustBeNumber.Text();
         if (!int.TryParse(args[1].Trim(), out int n))
             return MushError.ArgumentMustBeInteger.Text();
-        if (n < 0) return "#-1 ROOT OUT OF RANGE";
+        if (n < 0) return MushError.RootOutOfRange.Text();
         if (n == 0) return "1";
 
         if (x < 0)
         {
-            if (n % 2 == 0) return "#-1 IMAGINARY NUMBER";
+            if (n % 2 == 0) return MushError.ImaginaryNumber.Text();
             double res = -Math.Pow(-x, 1.0 / n);
             return Math.Abs(res - Math.Round(res)) < 1e-12 ? ((long)Math.Round(res)).ToString() : res.ToString("G", CultureInfo.InvariantCulture);
         }

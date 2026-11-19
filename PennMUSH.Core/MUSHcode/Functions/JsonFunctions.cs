@@ -57,31 +57,31 @@ public static class JsonFunctions
         switch (type)
         {
             case "null":
-                if (args.Length > 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length > 2) return MushError.WrongNumberOfArguments.Text();
                 if (args.Length == 2 && !args[1].Trim().Equals("null", StringComparison.OrdinalIgnoreCase))
-                    return "#-1 INVALID VALUE";
+                    return MushError.InvalidValue.Text();
                 return "null";
             case "boolean":
             {
-                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length != 2) return MushError.WrongNumberOfArguments.Text();
                 string b = StringFunctions.Strip(ctx, [args[1]]).Trim().ToLowerInvariant();
                 return b switch
                 {
                     "true" or "1" => "true",
                     "false" or "0" => "false",
-                    _ => "#-1 INVALID VALUE"
+                    _ => MushError.InvalidValue.Text()
                 };
             }
             case "number":
             {
-                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length != 2) return MushError.WrongNumberOfArguments.Text();
                 string numStr = StringFunctions.Strip(ctx, [args[1]]).Trim();
                 if (!double.TryParse(numStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
                     return MushError.ArgumentMustBeNumber.Text();
                 return numStr;
             }
             case "string":
-                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length != 2) return MushError.WrongNumberOfArguments.Text();
                 return JsonSerializer.Serialize(args[1]);
             case "array":
             {
@@ -89,24 +89,24 @@ public static class JsonFunctions
                 for (int i = 1; i < args.Length; i++)
                 {
                     try { arr.Add(JsonNode.Parse(StringFunctions.Strip(ctx, [args[i]]))); }
-                    catch { return "#-1 INVALID VALUE"; }
+                    catch { return MushError.InvalidValue.Text(); }
                 }
                 return arr.ToJsonString();
             }
             case "object":
             {
-                if (args.Length % 2 == 0) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length % 2 == 0) return MushError.WrongNumberOfArguments.Text();
                 var obj = new JsonObject();
                 for (int i = 1; i + 1 < args.Length; i += 2)
                 {
-                    if (string.IsNullOrEmpty(args[i])) return "#-1 INVALID VALUE";
+                    if (string.IsNullOrEmpty(args[i])) return MushError.InvalidValue.Text();
                     try { obj[args[i]] = JsonNode.Parse(StringFunctions.Strip(ctx, [args[i + 1]])); }
-                    catch { return "#-1 INVALID VALUE"; }
+                    catch { return MushError.InvalidValue.Text(); }
                 }
                 return obj.ToJsonString();
             }
             default:
-                return "#-1 INVALID TYPE";
+                return MushError.InvalidType.Text();
         }
     }
 
@@ -333,7 +333,7 @@ public static class JsonFunctions
         }
         catch
         {
-            return "#-1 INVALID JSON";
+            return MushError.InvalidJson.Text();
         }
 
         string fallback = args.Length > 1 ? args[1] : string.Empty;

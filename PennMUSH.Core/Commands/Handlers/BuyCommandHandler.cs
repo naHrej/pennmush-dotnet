@@ -132,9 +132,19 @@ public class BuyCommandHandler : ICommandHandler
         if (refused != null)
             context.Notify(Feedback.DoesntWantYourMoney, ("value", $"{refused.Name}"));
         else if (price >= 0)
-            context.Notify(named ? $"{start.Name} isn't selling that item for that price" : "I can't find that item with that price here.");
+        {
+            if (named)
+                context.Notify(Feedback.IsntSellingThatItemForThatPrice, ("value", start.Name));
+            else
+                context.Notify(Feedback.ICantFindThatItemWithThatPriceHere);
+        }
         else if (affordable)
-            context.Notify(named ? $"{start.Name} isn't selling that item." : "I can't find that item here.");
+        {
+            if (named)
+                context.Notify(Feedback.IsntSellingThatItem, ("value", start.Name));
+            else
+                context.Notify(Feedback.ICantFindThatItemHere);
+        }
         else
             context.Notify(Feedback.YouCantAffordThat);
         return false;
@@ -142,8 +152,8 @@ public class BuyCommandHandler : ICommandHandler
 
     private void Deliver(CommandContext context, ObjectDatabase db, MUSHObject actor, MUSHObject vendor, string item, int charge)
     {
-        string you = $"You buy a {item} from {vendor.Name}.";
-        string others = $"{actor.Name} buys a {item} from {vendor.Name}.";
+        string you = Feedback.YouBuyFrom.Text(("item", item), ("vendor", vendor.Name));
+        string others = Feedback.BuysFrom.Text(("actor", actor.Name), ("item", item), ("vendor", vendor.Name));
         string? buy = Eval(vendor, "BUY", actor, item, charge, db);
         string? obuy = Eval(vendor, "OBUY", actor, item, charge, db);
         context.Notify(string.IsNullOrEmpty(buy) ? you : buy);

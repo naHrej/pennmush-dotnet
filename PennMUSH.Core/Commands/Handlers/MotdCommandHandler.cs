@@ -51,7 +51,7 @@ public class MotdCommandHandler : ICommandHandler
         }
 
         _motd.Set(kind, clear ? "" : context.Arguments);
-        context.Notify($"{Label(kind)} {(clear ? "cleared" : "set")}.");
+        context.Notify(clear ? Feedback.MotdCleared : Feedback.MotdSet, ("label", Label(kind)));
         return true;
     }
 

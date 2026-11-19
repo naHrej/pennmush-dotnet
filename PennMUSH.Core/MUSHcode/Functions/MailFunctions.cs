@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Communication.Mail;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
@@ -191,7 +192,7 @@ public static class MailFunctions
 
         string recipsRaw = args[0];
         string body = args[1];
-        string subject = "(No Subject)";
+        string subject = Feedback.MailNoSubject.Text();
         int slash = body.IndexOf('/');
         if (slash > 0 && slash < body.Length - 1)
         {
@@ -275,7 +276,7 @@ public static class MailFunctions
                 target = p.Id;
             }
             if (!int.TryParse(args[1].Trim(), out folder))
-                return "#-1 FOLDER MUST BE INTEGER";
+                return MushError.FolderMustBeInteger.Text();
         }
         if (!CanAccessMail(reg, ctx, target))
             return MushError.PermissionDenied.Text();
