@@ -120,17 +120,11 @@ public static class MathFunctions
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
         if (!long.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long acc))
-        {
-            double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double firstD);
-            acc = (long)firstD;
-        }
+            return MushError.ArgumentsMustBeIntegers.Text();
         for (int i = 1; i < args.Length; i++)
         {
             if (!long.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long d))
-            {
-                double.TryParse(args[i].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double dDouble);
-                d = (long)dDouble;
-            }
+                return MushError.ArgumentsMustBeIntegers.Text();
             if (d == 0) return MushError.DivisionByZero.Text();
             acc /= d;
         }
@@ -188,14 +182,16 @@ public static class MathFunctions
     public static string Remainder(EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double acc);
+        if (!long.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long acc))
+            return MushError.ArgumentsMustBeIntegers.Text();
         for (int i = 1; i < args.Length; i++)
         {
-            if (!double.TryParse(args[i].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double d) || d == 0)
-                return MushError.DivisionByZero.Text();
+            if (!long.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long d))
+                return MushError.ArgumentsMustBeIntegers.Text();
+            if (d == 0) return MushError.DivisionByZero.Text();
             acc %= d;
         }
-        return FormatNumber(acc);
+        return acc.ToString(CultureInfo.InvariantCulture);
     }
 
     public static string FMod(EvaluationContext ctx, string[] args)
@@ -245,32 +241,38 @@ public static class MathFunctions
 
     public static string Bound(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 3) return "0";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double min);
-        double.TryParse(args[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double max);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val) ||
+            !double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double min))
+            return MushError.ArgumentsMustBeNumbers.Text();
+        if (args.Length < 3 || string.IsNullOrWhiteSpace(args[2]))
+            return FormatNumber(Math.Max(val, min));
+        if (!double.TryParse(args[2].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double max))
+            return MushError.ArgumentsMustBeNumbers.Text();
         return FormatNumber(Math.Clamp(val, min, max));
     }
 
-    public static string Inc(EvaluationContext ctx, string[] args)
+    private static string IncDecCore(string[] args, int delta)
     {
-        if (args.Length == 0) return "1";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        double step = 1;
-        if (args.Length > 1 && double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double s))
-            step = s;
-        return FormatNumber(val + step);
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        string raw = args[0].Trim();
+        if (string.IsNullOrEmpty(raw)) return delta > 0 ? "1" : "-1";
+
+        int idx = raw.Length - 1;
+        while (idx >= 0 && char.IsDigit(raw[idx])) idx--;
+        if (idx >= 0 && raw[idx] == '-' && idx + 1 < raw.Length) idx--;
+
+        int numStart = idx + 1;
+        if (numStart >= raw.Length || !long.TryParse(raw.AsSpan(numStart), NumberStyles.Integer, CultureInfo.InvariantCulture, out long val))
+            return "#-1 ARGUMENT MUST END IN AN INTEGER";
+
+        string prefix = raw.Substring(0, numStart);
+        return prefix + (val + delta).ToString(CultureInfo.InvariantCulture);
     }
 
-    public static string Dec(EvaluationContext ctx, string[] args)
-    {
-        if (args.Length == 0) return "-1";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        double step = 1;
-        if (args.Length > 1 && double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double s))
-            step = s;
-        return FormatNumber(val - step);
-    }
+    public static string Inc(EvaluationContext ctx, string[] args) => IncDecCore(args, 1);
+
+    public static string Dec(EvaluationContext ctx, string[] args) => IncDecCore(args, -1);
 
     public static string Sign(EvaluationContext ctx, string[] args)
     {
@@ -281,11 +283,16 @@ public static class MathFunctions
 
     public static string Round(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "0";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        int digits = 0;
-        if (args.Length > 1 && int.TryParse(args[1].Trim(), out int d) && d >= 0) digits = d;
-        return FormatNumber(Math.Round(val, digits, MidpointRounding.AwayFromZero));
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            return MushError.ArgumentsMustBeNumbers.Text();
+        if (!int.TryParse(args[1].Trim(), out int digits) || digits < 0)
+            return MushError.ArgumentMustBeInteger.Text();
+        double rounded = Math.Round(val, digits, MidpointRounding.AwayFromZero);
+        bool pad = args.Length > 2 && LogicFunctions.IsTruthy(args[2]);
+        return pad
+            ? rounded.ToString($"F{digits}", CultureInfo.InvariantCulture)
+            : FormatNumber(rounded);
     }
 
     public static string Floor(EvaluationContext ctx, string[] args)
@@ -305,8 +312,15 @@ public static class MathFunctions
     public static string Trunc(EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return "0";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        return FormatNumber(Math.Truncate(val));
+        string s = args[0].TrimStart();
+        if (string.IsNullOrEmpty(s)) return "0";
+        int end = (s[0] == '-' || s[0] == '+') ? 1 : 0;
+        while (end < s.Length && char.IsDigit(s[end])) end++;
+        if (end == 0 || (end == 1 && (s[0] == '-' || s[0] == '+')))
+            return "0";
+        return long.TryParse(s.AsSpan(0, end), NumberStyles.Integer, CultureInfo.InvariantCulture, out long val)
+            ? val.ToString(CultureInfo.InvariantCulture)
+            : "0";
     }
 
     public static string Sqrt(EvaluationContext ctx, string[] args)
@@ -327,12 +341,20 @@ public static class MathFunctions
 
     public static string Log(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "0";
-        double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+            return MushError.ArgumentsMustBeNumbers.Text();
         if (val <= 0) return MushError.LogOfNonpositive.Text();
+        if (args.Length > 1 && args[1].Trim().Equals("e", StringComparison.OrdinalIgnoreCase))
+            return FormatNumber(Math.Log(val));
+
         double b = 10;
-        if (args.Length > 1 && double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double userBase) && userBase > 0)
-            b = userBase;
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            if (!double.TryParse(args[1].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out b))
+                return MushError.ArgumentsMustBeNumbers.Text();
+            if (b <= 1) return "#-1 BASE OUT OF RANGE";
+        }
         return FormatNumber(Math.Log(val, b));
     }
 
@@ -560,11 +582,13 @@ public static class MathFunctions
 
     public static string BAnd(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        long.TryParse(args[0].Trim(), out long acc);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
         for (int i = 1; i < args.Length; i++)
         {
-            long.TryParse(args[i].Trim(), out long b);
+            if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
+                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
             acc &= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -572,11 +596,13 @@ public static class MathFunctions
 
     public static string BOr(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        long.TryParse(args[0].Trim(), out long acc);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
         for (int i = 1; i < args.Length; i++)
         {
-            long.TryParse(args[i].Trim(), out long b);
+            if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
+                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
             acc |= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -584,11 +610,13 @@ public static class MathFunctions
 
     public static string BXor(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        long.TryParse(args[0].Trim(), out long acc);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong acc))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
         for (int i = 1; i < args.Length; i++)
         {
-            long.TryParse(args[i].Trim(), out long b);
+            if (!ulong.TryParse(args[i].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
+                return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
             acc ^= b;
         }
         return acc.ToString(CultureInfo.InvariantCulture);
@@ -597,40 +625,38 @@ public static class MathFunctions
     public static string BNand(EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return MushError.TooFewArguments.Text();
-        if (!long.TryParse(args[0].Trim(), out long acc))
-            return MushError.ArgumentsMustBeIntegers.Text();
-        for (int i = 1; i < args.Length; i++)
-        {
-            if (!long.TryParse(args[i].Trim(), out long b))
-                return MushError.ArgumentsMustBeIntegers.Text();
-            acc = ~(acc & b);
-        }
-        return acc.ToString(CultureInfo.InvariantCulture);
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
+            !ulong.TryParse(args[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong b))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
+        return (a & ~b).ToString(CultureInfo.InvariantCulture);
     }
 
     public static string BNot(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "0";
-        long.TryParse(args[0].Trim(), out long a);
-        return (~a).ToString();
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a))
+            return "#-1 ARGUMENT MUST BE UNSIGNED INTEGER";
+        return (~a).ToString(CultureInfo.InvariantCulture);
     }
 
     public static string Shl(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        long.TryParse(args[0].Trim(), out long a);
-        int.TryParse(args[1].Trim(), out int b);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
+            !int.TryParse(args[1].Trim(), out int b))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
         if (b < 0 || b > 63) return "0";
-        return (a << b).ToString();
+        return (a << b).ToString(CultureInfo.InvariantCulture);
     }
 
     public static string Shr(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        long.TryParse(args[0].Trim(), out long a);
-        int.TryParse(args[1].Trim(), out int b);
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (!ulong.TryParse(args[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out ulong a) ||
+            !int.TryParse(args[1].Trim(), out int b))
+            return "#-1 ARGUMENTS MUST BE UNSIGNED INTEGERS";
         if (b < 0 || b > 63) return "0";
-        return (a >> b).ToString();
+        return (a >> b).ToString(CultureInfo.InvariantCulture);
     }
 
     public static string Mean(EvaluationContext ctx, string[] args)
@@ -1005,7 +1031,7 @@ public static class MathFunctions
 
         double mag = Math.Sqrt(v.Sum(x => x * x));
         if (mag == 0)
-            return MushError.DivisionByZero.Text();
+            return FormatVector(v, osep);
         return FormatVector(v.Select(x => x / mag).ToArray(), osep);
     }
 

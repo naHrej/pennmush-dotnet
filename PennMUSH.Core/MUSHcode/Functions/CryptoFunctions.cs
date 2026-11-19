@@ -43,8 +43,16 @@ public static class CryptoFunctions
     public static string UrlEncode(EvaluationContext ctx, string[] args)
         => args.Length == 0 ? string.Empty : Uri.EscapeDataString(args[0]);
 
+    private static string SanitizePrintable(string s)
+    {
+        var sb = new StringBuilder(s.Length);
+        foreach (char c in s)
+            sb.Append(char.IsControl(c) ? '?' : c);
+        return sb.ToString();
+    }
+
     public static string UrlDecode(EvaluationContext ctx, string[] args)
-        => args.Length == 0 ? string.Empty : Uri.UnescapeDataString(args[0].Replace('+', ' '));
+        => args.Length == 0 ? string.Empty : SanitizePrintable(Uri.UnescapeDataString(args[0]));
 
     public static string FormDecode(EvaluationContext ctx, string[] args)
     {
@@ -58,12 +66,11 @@ public static class CryptoFunctions
         foreach (string pair in pairs)
         {
             int eq = pair.IndexOf('=');
-            string k = Uri.UnescapeDataString((eq >= 0 ? pair.Substring(0, eq) : pair).Replace('+', ' '));
-            string v = eq >= 0 ? Uri.UnescapeDataString(pair.Substring(eq + 1).Replace('+', ' ')) : string.Empty;
+            string k = SanitizePrintable(Uri.UnescapeDataString(eq >= 0 ? pair.Substring(0, eq) : pair));
+            string v = eq >= 0 ? SanitizePrintable(Uri.UnescapeDataString(pair.Substring(eq + 1))) : string.Empty;
             if (targetKey == null)
             {
-                if (!keys.Contains(k, StringComparer.Ordinal))
-                    keys.Add(k);
+                keys.Add(k);
             }
             else if (string.Equals(k, targetKey, StringComparison.Ordinal))
             {
@@ -76,8 +83,14 @@ public static class CryptoFunctions
 
     public static string Digest(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
         string algo = args[0].Trim().ToLowerInvariant();
+        if (args.Length == 1)
+        {
+            return algo == "list"
+                ? "md5 sha1 sha256 sha384 sha512"
+                : MushError.TooFewArguments.Text();
+        }
         byte[] data = Encoding.UTF8.GetBytes(args[1]);
         byte[]? hash = algo switch
         {
@@ -88,7 +101,7 @@ public static class CryptoFunctions
             "sha512" => SHA512.HashData(data),
             _ => null
         };
-        return hash != null ? Convert.ToHexStringLower(hash) : MushError.Nothing.Text();
+        return hash != null ? Convert.ToHexStringLower(hash) : "#-1 UNSUPPORTED DIGEST TYPE";
     }
 
     public static string Sha0(EvaluationContext ctx, string[] args)
@@ -181,7 +194,26 @@ public static class CryptoFunctions
     }
 
     public static string Ssl(FunctionRegistry reg, EvaluationContext ctx, string[] args)
-        => "0";
+    {
+        if (reg.ConnectionsProvider == null || reg.Database == null) return "0";
+        var targetId = ctx.Executor;
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
+                ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+            if (p == null) return "#-1 NOT CONNECTED";
+            targetId = p.Id;
+        }
+        var snap = reg.ConnectionsProvider().FirstOrDefault(s => s.PlayerId == targetId);
+        if (snap == null) return "#-1 NOT CONNECTED";
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (snap.PlayerId != ctx.Executor && !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor))
+            return MushError.PermissionDenied.Text();
+        return snap.TerminalType.Contains("ssl", StringComparison.OrdinalIgnoreCase)
+            || snap.TerminalType.Contains("tls", StringComparison.OrdinalIgnoreCase)
+            ? "1"
+            : "0";
+    }
 
     public static string SqlEscape(EvaluationContext ctx, string[] args)
     {
