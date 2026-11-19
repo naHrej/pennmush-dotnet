@@ -16,7 +16,10 @@ public sealed record ConnectionSnapshot(
     string TerminalType,
     DateTimeOffset ConnectedAt,
     DateTimeOffset LastActivityAt,
-    bool IsHidden = false);
+    bool IsHidden = false,
+    long BytesSent = 0,
+    long BytesReceived = 0,
+    int CommandCount = 0);
 
 public static class ConnectionAndZoneFunctions
 {
@@ -41,8 +44,10 @@ public static class ConnectionAndZoneFunctions
         registry.Register("HOSTNAME", (ctx, args) => HostInfo(registry, ctx, args, ipOnly: false));
         registry.Register("IPADDR", (ctx, args) => HostInfo(registry, ctx, args, ipOnly: true));
         registry.Register("TERMINFO", (ctx, args) => TermInfo(registry, ctx, args));
-        registry.Register("PORTS", (ctx, args) => PortsList(registry, ctx, args, withType: false));
-        registry.Register("LPORTS", (ctx, args) => PortsList(registry, ctx, args, withType: true));
+        registry.Register("PORTS", (ctx, args) => PortsList(registry, ctx, args));
+        registry.Register("LPORTS", (ctx, args) => LPortsFunc(registry, ctx, args));
+        registry.Register("SENT", (ctx, args) => SentRecvFunc(registry, ctx, args, sent: true));
+        registry.Register("RECV", (ctx, args) => SentRecvFunc(registry, ctx, args, sent: false));
 
         registry.Register("LWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: false, mode: WhoMode.All));
         registry.Register("LWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: false, mode: WhoMode.All));
@@ -50,17 +55,17 @@ public static class ConnectionAndZoneFunctions
         registry.Register("XWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: true, mode: WhoMode.All));
         registry.Register("XWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: true, mode: WhoMode.All));
 
-        registry.Register("MWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: false, mode: WhoMode.Room));
-        registry.Register("MWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: false, mode: WhoMode.Room));
-        registry.Register("NMWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: true, slice: false, mode: WhoMode.Room));
-        registry.Register("XMWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: true, mode: WhoMode.Room));
-        registry.Register("XMWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: true, mode: WhoMode.Room));
+        registry.Register("MWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: false, mode: WhoMode.Mortal));
+        registry.Register("MWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: false, mode: WhoMode.Mortal));
+        registry.Register("NMWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: true, slice: false, mode: WhoMode.Mortal));
+        registry.Register("XMWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: true, mode: WhoMode.Mortal));
+        registry.Register("XMWHOID", (ctx, args) => WhoList(registry, ctx, args, useObjId: true, countOnly: false, slice: true, mode: WhoMode.Mortal));
 
         registry.Register("ZWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: false, mode: WhoMode.Zone));
         registry.Register("ZMWHO", (ctx, args) => WhoList(registry, ctx, args, useObjId: false, countOnly: false, slice: false, mode: WhoMode.ZoneMortal));
     }
 
-    private enum WhoMode { All, Room, Zone, ZoneMortal }
+    private enum WhoMode { All, Mortal, Zone, ZoneMortal }
 
     public static string ZEmit(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool spoofable)
     {
@@ -152,13 +157,54 @@ public static class ConnectionAndZoneFunctions
         return snap != null ? snap.TerminalType : MushError.Nothing.Text();
     }
 
-    public static string PortsList(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool withType)
+    public static string PortsList(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return string.Empty;
         var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
         if (p == null) return string.Empty;
         var snaps = GetSnapshots(reg).Where(s => s.PlayerId == p.Id);
-        return string.Join(" ", snaps.Select(s => withType ? $"{s.Descriptor}:telnet" : s.Descriptor.ToString()));
+        return string.Join(" ", snaps.Select(s => s.Descriptor.ToString()));
+    }
+
+    public static string LPortsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (reg.Database == null) return string.Empty;
+        var looker = reg.Database.GetObject(ctx.Executor);
+        if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+        {
+            var viewer = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+            if (viewer != null) looker = viewer;
+        }
+        bool seeHidden = AttributePermissions.CanSeeAll(looker);
+        var snaps = GetSnapshots(reg).AsEnumerable();
+        if (!seeHidden)
+            snaps = snaps.Where(s => !s.IsHidden);
+        return string.Join(" ", snaps.Select(s => s.Descriptor.ToString()));
+    }
+
+    public static string SentRecvFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool sent)
+    {
+        if (args.Length == 0 || reg.Database == null) return MushError.TooFewArguments.Text();
+        string target = args[0].Trim();
+        var snaps = GetSnapshots(reg);
+        ConnectionSnapshot? snap = null;
+
+        if (int.TryParse(target, out int port))
+        {
+            snap = snaps.FirstOrDefault(s => s.Descriptor == port);
+        }
+        else
+        {
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(target, ctx)) ?? reg.Database.FindPlayer(target.TrimStart('*'));
+            if (p != null) snap = snaps.FirstOrDefault(s => s.PlayerId == p.Id);
+        }
+
+        if (snap == null) return "-1";
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (snap.PlayerId != ctx.Executor && !AttributePermissions.CanSeeAll(actor))
+            return "-1";
+
+        return (sent ? snap.BytesSent : snap.BytesReceived).ToString();
     }
 
     private static string WhoList(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool useObjId, bool countOnly, bool slice, WhoMode mode)
@@ -168,20 +214,10 @@ public static class ConnectionAndZoneFunctions
         bool seeHidden = AttributePermissions.CanSeeAll(looker);
 
         var snaps = GetSnapshots(reg).AsEnumerable();
-        if (!seeHidden || mode == WhoMode.ZoneMortal)
+        if (!seeHidden || mode is WhoMode.Mortal or WhoMode.ZoneMortal)
             snaps = snaps.Where(s => !s.IsHidden);
 
-        if (mode == WhoMode.Room)
-        {
-            Dbref roomRef = looker?.Location ?? ctx.Location;
-            if (args.Length > 0 && !slice && !string.IsNullOrWhiteSpace(args[0]))
-            {
-                var argObj = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx));
-                if (argObj != null) roomRef = argObj.Type == ObjectType.Room ? argObj.Id : argObj.Location;
-            }
-            snaps = snaps.Where(s => reg.Database.GetObject(s.PlayerId)?.Location == roomRef);
-        }
-        else if (mode is WhoMode.Zone or WhoMode.ZoneMortal)
+        if (mode is WhoMode.Zone or WhoMode.ZoneMortal)
         {
             if (args.Length == 0) return string.Empty;
             var zone = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx));
@@ -200,8 +236,7 @@ public static class ConnectionAndZoneFunctions
 
         if (slice)
         {
-            int idx1 = mode == WhoMode.Room && args.Length >= 3 ? 1 : 0;
-            if (args.Length < idx1 + 2 || !int.TryParse(args[idx1].Trim(), out int start) || !int.TryParse(args[idx1 + 1].Trim(), out int count))
+            if (args.Length < 2 || !int.TryParse(args[0].Trim(), out int start) || !int.TryParse(args[1].Trim(), out int count))
                 return MushError.ArgumentMustBeInteger.Text();
             if (start < 1 || count < 1) return MushError.OutOfRange.Text();
             playerIds = playerIds.Skip(start - 1).Take(count).ToList();

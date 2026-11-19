@@ -117,7 +117,7 @@ public class Sections9_13_17_18FunctionTests
     [Fact]
     public void Section13_ChannelFunctions_WorkCorrectly()
     {
-        Assert.Contains("Welcome!", _evaluator.Evaluate("[cbuffer(Public)]", _ctx));
+        Assert.Equal("50", _evaluator.Evaluate("[cbuffer(Public)]", _ctx));
         Assert.Equal(string.Empty, _evaluator.Evaluate("[cbufferadd(Public,Extra line)]", _ctx));
         Assert.Contains("Extra line", _evaluator.Evaluate("[crecall(Public)]", _ctx));
         Assert.Equal("General chat", _evaluator.Evaluate("[cdesc(Public)]", _ctx));
@@ -147,11 +147,11 @@ public class Sections9_13_17_18FunctionTests
         Assert.Equal("N---", _evaluator.Evaluate("[mailstatus(1)]", _ctx));
 
         Assert.Equal(string.Empty, _evaluator.Evaluate($"[mailsend({_alice.Id},Hi/Body text)]", _ctx));
-        Assert.Equal("1", _evaluator.Evaluate("[sent()]", _ctx));
-        Assert.Equal("1", _evaluator.Evaluate("[recv()]", _ctx));
+        Assert.Equal("-1", _evaluator.Evaluate($"[sent({_wiz.Id})]", _ctx));
+        Assert.Equal("-1", _evaluator.Evaluate($"[recv({_wiz.Id})]", _ctx));
         Assert.Equal("1", _evaluator.Evaluate("[mailstats()]", _ctx));
         Assert.Equal("1 1 0", _evaluator.Evaluate("[maildstats()]", _ctx));
-        Assert.Equal("1 1 0", _evaluator.Evaluate("[mailfstats(0)]", _ctx));
+        Assert.Equal("1 1 0 11 1 1 0 22", _evaluator.Evaluate("[mailfstats()]", _ctx));
         Assert.Equal("1 1 0", _evaluator.Evaluate("[folderstats(0)]", _ctx));
         Assert.Equal("+staff", _evaluator.Evaluate("[malias()]", _ctx));
         Assert.Equal($"{_wiz.Id} {_alice.Id}", _evaluator.Evaluate("[malias(+staff)]", _ctx));

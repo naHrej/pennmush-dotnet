@@ -148,7 +148,7 @@ public class Sections10_12_14_19FunctionTests
         Assert.Equal("10.0.0.2", _evaluator.Evaluate($"[ipaddr({_alice.Id})]", _ctx));
         Assert.Equal("mushclient", _evaluator.Evaluate($"[terminfo({_alice.Id})]", _ctx));
         Assert.Equal("11", _evaluator.Evaluate($"[ports({_alice.Id})]", _ctx));
-        Assert.Equal("11:telnet", _evaluator.Evaluate($"[lports({_alice.Id})]", _ctx));
+        Assert.Equal("10 11 12", _evaluator.Evaluate("[lports()]", _ctx));
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class Sections10_12_14_19FunctionTests
         Assert.Equal("#-1 PERMISSION DENIED", _evaluator.Evaluate("[html(<b>hi</b>)]", _mortalCtx));
         Assert.Equal("<a href=\"x\">", _evaluator.Evaluate("[tag(a,href=\"x\")]", _ctx));
         Assert.Equal("</a>", _evaluator.Evaluate("[endtag(a)]", _ctx));
-        Assert.Equal("<b id=\"1\">hi</b>", _evaluator.Evaluate("[tagwrap(b,hi,id=\"1\")]", _ctx));
+        Assert.Equal("<b id=\"1\">hi</b>", _evaluator.Evaluate("[tagwrap(b,id=\"1\",hi)]", _ctx));
         Assert.Equal("0", _evaluator.Evaluate("[pueblo()]", _ctx));
 
         _notifications.Clear();

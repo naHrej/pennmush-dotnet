@@ -110,7 +110,7 @@ public static class DbFunctions
         registry.Register("LOCATE", (ctx, args) => LocateFunc(registry, ctx, args));
         registry.Register("PMATCH", (ctx, args) => PMatchFunc(registry, ctx, args));
         registry.Register("PLAYER", (ctx, args) => PlayerFunc(registry, ctx, args));
-        registry.Register("ROOM", (ctx, args) => WhereFunc(registry, ctx, args));
+        registry.Register("ROOM", (ctx, args) => RoomFunc(registry, ctx, args));
         registry.Register("EXIT", (ctx, args) => ExitFunc(registry, ctx, args));
         registry.Register("NEXT", (ctx, args) => NextFunc(registry, ctx, args));
         registry.Register("NEXTDBREF", (ctx, args) => NextDbrefFunc(registry));
@@ -176,7 +176,7 @@ public static class DbFunctions
         registry.Register("NUMVERSION", (ctx, args) => "1080800");
         registry.Register("MUDNAME", (ctx, args) => registry.MudName);
         registry.Register("MUDURL", (ctx, args) => registry.MudUrl);
-        registry.Register("CMDS", (ctx, args) => CmdsFunc(registry));
+        registry.Register("CMDS", (ctx, args) => CmdsFunc(registry, ctx, args));
 
         // Section 11: Ufun/eval variants
         registry.Register("ULOCAL", (ctx, args) => ULocalFunc(registry, ctx, args));
@@ -331,6 +331,16 @@ public static class DbFunctions
     public static string Ufun(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
+        string trimmedSpec = args[0].TrimStart();
+        if (trimmedSpec.StartsWith("#lambda/", StringComparison.OrdinalIgnoreCase))
+        {
+            string body = trimmedSpec.Substring("#lambda/".Length);
+            if (reg.Evaluator == null) return body;
+            string[] lambdaArgs = args.Length > 1 ? args[1..] : Array.Empty<string>();
+            var childCtx = ctx.CreateChildContext(ctx.Executor, ctx.Executor, lambdaArgs);
+            return reg.Evaluator.Evaluate(body, childCtx);
+        }
+
         int slash = args[0].IndexOf('/');
         if (slash <= 0 || slash >= args[0].Length - 1) return MushError.NoMatch.Text();
 
@@ -571,7 +581,7 @@ public static class DbFunctions
         return curr.ToString();
     }
 
-    public static string WhereFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    public static string RoomFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
@@ -588,6 +598,40 @@ public static class DbFunctions
         }
 
         return curr != null ? curr.Id.ToString() : MushError.NoMatch.Text();
+    }
+
+    private static Dbref FindExitSourceRoom(ObjectDatabase db, Dbref exitId)
+    {
+        foreach (var room in db.GetAllObjects().Where(r => r.Type == ObjectType.Room && r.Exits.IsValid))
+        {
+            var curr = room.Exits;
+            var seen = new HashSet<Dbref>();
+            while (curr.IsValid && seen.Add(curr))
+            {
+                if (curr == exitId) return room.Id;
+                curr = db.GetObject(curr)?.Next ?? Dbref.Nothing;
+            }
+        }
+        return Dbref.Nothing;
+    }
+
+    public static string WhereFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
+        var dbref = ParseDbref(args[0], ctx);
+        var obj = reg.Database.GetObject(dbref);
+        if (obj == null) return MushError.NoMatch.Text();
+
+        Dbref loc;
+        if (obj.Type == ObjectType.Exit)
+        {
+            loc = obj.Home.IsValid ? obj.Home : FindExitSourceRoom(reg.Database, obj.Id);
+        }
+        else
+        {
+            loc = obj.Location;
+        }
+        return loc.ToString();
     }
 
     public static string HomeFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -853,14 +897,13 @@ public static class DbFunctions
     public static string TestLockFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Database == null) return "0";
-        var targetRef = ParseDbref(args[0], ctx);
-        string lockName = args[1].Trim();
-        var whoRef = args.Length > 2 ? ParseDbref(args[2], ctx) : ctx.Enactor;
+        var whoRef = ParseDbref(args[1], ctx);
+        var whoObj = reg.Database.GetObject(whoRef);
+        if (whoObj == null) return "0";
 
-        var targetObj = reg.Database.GetObject(targetRef);
-        if (targetObj == null) return "0";
-
-        return targetObj.EvalLock(lockName, whoRef, reg.Database) ? "1" : "0";
+        var key = LockParser.Parse(args[0]);
+        if (key == null) return "0";
+        return key.Evaluate(whoRef, ctx.Executor, reg.Database) ? "1" : "0";
     }
 
     public static string NameListFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -1420,15 +1463,22 @@ public static class DbFunctions
             : reg.Database.GetObject(ctx.Location);
         if (target == null) return MushError.NoMatch.Text();
 
-        string typeSpec = args.Length > 1 ? args[1].Trim().ToUpperInvariant() : "A";
-        ObjectType filter = typeSpec switch
+        string typeSpec = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim().ToUpperInvariant() : "A";
+        ObjectType filter = 0;
+        foreach (char ch in typeSpec)
         {
-            "E" => ObjectType.Exit,
-            "P" => ObjectType.Player,
-            "R" => ObjectType.Room,
-            "T" => ObjectType.Thing,
-            _ => ObjectType.Player | ObjectType.Room | ObjectType.Thing | ObjectType.Exit
-        };
+            filter |= ch switch
+            {
+                'E' => ObjectType.Exit,
+                'P' => ObjectType.Player,
+                'R' => ObjectType.Room,
+                'T' => ObjectType.Thing,
+                'A' => ObjectType.Player | ObjectType.Room | ObjectType.Thing | ObjectType.Exit,
+                _ => (ObjectType)0
+            };
+        }
+        if (filter == 0)
+            filter = ObjectType.Player | ObjectType.Room | ObjectType.Thing | ObjectType.Exit;
 
         int low = args.Length > 2 && int.TryParse(args[2].Trim(), out int l) && l >= 0 ? l : 0;
         int high = args.Length > 3 && int.TryParse(args[3].Trim(), out int h) && h >= 0 ? h : int.MaxValue;
@@ -1437,7 +1487,7 @@ public static class DbFunctions
             .Where(o => o.Type != ObjectType.Garbage
                 && o.Id.Value >= low && o.Id.Value <= high
                 && (filter & o.Type) != 0
-                && o.Location == target.Id)
+                && (o.Type == ObjectType.Exit ? o.Location == target.Id : o.Home == target.Id))
             .OrderBy(o => o.Id.Value)
             .Select(o => o.Id.ToString());
 
@@ -1570,12 +1620,10 @@ public static class DbFunctions
 
     public static string PlayerFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || reg.Database == null) return MushError.Nothing.Text();
-        var obj = ResolveObj(reg, ctx, args[0]);
-        if (obj != null && obj.Type == ObjectType.Player)
-            return obj.Id.ToString();
-        var p = reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
-        return p != null ? p.Id.ToString() : MushError.Nothing.Text();
+        if (args.Length == 0 || reg.ConnectionsProvider == null) return MushError.Nothing.Text();
+        if (!int.TryParse(args[0].Trim(), out int port)) return MushError.ArgumentMustBeInteger.Text();
+        var snap = reg.ConnectionsProvider().FirstOrDefault(s => s.Descriptor == port);
+        return snap != null ? snap.PlayerId.ToString() : MushError.Nothing.Text();
     }
 
     public static string ExitFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -2021,13 +2069,21 @@ public static class DbFunctions
     public static string IsWordFunc(string[] args)
         => args.Length > 0 && args[0].Length > 0 && args[0].All(char.IsLetter) ? "1" : "0";
 
-    public static string CmdsFunc(FunctionRegistry reg)
+    public static string CmdsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (reg.CommandNamesProvider == null) return string.Empty;
-        return string.Join(" ", reg.CommandNamesProvider()
-            .Select(c => c.ToUpperInvariant())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (reg.ConnectionsProvider == null) return "-1";
+        string target = args[0].Trim();
+        var snaps = reg.ConnectionsProvider();
+        ConnectionSnapshot? snap = int.TryParse(target, out int port)
+            ? snaps.FirstOrDefault(s => s.Descriptor == port)
+            : null;
+        if (snap == null && reg.Database != null)
+        {
+            var p = reg.Database.GetObject(ParseDbref(target, ctx)) ?? reg.Database.FindPlayer(target.TrimStart('*'));
+            if (p != null) snap = snaps.FirstOrDefault(s => s.PlayerId == p.Id);
+        }
+        return snap != null ? snap.CommandCount.ToString() : "-1";
     }
 
     public static string ULocalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

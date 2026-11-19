@@ -25,7 +25,7 @@ public static class ClientFunctions
         registry.Register("CWINDOW", (ctx, args) => CWindowFunc(registry, ctx, args));
         registry.Register("CSTYLE", (ctx, args) => CStyleFunc(registry, ctx, args));
         registry.Register("CAUDIO", (ctx, args) => CAudioFunc(registry, ctx, args));
-        registry.Register("CEMIT", (ctx, args) => CEmitFunc(registry, ctx, args));
+        registry.Register("CLIENT_EMIT", (ctx, args) => CEmitFunc(registry, ctx, args));
     }
 
     private static string CEditFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

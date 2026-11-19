@@ -58,7 +58,7 @@ public static class ListFunctions
         registry.Register("ITEMIZE", (ctx, args) => Itemize(args));
         registry.Register("ELIST", (ctx, args) => EList(args));
         registry.Register("SPLICE", (ctx, args) => Splice(args));
-        registry.Register("STEP", (ctx, args) => Step(args));
+        registry.Register("STEP", (ctx, args) => Step(registry, ctx, args));
         registry.Register("MUNGE", (ctx, args) => Munge(registry, ctx, args));
         registry.Register("MIX", (ctx, args) => Mix(registry, ctx, args));
         registry.Register("WORDPOS", (ctx, args) => WordPos(args));
@@ -340,19 +340,28 @@ public static class ListFunctions
     public static string Unique(string[] args)
     {
         if (args.Length == 0) return string.Empty;
-        string delim = args.Length > 1 ? args[1] : " ";
-        var list = SplitList(args[0], delim);
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var unique = new List<string>();
+        string sortType = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : string.Empty;
+        string delim = args.Length > 2 ? args[2] : " ";
+        string osep = args.Length > 3 ? args[3] : delim;
 
-        foreach (var item in list)
+        var list = SplitList(args[0], delim);
+        if (list.Count == 0) return string.Empty;
+
+        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var unique = new List<string> { list[0] };
+        for (int i = 1; i < list.Count; i++)
         {
-            if (seen.Add(item))
+            bool same = sortType switch
             {
-                unique.Add(item);
-            }
+                "n" or "f" => double.TryParse(list[i], NumberStyles.Float, CultureInfo.InvariantCulture, out double a)
+                    && double.TryParse(unique[^1], NumberStyles.Float, CultureInfo.InvariantCulture, out double b)
+                    && Math.Abs(a - b) < 1e-12,
+                _ => comparer.Equals(list[i], unique[^1])
+            };
+            if (!same)
+                unique.Add(list[i]);
         }
-        return string.Join(delim, unique);
+        return string.Join(osep, unique);
     }
 
     public static string Shuffle(string[] args)
@@ -471,44 +480,68 @@ public static class ListFunctions
 
     public static string LNum(string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        int start = 0;
-        int end = 0;
-        int step = 1;
-        string delim = " ";
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        double start, end, step;
+        string osep = args.Length > 2 ? args[2] : " ";
 
         if (args.Length == 1)
         {
-            if (!int.TryParse(args[0].Trim(), out end)) return string.Empty;
+            if (!double.TryParse(args[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double count))
+                return MushError.ArgumentMustBeNumber.Text();
+            if (count < 0) return MushError.OutOfRange.Text();
+            int n = (int)count;
+            if (n == 0) return string.Empty;
             start = 0;
-            end -= 1;
+            end = n - 1;
+            step = 1;
         }
         else
         {
-            if (!int.TryParse(args[0].Trim(), out start)) return string.Empty;
-            if (!int.TryParse(args[1].Trim(), out end)) return string.Empty;
-            if (args.Length > 2 && int.TryParse(args[2].Trim(), out int s) && s != 0) step = s;
-            if (args.Length > 3) delim = args[3];
+            if (!double.TryParse(args[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out start))
+                return MushError.ArgumentMustBeNumber.Text();
+            if (!double.TryParse(args[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out end))
+                return MushError.ArgumentMustBeNumber.Text();
+
+            if (args.Length > 3 && !string.IsNullOrWhiteSpace(args[3]))
+            {
+                if (!double.TryParse(args[3].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out step) || step == 0)
+                    return MushError.ArgumentMustBeNumber.Text();
+            }
+            else
+            {
+                step = start <= end ? 1 : -1;
+            }
         }
+
+        if ((start < end && step < 0) || (start > end && step > 0))
+            return string.Empty;
 
         var result = new List<string>();
         if (step > 0)
         {
-            for (int i = start; i <= end; i += step)
+            for (double v = start; v <= end + 1e-12; v += step)
             {
-                result.Add(i.ToString());
+                result.Add(FormatLNum(v));
                 if (result.Count >= 10000) break;
             }
         }
         else
         {
-            for (int i = start; i >= end; i += step)
+            for (double v = start; v >= end - 1e-12; v += step)
             {
-                result.Add(i.ToString());
+                result.Add(FormatLNum(v));
                 if (result.Count >= 10000) break;
             }
         }
-        return string.Join(delim, result);
+        return string.Join(osep, result);
+    }
+
+    private static string FormatLNum(double v)
+    {
+        double rounded = Math.Round(v);
+        return Math.Abs(v - rounded) < 1e-12
+            ? ((long)rounded).ToString(CultureInfo.InvariantCulture)
+            : Math.Round(v, 10).ToString("G", CultureInfo.InvariantCulture);
     }
 
     public static string Iter(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -749,35 +782,45 @@ public static class ListFunctions
 
     public static string Splice(string[] args)
     {
-        if (args.Length < 3) return string.Empty;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
         string delim = args.Length > 3 ? args[3] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
         var l1 = SplitList(args[0], delim);
-        string word = args[2];
         var l2 = SplitList(args[1], delim);
+        string word = args[2];
 
-        int idx = l1.FindIndex(x => string.Equals(x, word, StringComparison.OrdinalIgnoreCase));
-        if (idx >= 0)
+        if (l1.Count != l2.Count)
+            return "#-1 NUMBER OF WORDS MUST BE EQUAL";
+
+        for (int i = 0; i < l1.Count; i++)
         {
-            l1.RemoveAt(idx);
-            l1.InsertRange(idx, l2);
+            if (string.Equals(l1[i], word, StringComparison.OrdinalIgnoreCase))
+                l1[i] = l2[i];
         }
 
-        return string.Join(delim, l1);
+        return string.Join(osep, l1);
     }
 
-    public static string Step(string[] args)
+    public static string Step(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return string.Empty;
-        if (!int.TryParse(args[1].Trim(), out int stepSize) || stepSize <= 0) return string.Empty;
-        string inDelim = args.Length > 2 ? args[2] : " ";
-        string outDelim = args.Length > 3 ? args[3] : inDelim;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
+        string attrRef = args[0];
+        if (!int.TryParse(args[2].Trim(), out int stepSize) || stepSize < 1 || stepSize > 10)
+            return MushError.OutOfRange.Text();
+        string inDelim = args.Length > 3 ? args[3] : " ";
+        string outDelim = args.Length > 4 ? args[4] : inDelim;
 
-        var list = SplitList(args[0], inDelim);
+        var list = SplitList(args[1], inDelim);
         var results = new List<string>();
 
         for (int i = 0; i < list.Count; i += stepSize)
         {
-            results.Add(list[i]);
+            int chunkLen = Math.Min(stepSize, list.Count - i);
+            var uargs = new string[chunkLen + 1];
+            uargs[0] = attrRef;
+            for (int j = 0; j < chunkLen; j++)
+                uargs[j + 1] = list[i + j];
+            results.Add(DbFunctions.Ufun(reg, ctx, uargs));
         }
 
         return string.Join(outDelim, results);
@@ -785,21 +828,37 @@ public static class ListFunctions
 
     public static string Munge(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 3) return string.Empty;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
         string attrRef = args[0];
         string delim = args.Length > 3 ? args[3] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
         var l1 = SplitList(args[1], delim);
         var l2 = SplitList(args[2], delim);
 
-        int count = Math.Min(l1.Count, l2.Count);
+        if (l1.Count != l2.Count)
+            return "#-1 LISTS MUST BE OF EQUAL SIZE";
+        if (l1.Count == 0)
+            return string.Empty;
+
+        string sortedRaw = DbFunctions.Ufun(reg, ctx, [attrRef, string.Join(delim, l1), delim]);
+        var sortedL1 = SplitList(sortedRaw, delim);
+        var used = new bool[l1.Count];
         var results = new List<string>();
 
-        for (int i = 0; i < count; i++)
+        foreach (var item in sortedL1)
         {
-            results.Add(DbFunctions.Ufun(reg, ctx, [attrRef, l1[i], l2[i]]));
+            for (int i = 0; i < l1.Count; i++)
+            {
+                if (!used[i] && string.Equals(l1[i], item, StringComparison.Ordinal))
+                {
+                    used[i] = true;
+                    results.Add(l2[i]);
+                    break;
+                }
+            }
         }
 
-        return string.Join(delim, results);
+        return string.Join(osep, results);
     }
 
     private static bool IsKnownSortType(string type)
