@@ -99,7 +99,7 @@ public class Section5FunctionTests
     public void Section5_PronounEconomyIdentity_WorkCorrectly()
     {
         Assert.Equal("hers", _evaluator.Evaluate($"[aposs({_alice.Id})]", _wizCtx));
-        Assert.Equal("his", _evaluator.Evaluate("[aposs(male)]", _wizCtx));
+        Assert.Equal("#-1 NO MATCH", _evaluator.Evaluate("[aposs(nonexistent)]", _wizCtx));
         Assert.Equal("250", _evaluator.Evaluate($"[money({_alice.Id})]", _wizCtx));
         Assert.Equal("Lady Alice", _evaluator.Evaluate($"[moniker({_alice.Id})]", _wizCtx));
         Assert.Equal("Lady Alice", _evaluator.Evaluate($"[cname({_alice.Id})]", _wizCtx));
@@ -221,7 +221,7 @@ public class Section5FunctionTests
         Assert.Equal(_alice.Id.ToString(), _evaluator.Evaluate($"[locate({_wiz.Id},Alice,*)]", _wizCtx));
         Assert.Equal(_exitNorth.Id.ToString(), _evaluator.Evaluate($"[locate({_wiz.Id},n,eE)]", _wizCtx));
         Assert.Equal(_alice.Id.ToString(), _evaluator.Evaluate("[pmatch(Ali)]", _wizCtx));
-        Assert.Equal(_alice.Id.ToString(), _evaluator.Evaluate($"[player({_alice.Id})]", _wizCtx));
+        Assert.Equal("#-1", _evaluator.Evaluate("[player(999)]", _wizCtx));
         Assert.Equal(_room.Id.ToString(), _evaluator.Evaluate($"[room({_childThing.Id})]", _wizCtx));
         Assert.True(DbFunctions.ParseDbref(_evaluator.Evaluate($"[exit({_room.Id})]", _wizCtx)).IsValid);
         Assert.True(DbFunctions.ParseDbref(_evaluator.Evaluate($"[next({_childThing.Id})]", _wizCtx)).IsValid);

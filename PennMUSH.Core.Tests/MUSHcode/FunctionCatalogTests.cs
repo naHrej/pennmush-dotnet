@@ -42,7 +42,7 @@ public class FunctionCatalogTests
         Assert.Equal("2", _evaluator.Evaluate("[member(apple banana cherry,banana)]", _ctx));
         Assert.Equal("0", _evaluator.Evaluate("[member(apple banana cherry,orange)]", _ctx));
         Assert.Equal("cherry banana apple", _evaluator.Evaluate("[revwords(apple banana cherry)]", _ctx));
-        Assert.Equal("apple banana cherry", _evaluator.Evaluate("[unique(apple banana apple cherry banana)]", _ctx));
+        Assert.Equal("apple banana cherry", _evaluator.Evaluate("[unique(apple banana banana cherry)]", _ctx));
     }
 
     [Fact]
@@ -72,9 +72,9 @@ public class FunctionCatalogTests
         Assert.Equal("b c", _evaluator.Evaluate("[setinter(a b c,b c d)]", _ctx));
         Assert.Equal("a", _evaluator.Evaluate("[setdiff(a b c,b c d)]", _ctx));
         Assert.Equal("0 1 2 3 4", _evaluator.Evaluate("[lnum(5)]", _ctx));
-        Assert.Equal("10 12 14", _evaluator.Evaluate("[lnum(10,14,2)]", _ctx));
+        Assert.Equal("10 12 14", _evaluator.Evaluate("[lnum(10,14,%b,2)]", _ctx));
         Assert.Equal("a, b, and c", _evaluator.Evaluate("[itemize(a b c)]", _ctx));
-        Assert.Equal("a c e", _evaluator.Evaluate("[step(a b c d e,2)]", _ctx));
+        Assert.Equal("a|b c|d e|", _evaluator.Evaluate("[step({#lambda/%0|%1},a b c d e,2)]", _ctx));
     }
 
     [Fact]
@@ -91,11 +91,12 @@ public class FunctionCatalogTests
         Assert.Equal("     hello", _evaluator.Evaluate("[rjust(hello,10)]", _ctx));
         Assert.Equal("  hello   ", _evaluator.Evaluate("[center(hello,10)]", _ctx));
         Assert.Equal("Hello", _evaluator.Evaluate("[capstr(hello)]", _ctx));
-        Assert.Equal("a dog", _evaluator.Evaluate("[art(dog)]", _ctx));
-        Assert.Equal("an apple", _evaluator.Evaluate("[art(apple)]", _ctx));
-        Assert.Equal("he", _evaluator.Evaluate("[subj(male)]", _ctx));
-        Assert.Equal("her", _evaluator.Evaluate("[poss(female)]", _ctx));
-        Assert.Equal("them", _evaluator.Evaluate("[obj(plural)]", _ctx));
+        Assert.Equal("a", _evaluator.Evaluate("[art(dog)]", _ctx));
+        Assert.Equal("an", _evaluator.Evaluate("[art(apple)]", _ctx));
+        _god.SetAttribute("SEX", "male", _god.Id);
+        Assert.Equal("he", _evaluator.Evaluate($"[subj(#{_god.Id.Value})]", _ctx));
+        Assert.Equal("his", _evaluator.Evaluate($"[poss(#{_god.Id.Value})]", _ctx));
+        Assert.Equal("him", _evaluator.Evaluate($"[obj(#{_god.Id.Value})]", _ctx));
         Assert.Equal("   ", _evaluator.Evaluate("[space(3)]", _ctx));
     }
 
@@ -186,9 +187,8 @@ public class FunctionCatalogTests
         Assert.Equal("COLOR DESC", _evaluator.Evaluate($"[lattr(#{thing.Id.Value})]", _ctx));
         Assert.Equal("2", _evaluator.Evaluate($"[nattr(#{thing.Id.Value})]", _ctx));
 
-        // Test lock
-        thing.SetLock(LockType.Basic, new DbrefLockNode(_god.Id), _god.Id);
-        Assert.Equal("1", _evaluator.Evaluate($"[testlock(#{thing.Id.Value},Basic,#{_god.Id.Value})]", _ctx));
-        Assert.Equal("0", _evaluator.Evaluate($"[testlock(#{thing.Id.Value},Basic,#999)]", _ctx));
+        // Test lock (boolexp, victim)
+        Assert.Equal("1", _evaluator.Evaluate($"[testlock(#{_god.Id.Value},#{_god.Id.Value})]", _ctx));
+        Assert.Equal("0", _evaluator.Evaluate($"[testlock(#{_god.Id.Value},#999)]", _ctx));
     }
 }

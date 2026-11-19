@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.MUSHcode;
 
@@ -14,6 +15,7 @@ public static class ChannelFunctions
         registry.Register("CBUFFER", (ctx, args) => CBuffer(registry, ctx, args));
         registry.Register("CBUFFERADD", (ctx, args) => CBufferAdd(registry, ctx, args));
         registry.Register("CDESC", (ctx, args) => CDesc(registry, ctx, args));
+        registry.Register("CEMIT", (ctx, args) => CEmit(registry, ctx, args));
         registry.Register("CFLAGS", (ctx, args) => CFlags(registry, ctx, args, longNames: false));
         registry.Register("CLFLAGS", (ctx, args) => CFlags(registry, ctx, args, longNames: true));
         registry.Register("CHANNELS", (ctx, args) => ChannelsList(registry, ctx, args));
@@ -21,7 +23,7 @@ public static class ChannelFunctions
         registry.Register("CMOGRIFIER", (ctx, args) => CMogrifier(registry, ctx, args));
         registry.Register("CMSGS", (ctx, args) => CMsgs(registry, ctx, args));
         registry.Register("COWNER", (ctx, args) => COwner(registry, ctx, args));
-        registry.Register("CRECALL", (ctx, args) => CBuffer(registry, ctx, args));
+        registry.Register("CRECALL", (ctx, args) => CRecall(registry, ctx, args));
         registry.Register("CSTATUS", (ctx, args) => CStatus(registry, ctx, args));
         registry.Register("CTITLE", (ctx, args) => CTitle(registry, ctx, args));
         registry.Register("CUSERS", (ctx, args) => CUsers(registry, ctx, args));
@@ -35,11 +37,31 @@ public static class ChannelFunctions
     {
         if (args.Length == 0 || reg.Channels == null) return MushError.Nothing.Text();
         var ch = FindChannel(reg, args[0]);
+        return ch != null ? ch.BufferCapacity.ToString() : MushError.NoMatch.Text();
+    }
+
+    public static string CRecall(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length == 0 || reg.Channels == null) return MushError.Nothing.Text();
+        var ch = FindChannel(reg, args[0]);
         if (ch == null) return MushError.NoMatch.Text();
 
-        int count = args.Length > 1 && int.TryParse(args[1].Trim(), out int c) && c > 0 ? c : 20;
+        int count = args.Length > 1 && int.TryParse(args[1].Trim(), out int c) && c > 0 ? c : 10;
         var msgs = ch.GetRecentMessages(count);
         return string.Join("\n", msgs.Select(m => m.Text));
+    }
+
+    public static string CEmit(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        if (args.Length < 2 || reg.Channels == null) return MushError.TooFewArguments.Text();
+        string sender = reg.Database?.GetObject(ctx.Executor)?.Name ?? ctx.Executor.ToString();
+        var res = reg.Channels.Broadcast(args[0], ctx.Executor, sender, args[1], isEmit: true);
+        if (res != null && reg.NotificationDispatcher != null)
+        {
+            foreach (var r in res.Recipients)
+                reg.NotificationDispatcher.Invoke(new Notification(NotificationScope.Target, res.FormattedMessage, Target: r, Speaker: ctx.Executor, Spoofable: true));
+        }
+        return string.Empty;
     }
 
     public static string CBufferAdd(FunctionRegistry reg, EvaluationContext ctx, string[] args)

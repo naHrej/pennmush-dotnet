@@ -80,7 +80,7 @@ public class Sections7_8_11_15_16FunctionTests
         Assert.Equal("1080800", _evaluator.Evaluate("[numversion()]", _ctx));
         Assert.Equal("TestMUSH", _evaluator.Evaluate("[mudname()]", _ctx));
         Assert.Equal("https://example.org", _evaluator.Evaluate("[mudurl()]", _ctx));
-        Assert.Equal("@EXAMINE LOOK SAY", _evaluator.Evaluate("[cmds()]", _ctx));
+        Assert.Equal("-1", _evaluator.Evaluate("[cmds(1)]", _ctx));
     }
 
     [Fact]

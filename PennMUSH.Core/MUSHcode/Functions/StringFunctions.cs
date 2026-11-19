@@ -57,10 +57,10 @@ public static class StringFunctions
         registry.Register("ORD", Ord);
         registry.Register("CAPSTR", Capstr);
         registry.Register("ART", Art);
-        registry.Register("SUBJ", Subj);
-        registry.Register("POSS", Poss);
+        registry.Register("SUBJ", (ctx, args) => Subj(registry, ctx, args));
+        registry.Register("POSS", (ctx, args) => Poss(registry, ctx, args));
         registry.Register("APOSS", (ctx, args) => Aposs(registry, ctx, args));
-        registry.Register("OBJ", Obj);
+        registry.Register("OBJ", (ctx, args) => Obj(registry, ctx, args));
         registry.Register("SPACE", Space);
         registry.Register("SCRAMBLE", Scramble);
         registry.Register("SPELLNUM", SpellNum);
@@ -291,56 +291,57 @@ public static class StringFunctions
 
     public static string Art(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0])) return string.Empty;
+        if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0])) return "a";
         string word = args[0].TrimStart();
         char firstChar = char.ToLowerInvariant(word[0]);
-
-        bool isVowel = "aeiou".Contains(firstChar);
-        return (isVowel ? "an " : "a ") + word;
+        return "aeiou".Contains(firstChar) ? "an" : "a";
     }
 
-    public static string Subj(EvaluationContext ctx, string[] args)
+    private static string? LookupGender(FunctionRegistry reg, EvaluationContext ctx, string[] args, out string gender)
     {
-        if (args.Length == 0) return "it";
-        string g = args[0].Trim().ToLowerInvariant();
+        gender = string.Empty;
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        if (reg.Database == null) return MushError.NoMatch.Text();
+        string spec = args[0].Trim();
+        var obj = reg.Database.GetObject(DbFunctions.ParseDbref(spec, ctx))
+            ?? reg.Database.MatchObject(ctx.Executor, spec);
+        if (obj == null) return MushError.NoMatch.Text();
+
+        gender = (obj.GetAttribute("SEX", reg.Database)?.Value.Trim() ?? string.Empty).ToLowerInvariant();
+        return null;
+    }
+
+    public static string Subj(FunctionRegistry reg, EvaluationContext ctx, string[] args)
+    {
+        var err = LookupGender(reg, ctx, args, out string g);
+        if (err != null) return err;
         return g switch
         {
-            "male" or "m" => "he",
-            "female" or "f" => "she",
-            "plural" or "p" => "they",
+            "male" or "m" or "man" or "boy" => "he",
+            "female" or "f" or "woman" or "girl" => "she",
+            "plural" or "p" or "they" => "they",
             _ => "it"
         };
     }
 
-    public static string Poss(EvaluationContext ctx, string[] args)
+    public static string Poss(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "its";
-        string g = args[0].Trim().ToLowerInvariant();
+        var err = LookupGender(reg, ctx, args, out string g);
+        if (err != null) return err;
         return g switch
         {
-            "male" or "m" => "his",
-            "female" or "f" => "her",
-            "plural" or "p" => "their",
+            "male" or "m" or "man" or "boy" => "his",
+            "female" or "f" or "woman" or "girl" => "her",
+            "plural" or "p" or "they" => "their",
             _ => "its"
         };
     }
 
     public static string Aposs(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "its";
-        string g = args[0].Trim();
-        if (reg.Database != null)
-        {
-            var obj = reg.Database.GetObject(DbFunctions.ParseDbref(g, ctx))
-                ?? reg.Database.MatchObject(ctx.Executor, g);
-            if (obj != null)
-            {
-                var sexAttr = obj.GetAttribute("SEX", reg.Database);
-                g = sexAttr?.Value.Trim() ?? string.Empty;
-            }
-        }
-
-        return g.ToLowerInvariant() switch
+        var err = LookupGender(reg, ctx, args, out string g);
+        if (err != null) return err;
+        return g switch
         {
             "male" or "m" or "man" or "boy" => "his",
             "female" or "f" or "woman" or "girl" => "hers",
@@ -349,15 +350,15 @@ public static class StringFunctions
         };
     }
 
-    public static string Obj(EvaluationContext ctx, string[] args)
+    public static string Obj(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "it";
-        string g = args[0].Trim().ToLowerInvariant();
+        var err = LookupGender(reg, ctx, args, out string g);
+        if (err != null) return err;
         return g switch
         {
-            "male" or "m" => "him",
-            "female" or "f" => "her",
-            "plural" or "p" => "them",
+            "male" or "m" or "man" or "boy" => "him",
+            "female" or "f" or "woman" or "girl" => "her",
+            "plural" or "p" or "they" => "them",
             _ => "it"
         };
     }

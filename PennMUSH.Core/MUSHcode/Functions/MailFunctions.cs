@@ -22,11 +22,9 @@ public static class MailFunctions
         registry.Register("MAILSEND", (ctx, args) => MailSend(registry, ctx, args));
         registry.Register("MAILSTATS", (ctx, args) => MailStatsFunc(registry, ctx, args, detailed: false));
         registry.Register("MAILDSTATS", (ctx, args) => MailStatsFunc(registry, ctx, args, detailed: true));
-        registry.Register("MAILFSTATS", (ctx, args) => MailFStats(registry, ctx, args));
+        registry.Register("MAILFSTATS", (ctx, args) => MailFullStatsFunc(registry, ctx, args));
         registry.Register("FOLDERSTATS", (ctx, args) => MailFStats(registry, ctx, args));
         registry.Register("MALIAS", (ctx, args) => MAlias(registry, ctx, args));
-        registry.Register("SENT", (ctx, args) => CountSentOrRecv(registry, ctx, args, sent: true));
-        registry.Register("RECV", (ctx, args) => CountSentOrRecv(registry, ctx, args, sent: false));
     }
 
     private static (Dbref Target, int? Folder, int? Number) ParseMailRef(FunctionRegistry reg, EvaluationContext ctx, string[] args, int refIdx)
@@ -189,26 +187,47 @@ public static class MailFunctions
         return string.Join(" ", alias.Members.Select(m => m.ToString()));
     }
 
-    public static string CountSentOrRecv(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool sent)
+    public static string MailFullStatsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (reg.Mail == null) return "0";
+        if (reg.Mail == null) return "0 0 0 0 0 0 0 0";
         Dbref target = ctx.Executor;
         if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) && reg.Database != null)
         {
-            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim());
-            if (p != null) target = p.Id;
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
+            if (p == null) return MushError.NoMatch.Text();
+            target = p.Id;
         }
 
-        if (!sent)
-            return reg.Mail.GetMailStats(target).TotalCount.ToString();
-
-        if (reg.Database == null) return "0";
-        int total = 0;
-        foreach (var obj in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Player))
+        int recTotal = 0, recUnread = 0, recCleared = 0, recBytes = 0;
+        for (int f = 0; f <= 15; f++)
         {
-            for (int f = 0; f <= 15; f++)
-                total += reg.Mail.GetMessages(obj.Id, f, includeCleared: true).Count(m => m.Sender == target);
+            foreach (var m in reg.Mail.GetMessages(target, f, includeCleared: true))
+            {
+                recTotal++;
+                if (!m.IsRead) recUnread++;
+                if (m.IsCleared) recCleared++;
+                recBytes += (m.Subject?.Length ?? 0) + (m.Body?.Length ?? 0);
+            }
         }
-        return total.ToString();
+
+        int sentTotal = 0, sentUnread = 0, sentCleared = 0, sentBytes = 0;
+        if (reg.Database != null)
+        {
+            foreach (var obj in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Player))
+            {
+                for (int f = 0; f <= 15; f++)
+                {
+                    foreach (var m in reg.Mail.GetMessages(obj.Id, f, includeCleared: true).Where(m => m.Sender == target))
+                    {
+                        sentTotal++;
+                        if (!m.IsRead) sentUnread++;
+                        if (m.IsCleared) sentCleared++;
+                        sentBytes += (m.Subject?.Length ?? 0) + (m.Body?.Length ?? 0);
+                    }
+                }
+            }
+        }
+
+        return $"{sentTotal} {sentUnread} {sentCleared} {sentBytes} {recTotal} {recUnread} {recCleared} {recBytes}";
     }
 }

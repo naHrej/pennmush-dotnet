@@ -163,8 +163,8 @@ public static class TextFormatFunctions
     {
         if (args.Length < 2 || string.IsNullOrWhiteSpace(args[0])) return string.Empty;
         string name = args[0].Trim();
-        string inner = args[1];
-        string open = args.Length > 2 ? TagFunc(ctx, new[] { name }.Concat(args.Skip(2)).ToArray()) : $"<{name}>";
+        string inner = args[^1];
+        string open = args.Length > 2 ? TagFunc(ctx, new[] { name }.Concat(args.Skip(1).Take(args.Length - 2)).ToArray()) : $"<{name}>";
         return $"{open}{inner}</{name}>";
     }
 
