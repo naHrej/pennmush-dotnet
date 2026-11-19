@@ -100,42 +100,58 @@ public static class TimeFunctions
 
         var dt = DateTimeOffset.FromUnixTimeSeconds(secs).ToLocalTime();
 
-        // Convert standard strftime tokens to .NET format
-        string netFmt = format
-            .Replace("%Y", dt.ToString("yyyy"))
-            .Replace("%y", dt.ToString("yy"))
-            .Replace("%m", dt.ToString("MM"))
-            .Replace("%B", dt.ToString("MMMM"))
-            .Replace("%b", dt.ToString("MMM"))
-            .Replace("%d", dt.ToString("dd"))
-            .Replace("%H", dt.ToString("HH"))
-            .Replace("%I", dt.ToString("hh"))
-            .Replace("%M", dt.ToString("mm"))
-            .Replace("%S", dt.ToString("ss"))
-            .Replace("%p", dt.ToString("tt"))
-            .Replace("%a", dt.ToString("ddd"))
-            .Replace("%A", dt.ToString("dddd"))
-            .Replace("%%", "%");
-
-        return netFmt;
+        // PennMUSH timefmt uses $-prefixed escape codes (leaving % literal)
+        return format
+            .Replace("$$", "\u0001")
+            .Replace("$Y", dt.ToString("yyyy"))
+            .Replace("$y", dt.ToString("yy"))
+            .Replace("$m", dt.ToString("MM"))
+            .Replace("$B", dt.ToString("MMMM"))
+            .Replace("$b", dt.ToString("MMM"))
+            .Replace("$d", dt.ToString("dd"))
+            .Replace("$H", dt.ToString("HH"))
+            .Replace("$I", dt.ToString("hh"))
+            .Replace("$M", dt.ToString("mm"))
+            .Replace("$S", dt.ToString("ss"))
+            .Replace("$p", dt.ToString("tt"))
+            .Replace("$a", dt.ToString("ddd"))
+            .Replace("$A", dt.ToString("dddd"))
+            .Replace("\u0001", "$");
     }
 
     public static string ETimeFmt(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return string.Empty;
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
         string format = args[0];
-        if (!long.TryParse(args[1].Trim(), out long totalSeconds)) return "0";
+        if (!ulong.TryParse(args[1].Trim(), out ulong totalSeconds))
+            return "#-1 ARGUMENT MUST BE UNSIGNED INTEGER";
 
-        long days = totalSeconds / 86400;
-        long hours = (totalSeconds % 86400) / 3600;
-        long minutes = (totalSeconds % 3600) / 60;
-        long seconds = totalSeconds % 60;
+        ulong years = totalSeconds / 31536000;
+        ulong rem = totalSeconds % 31536000;
+        ulong weeks = rem / 604800;
+        rem %= 604800;
+        ulong days = rem / 86400;
+        rem %= 86400;
+        ulong hours = rem / 3600;
+        rem %= 3600;
+        ulong minutes = rem / 60;
+        ulong seconds = rem % 60;
 
         return format
+            .Replace("$$", "\u0001")
+            .Replace("$Y", years.ToString("D2"))
+            .Replace("$y", years.ToString())
+            .Replace("$W", weeks.ToString("D2"))
+            .Replace("$w", weeks.ToString())
+            .Replace("$D", days.ToString("D2"))
             .Replace("$d", days.ToString())
-            .Replace("$h", hours.ToString("D2"))
-            .Replace("$m", minutes.ToString("D2"))
-            .Replace("$s", seconds.ToString("D2"));
+            .Replace("$H", hours.ToString("D2"))
+            .Replace("$h", hours.ToString())
+            .Replace("$M", minutes.ToString("D2"))
+            .Replace("$m", minutes.ToString())
+            .Replace("$S", seconds.ToString("D2"))
+            .Replace("$s", seconds.ToString())
+            .Replace("\u0001", "$");
     }
 
     public static string IsDaylight(EvaluationContext ctx, string[] args)
@@ -206,7 +222,33 @@ public static class TimeFunctions
     }
 
     public static string ETime(EvaluationContext ctx, string[] args)
-        => Secs2Time(ctx, args);
+    {
+        if (args.Length == 0 || !long.TryParse(args[0].Trim(), out long secs))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (secs < 0) return MushError.OutOfRange.Text();
+        if (secs == 0) return "0s";
+
+        long years = secs / 31536000; secs %= 31536000;
+        long weeks = secs / 604800; secs %= 604800;
+        long days = secs / 86400; secs %= 86400;
+        long hours = secs / 3600; secs %= 3600;
+        long mins = secs / 60; secs %= 60;
+
+        var parts = new List<string>();
+        if (years > 0) parts.Add($"{years}y");
+        if (weeks > 0) parts.Add($"{weeks}w");
+        if (days > 0) parts.Add($"{days}d");
+        if (hours > 0) parts.Add($"{hours}h");
+        if (mins > 0) parts.Add($"{mins}m");
+        if (secs > 0) parts.Add($"{secs}s");
+
+        if (args.Length > 1 && int.TryParse(args[1].Trim(), out int maxWidth) && maxWidth > 0)
+        {
+            while (parts.Count > 1 && string.Join(" ", parts).Length > maxWidth)
+                parts.RemoveAt(parts.Count - 1);
+        }
+        return string.Join(" ", parts);
+    }
 
     public static string StringSecs(EvaluationContext ctx, string[] args)
     {

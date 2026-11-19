@@ -290,7 +290,7 @@ public class Section1To4FunctionTests
         Assert.Equal("#-1 FROM BASE OUT OF RANGE", _evaluator.Evaluate("[baseconv(1,1,10)]", _ctx));
         Assert.Equal("#-1 TO BASE OUT OF RANGE", _evaluator.Evaluate("[baseconv(1,10,65)]", _ctx));
         Assert.Equal("#-1 MALFORMED NUMBER", _evaluator.Evaluate("[baseconv(9,8,10)]", _ctx));
-        Assert.Equal((-3L).ToString(), _evaluator.Evaluate("[bnand(6,2)]", _ctx));
+        Assert.Equal("4", _evaluator.Evaluate("[bnand(6,2)]", _ctx));
 
         Assert.Equal("15", _evaluator.Evaluate("[lmath(add,1 2 3 4 5)]", _ctx));
         Assert.Equal("3", _evaluator.Evaluate("[lmath(mean,2|4,|)]", _ctx));

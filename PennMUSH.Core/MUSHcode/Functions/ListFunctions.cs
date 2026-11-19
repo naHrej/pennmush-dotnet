@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using PennMUSH.Core.Queue;
+using PennMUSH.Core.Types;
 
 public static class ListFunctions
 {
@@ -174,13 +175,15 @@ public static class ListFunctions
     public static string Member(string[] args)
     {
         if (args.Length < 2) return "0";
-        string delim = args.Length > 2 ? args[2] : " ";
-        var list = SplitList(args[0], delim);
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
         string target = args[1];
+        if (delim.Length == 1 && target.Contains(delim[0]))
+            return "#-1 CAN ONLY TEST ONE ELEMENT";
+        var list = SplitList(args[0], delim);
 
         for (int i = 0; i < list.Count; i++)
         {
-            if (string.Equals(list[i], target, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(list[i], target, StringComparison.Ordinal))
             {
                 return (i + 1).ToString();
             }
@@ -224,8 +227,17 @@ public static class ListFunctions
     public static string Items(string[] args)
     {
         if (args.Length < 2) return "0";
+        string list = args[0];
         string delim = args[1];
-        return SplitList(args[0], delim).Count.ToString();
+        if (string.IsNullOrEmpty(delim)) delim = " ";
+        int count = 1;
+        int idx = 0;
+        while ((idx = list.IndexOf(delim, idx, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            idx += delim.Length;
+        }
+        return count.ToString();
     }
 
     public static string Elements(string[] args)
@@ -316,14 +328,15 @@ public static class ListFunctions
     public static string Remove(string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string delim = args.Length > 2 ? args[2] : " ";
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
         var list = SplitList(args[0], delim);
-        string target = args[1];
+        var targets = SplitList(args[1], delim);
 
-        int idx = list.FindIndex(x => string.Equals(x, target, StringComparison.OrdinalIgnoreCase));
-        if (idx >= 0)
+        foreach (string target in targets)
         {
-            list.RemoveAt(idx);
+            int idx = list.FindIndex(x => string.Equals(x, target, StringComparison.Ordinal));
+            if (idx >= 0)
+                list.RemoveAt(idx);
         }
         return string.Join(delim, list);
     }
@@ -378,28 +391,52 @@ public static class ListFunctions
         return string.Join(delim, list);
     }
 
+    private static string DetectSortType(IEnumerable<string> items)
+    {
+        var list = items.Where(s => !string.IsNullOrEmpty(s)).ToList();
+        if (list.Count == 0) return "a";
+        if (list.All(s => long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))) return "n";
+        if (list.All(s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _))) return "f";
+        if (list.All(s => Dbref.TryParse(s, out _))) return "d";
+        return "a";
+    }
+
+    private static Comparison<string> GetSortComparison(string sortType) => sortType switch
+    {
+        "n" => (x, y) =>
+        {
+            long.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out long nx);
+            long.TryParse(y, NumberStyles.Integer, CultureInfo.InvariantCulture, out long ny);
+            return nx.CompareTo(ny);
+        },
+        "f" => (x, y) =>
+        {
+            double.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out double dx);
+            double.TryParse(y, NumberStyles.Float, CultureInfo.InvariantCulture, out double dy);
+            return dx.CompareTo(dy);
+        },
+        "d" => (x, y) =>
+        {
+            Dbref.TryParse(x, out var dx);
+            Dbref.TryParse(y, out var dy);
+            return dx.Value.CompareTo(dy.Value);
+        },
+        "i" => (x, y) => string.Compare(x, y, StringComparison.OrdinalIgnoreCase),
+        _ => (x, y) => string.CompareOrdinal(x, y)
+    };
+
     public static string Sort(string[] args)
     {
         if (args.Length == 0) return string.Empty;
-        string type = args.Length > 1 ? args[1].Trim().ToLowerInvariant() : "a";
-        string delim = args.Length > 2 ? args[2] : " ";
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+        string osep = args.Length > 3 ? args[3] : delim;
         var list = SplitList(args[0], delim);
+        string type = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+            ? args[1].Trim().ToLowerInvariant()
+            : DetectSortType(list);
 
-        if (type == "n")
-        {
-            list.Sort((x, y) =>
-            {
-                double.TryParse(x, out double nx);
-                double.TryParse(y, out double ny);
-                return nx.CompareTo(ny);
-            });
-        }
-        else
-        {
-            list.Sort(StringComparer.OrdinalIgnoreCase);
-        }
-
-        return string.Join(delim, list);
+        list.Sort(GetSortComparison(type));
+        return string.Join(osep, list);
     }
 
     public static string SortBy(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -424,58 +461,54 @@ public static class ListFunctions
     public static string SetUnion(string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string delim = args.Length > 2 ? args[2] : " ";
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
         var l1 = SplitList(args[0], delim);
         var l2 = SplitList(args[1], delim);
+        string sortType = args.Length > 3 && !string.IsNullOrWhiteSpace(args[3])
+            ? args[3].Trim().ToLowerInvariant()
+            : DetectSortType(l1.Concat(l2));
 
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>();
-
-        foreach (var item in l1.Concat(l2))
-        {
-            if (seen.Add(item)) result.Add(item);
-        }
-        return string.Join(delim, result);
+        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var result = l1.Concat(l2).Distinct(comparer).ToList();
+        result.Sort(GetSortComparison(sortType));
+        return string.Join(osep, result);
     }
 
     public static string SetInter(string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string delim = args.Length > 2 ? args[2] : " ";
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
         var l1 = SplitList(args[0], delim);
-        var l2 = new HashSet<string>(SplitList(args[1], delim), StringComparer.OrdinalIgnoreCase);
+        var l2List = SplitList(args[1], delim);
+        string sortType = args.Length > 3 && !string.IsNullOrWhiteSpace(args[3])
+            ? args[3].Trim().ToLowerInvariant()
+            : DetectSortType(l1.Concat(l2List));
 
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>();
-
-        foreach (var item in l1)
-        {
-            if (l2.Contains(item) && seen.Add(item))
-            {
-                result.Add(item);
-            }
-        }
-        return string.Join(delim, result);
+        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var l2 = new HashSet<string>(l2List, comparer);
+        var result = l1.Where(l2.Contains).Distinct(comparer).ToList();
+        result.Sort(GetSortComparison(sortType));
+        return string.Join(osep, result);
     }
 
     public static string SetDiff(string[] args)
     {
         if (args.Length < 2) return string.Empty;
-        string delim = args.Length > 2 ? args[2] : " ";
+        string delim = args.Length > 2 && !string.IsNullOrEmpty(args[2]) ? args[2] : " ";
+        string osep = args.Length > 4 ? args[4] : delim;
         var l1 = SplitList(args[0], delim);
-        var l2 = new HashSet<string>(SplitList(args[1], delim), StringComparer.OrdinalIgnoreCase);
+        var l2List = SplitList(args[1], delim);
+        string sortType = args.Length > 3 && !string.IsNullOrWhiteSpace(args[3])
+            ? args[3].Trim().ToLowerInvariant()
+            : DetectSortType(l1.Concat(l2List));
 
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>();
-
-        foreach (var item in l1)
-        {
-            if (!l2.Contains(item) && seen.Add(item))
-            {
-                result.Add(item);
-            }
-        }
-        return string.Join(delim, result);
+        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var l2 = new HashSet<string>(l2List, comparer);
+        var result = l1.Where(item => !l2.Contains(item)).Distinct(comparer).ToList();
+        result.Sort(GetSortComparison(sortType));
+        return string.Join(osep, result);
     }
 
     public static string LNum(string[] args)
@@ -549,7 +582,7 @@ public static class ListFunctions
         if (args.Length < 2) return string.Empty;
         string listText = EvaluateIterText(reg, ctx, args[0]);
         string inDelim = args.Length > 2 ? EvaluateIterText(reg, ctx, args[2]) : " ";
-        string outDelim = args.Length > 3 ? EvaluateIterText(reg, ctx, args[3]) : inDelim;
+        string outDelim = args.Length > 3 ? EvaluateIterText(reg, ctx, args[3]) : " ";
 
         var list = SplitList(listText, inDelim);
         string pattern = args[1];
@@ -588,7 +621,10 @@ public static class ListFunctions
         int level = 0;
         if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
         {
-            if (!int.TryParse(args[0].Trim(), out level))
+            string s = args[0].Trim();
+            if (s.Equals("l", StringComparison.OrdinalIgnoreCase))
+                level = ctx.IterStack.Count - 1;
+            else if (!int.TryParse(s, out level))
                 return MushError.ArgumentMustBeInteger.Text();
         }
         if (level < 0 || level >= ctx.IterStack.Count)
@@ -601,7 +637,10 @@ public static class ListFunctions
         int level = 0;
         if (args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
         {
-            if (!int.TryParse(args[0].Trim(), out level))
+            string s = args[0].Trim();
+            if (s.Equals("l", StringComparison.OrdinalIgnoreCase))
+                level = ctx.IterStack.Count - 1;
+            else if (!int.TryParse(s, out level))
                 return MushError.ArgumentMustBeInteger.Text();
         }
         if (level < 0 || level >= ctx.IterStack.Count)
@@ -638,11 +677,11 @@ public static class ListFunctions
         string outDelim = args.Length > 3 ? args[3] : inDelim;
 
         var list = SplitList(args[1], inDelim);
-        var results = new List<string>();
+        var results = new List<string>(list.Count);
 
-        foreach (var item in list)
+        for (int i = 0; i < list.Count; i++)
         {
-            results.Add(DbFunctions.Ufun(reg, ctx, [attrRef, item]));
+            results.Add(DbFunctions.Ufun(reg, ctx, [attrRef, list[i], (i + 1).ToString()]));
         }
 
         return string.Join(outDelim, results);
@@ -654,14 +693,19 @@ public static class ListFunctions
         string attrRef = args[0];
         string inDelim = args.Length > 2 ? args[2] : " ";
         string outDelim = args.Length > 3 ? args[3] : inDelim;
+        var extraArgs = args.Length > 4 ? args[4..] : Array.Empty<string>();
 
         var list = SplitList(args[1], inDelim);
         var results = new List<string>();
 
         foreach (var item in list)
         {
-            string res = DbFunctions.Ufun(reg, ctx, [attrRef, item]).Trim();
-            if (res != "0" && !string.IsNullOrEmpty(res) && !res.StartsWith("#-"))
+            var uargs = new string[2 + extraArgs.Length];
+            uargs[0] = attrRef;
+            uargs[1] = item;
+            Array.Copy(extraArgs, 0, uargs, 2, extraArgs.Length);
+            string res = DbFunctions.Ufun(reg, ctx, uargs).Trim();
+            if (res == "1")
             {
                 results.Add(item);
             }

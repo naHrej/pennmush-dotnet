@@ -164,8 +164,9 @@ public class FunctionCatalogTests
         Assert.True(long.TryParse(secsStr, out long parsed) && Math.Abs(parsed - now) <= 5);
 
         Assert.Equal("1d 2h 3m 4s", _evaluator.Evaluate("[secs2time(93784)]", _ctx));
-        Assert.Equal("01:02:03", _evaluator.Evaluate("[etimefmt($h:$m:$s,3723)]", _ctx));
-        Assert.Contains(DateTime.Now.Year.ToString(), _evaluator.Evaluate("[timefmt(%Y)]", _ctx));
+        Assert.Equal("1:2:3", _evaluator.Evaluate("[etimefmt($h:$m:$s,3723)]", _ctx));
+        Assert.Equal("01:02:03", _evaluator.Evaluate("[etimefmt($H:$M:$S,3723)]", _ctx));
+        Assert.Contains(DateTime.Now.Year.ToString(), _evaluator.Evaluate("[timefmt($Y)]", _ctx));
     }
 
     [Fact]

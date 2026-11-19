@@ -38,7 +38,7 @@ public class Sections7_8_11_15_16FunctionTests
         _wiz.SetAttribute("DOUBLE", "[mul(%0,2)]", _wiz.Id);
         _wiz.SetAttribute("SET_Q", "[setr(localvar,changed)]", _wiz.Id);
         _wiz.SetAttribute("DYN_EXPR", "[add(2,3)]", _wiz.Id);
-        _wiz.SetAttribute("JSON_CB", "%1=%0", _wiz.Id);
+        _wiz.SetAttribute("JSON_CB", "%2=%1", _wiz.Id);
 
         _registry = new FunctionRegistry(_db)
         {
@@ -150,16 +150,16 @@ public class Sections7_8_11_15_16FunctionTests
         Assert.Equal("0", _evaluator.Evaluate("[isjson(not json)]", _ctx));
 
         Assert.Equal("\"hi\"", _evaluator.Evaluate("[json(string,hi)]", _ctx));
-        Assert.Equal("[1,\"two\"]", _evaluator.Evaluate("[json(array,1,two)]", _ctx));
-        string obj = _evaluator.Evaluate("[json(object,name,Alice,age,30)]", _ctx);
+        Assert.Equal("[1,\"two\"]", _evaluator.Evaluate("[json(array,1,\"two\")]", _ctx));
+        string obj = _evaluator.Evaluate("[json(object,name,\"Alice\",age,30)]", _ctx);
 
         Assert.Equal("object", _evaluator.Evaluate($"[json_query({{{obj}}},type)]", _ctx));
         Assert.Equal("2", _evaluator.Evaluate($"[json_query({{{obj}}},size)]", _ctx));
         Assert.Equal("1", _evaluator.Evaluate($"[json_query({{{obj}}},exists,name)]", _ctx));
-        Assert.Equal("Alice", _evaluator.Evaluate($"[json_query({{{obj}}},get,name)]", _ctx));
+        Assert.Equal("\"Alice\"", _evaluator.Evaluate($"[json_query({{{obj}}},get,name)]", _ctx));
 
         string updated = _evaluator.Evaluate($"[json_mod({{{obj}}},set,$.role,admin)]", _ctx);
-        Assert.Equal("admin", _evaluator.Evaluate($"[json_query({{{updated}}},get,$.role)]", _ctx));
+        Assert.Equal("\"admin\"", _evaluator.Evaluate($"[json_query({{{updated}}},get,$.role)]", _ctx));
 
         Assert.Equal("name=Alice age=30", _evaluator.Evaluate($"[json_map(me/JSON_CB,{{{obj}}})]", _ctx));
         Assert.Equal(obj, _evaluator.Evaluate($"[wsjson({{{obj}}})]", _ctx));
@@ -174,8 +174,8 @@ public class Sections7_8_11_15_16FunctionTests
 
         string url = _evaluator.Evaluate("[urlencode(a b&c)]", _ctx);
         Assert.Equal("a b&c", _evaluator.Evaluate($"[urldecode({{{url}}})]", _ctx));
-        Assert.Equal("foo bar", _evaluator.Evaluate("[formdecode(foo=1&bar=hello+world)]", _ctx));
-        Assert.Equal("hello world", _evaluator.Evaluate("[formdecode(foo=1&bar=hello+world,bar)]", _ctx));
+        Assert.Equal("foo bar", _evaluator.Evaluate("[formdecode({foo=1&bar=hello%20world})]", _ctx));
+        Assert.Equal("hello world", _evaluator.Evaluate("[formdecode({foo=1&bar=hello%20world},bar)]", _ctx));
 
         Assert.Equal("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
             _evaluator.Evaluate("[digest(sha256,hello)]", _ctx));

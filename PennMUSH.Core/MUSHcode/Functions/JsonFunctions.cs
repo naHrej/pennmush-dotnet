@@ -50,37 +50,63 @@ public static class JsonFunctions
 
     public static string JsonBuild(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return "null";
-        string type = args[0].Trim().ToLowerInvariant();
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
+        string type = StringFunctions.Strip(ctx, [args[0]]).Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(type)) type = "string";
 
         switch (type)
         {
             case "null":
+                if (args.Length > 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                if (args.Length == 2 && !args[1].Trim().Equals("null", StringComparison.OrdinalIgnoreCase))
+                    return "#-1 INVALID VALUE";
                 return "null";
-            case "boolean" or "bool":
-                return args.Length > 1 && LogicFunctions.IsTruthy(args[1]) ? "true" : "false";
+            case "boolean":
+            {
+                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                string b = StringFunctions.Strip(ctx, [args[1]]).Trim().ToLowerInvariant();
+                return b switch
+                {
+                    "true" or "1" => "true",
+                    "false" or "0" => "false",
+                    _ => "#-1 INVALID VALUE"
+                };
+            }
             case "number":
-                if (args.Length < 2 || !double.TryParse(args[1].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double num))
+            {
+                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                string numStr = StringFunctions.Strip(ctx, [args[1]]).Trim();
+                if (!double.TryParse(numStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
                     return MushError.ArgumentMustBeNumber.Text();
-                return num.ToString("G", System.Globalization.CultureInfo.InvariantCulture);
+                return numStr;
+            }
             case "string":
-                return JsonSerializer.Serialize(args.Length > 1 ? args[1] : string.Empty);
+                if (args.Length != 2) return "#-1 WRONG NUMBER OF ARGUMENTS";
+                return JsonSerializer.Serialize(args[1]);
             case "array":
             {
                 var arr = new JsonArray();
                 for (int i = 1; i < args.Length; i++)
-                    arr.Add(ParseOrString(args[i]));
+                {
+                    try { arr.Add(JsonNode.Parse(StringFunctions.Strip(ctx, [args[i]]))); }
+                    catch { return "#-1 INVALID VALUE"; }
+                }
                 return arr.ToJsonString();
             }
             case "object":
             {
+                if (args.Length % 2 == 0) return "#-1 WRONG NUMBER OF ARGUMENTS";
                 var obj = new JsonObject();
                 for (int i = 1; i + 1 < args.Length; i += 2)
-                    obj[args[i]] = ParseOrString(args[i + 1]);
+                {
+                    if (string.IsNullOrEmpty(args[i])) return "#-1 INVALID VALUE";
+                    try { obj[args[i]] = JsonNode.Parse(StringFunctions.Strip(ctx, [args[i + 1]])); }
+                    catch { return "#-1 INVALID VALUE"; }
+                }
                 return obj.ToJsonString();
             }
             default:
-                return MushError.Nothing.Text();
+                return "#-1 INVALID TYPE";
         }
     }
 
@@ -133,9 +159,23 @@ public static class JsonFunctions
         return pathArgs;
     }
 
+    private static string GetJsonType(JsonNode? node)
+    {
+        if (node == null) return "null";
+        if (node is JsonObject) return "object";
+        if (node is JsonArray) return "array";
+        if (node is JsonValue v)
+        {
+            if (v.TryGetValue<bool>(out _)) return "boolean";
+            if (v.TryGetValue<double>(out _) || v.TryGetValue<long>(out _)) return "number";
+            return "string";
+        }
+        return "null";
+    }
+
     public static string JsonQuery(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        if (args.Length == 0) return MushError.TooFewArguments.Text();
         JsonNode? root;
         try
         {
@@ -146,22 +186,15 @@ public static class JsonFunctions
             return MushError.Nothing.Text();
         }
 
-        string op = args[1].Trim().ToLowerInvariant();
+        string op = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+            ? args[1].Trim().ToLowerInvariant()
+            : "type";
         string[] rest = args.Length > 2 ? args[2..] : Array.Empty<string>();
 
         switch (op)
         {
             case "type":
-                if (root == null) return "null";
-                if (root is JsonObject) return "object";
-                if (root is JsonArray) return "array";
-                if (root is JsonValue v)
-                {
-                    if (v.TryGetValue<bool>(out _)) return "boolean";
-                    if (v.TryGetValue<double>(out _) || v.TryGetValue<long>(out _)) return "number";
-                    return "string";
-                }
-                return "null";
+                return GetJsonType(root);
             case "size":
                 if (root is JsonObject o) return o.Count.ToString();
                 if (root is JsonArray a) return a.Count.ToString();
@@ -169,9 +202,13 @@ public static class JsonFunctions
             case "exists":
                 return TryNavigate(root, ParsePathSegments(rest), out _) ? "1" : "0";
             case "get":
-                return TryNavigate(root, ParsePathSegments(rest), out var found) ? NodeToMushString(found) : string.Empty;
+                return TryNavigate(root, ParsePathSegments(rest), out var found)
+                    ? (found?.ToJsonString() ?? "null")
+                    : MushError.Nothing.Text();
             case "unescape":
-                return NodeToMushString(root);
+                return root is JsonValue sv && sv.TryGetValue<string>(out var str)
+                    ? str
+                    : MushError.Nothing.Text();
             default:
                 return MushError.UnknownOperation.Text();
         }
@@ -250,16 +287,33 @@ public static class JsonFunctions
         }
 
         string osep = args.Length > 2 ? args[2] : " ";
+        var extraArgs = args.Length > 3 ? args[3..] : Array.Empty<string>();
         var results = new List<string>();
+
+        string CallMap(JsonNode? node, string key)
+        {
+            var uargs = new string[4 + extraArgs.Length];
+            uargs[0] = args[0];
+            uargs[1] = GetJsonType(node);
+            uargs[2] = NodeToMushString(node);
+            uargs[3] = key;
+            Array.Copy(extraArgs, 0, uargs, 4, extraArgs.Length);
+            return DbFunctions.Ufun(reg, ctx, uargs);
+        }
+
         if (root is JsonArray arr)
         {
             for (int i = 0; i < arr.Count; i++)
-                results.Add(DbFunctions.Ufun(reg, ctx, [args[0], NodeToMushString(arr[i]), i.ToString()]));
+                results.Add(CallMap(arr[i], i.ToString()));
         }
         else if (root is JsonObject obj)
         {
             foreach (var kv in obj)
-                results.Add(DbFunctions.Ufun(reg, ctx, [args[0], NodeToMushString(kv.Value), kv.Key]));
+                results.Add(CallMap(kv.Value, kv.Key));
+        }
+        else
+        {
+            results.Add(CallMap(root, string.Empty));
         }
 
         return string.Join(osep, results);
