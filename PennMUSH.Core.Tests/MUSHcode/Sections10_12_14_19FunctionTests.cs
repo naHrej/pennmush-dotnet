@@ -173,8 +173,8 @@ public class Sections10_12_14_19FunctionTests
         Assert.Equal("0", _evaluator.Evaluate("[pueblo()]", _ctx));
 
         _notifications.Clear();
-        _evaluator.Evaluate($"[oob({_alice.Id},GMCP.Char,hello)]", _ctx);
-        Assert.Contains(_notifications, n => n.Target == _alice.Id && n.ProtocolType == "GMCP.Char" && (string?)n.ProtocolPayload == "hello");
+        Assert.Equal("1", _evaluator.Evaluate($"[oob({_alice.Id},GMCP.Char,\"hello\")]", _ctx));
+        Assert.Contains(_notifications, n => n.Target == _alice.Id && n.ProtocolType == "GMCP.Char" && (string?)n.ProtocolPayload == "\"hello\"");
         Assert.Equal("<span>ok</span>", _evaluator.Evaluate($"[wshtml(<span>ok</span>,{_alice.Id})]", _ctx));
         Assert.Contains(_notifications, n => n.Target == _alice.Id && n.ProtocolType == "wshtml");
     }

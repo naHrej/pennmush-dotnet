@@ -92,21 +92,31 @@ public static class StringFunctions
     public static string Strlen(EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return "0";
-        return args[0].Length.ToString();
+        return AnsiString.VisibleLength(args[0]).ToString();
     }
 
     public static string Mid(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 3) return string.Empty;
+        if (args.Length < 3) return MushError.TooFewArguments.Text();
         string str = args[0];
-        if (!int.TryParse(args[1].Trim(), out int start)) return string.Empty;
-        if (!int.TryParse(args[2].Trim(), out int length) || length <= 0) return string.Empty;
+        if (!int.TryParse(args[1].Trim(), out int start) || !int.TryParse(args[2].Trim(), out int length))
+            return MushError.ArgumentMustBeInteger.Text();
+        if (start < 0) return MushError.OutOfRange.Text();
+        if (length == 0) return string.Empty;
 
-        if (start < 0) start = 0;
-        if (start >= str.Length) return string.Empty;
-        if (start + length > str.Length) length = str.Length - start;
+        if (length < 0)
+        {
+            int count = -length;
+            int actualStart = start - count + 1;
+            if (actualStart < 0)
+            {
+                count += actualStart;
+                actualStart = 0;
+            }
+            return count <= 0 ? string.Empty : AnsiString.Substring(str, actualStart, count);
+        }
 
-        return str.Substring(start, length);
+        return AnsiString.Substring(str, start, length);
     }
 
     public static string Trim(EvaluationContext ctx, string[] args)
@@ -166,11 +176,37 @@ public static class StringFunctions
 
     public static string Comp(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
-        int cmp = string.CompareOrdinal(args[0], args[1]);
-        if (cmp < 0) return "-1";
-        if (cmp > 0) return "1";
-        return "0";
+        if (args.Length < 2) return MushError.TooFewArguments.Text();
+        string type = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]) ? args[2].Trim().ToUpperInvariant() : "A";
+        int cmp;
+        switch (type)
+        {
+            case "A":
+                cmp = string.CompareOrdinal(args[0], args[1]);
+                break;
+            case "I":
+                cmp = string.Compare(args[0], args[1], StringComparison.OrdinalIgnoreCase);
+                break;
+            case "N":
+                if (!long.TryParse(args[0].Trim(), out long ia) || !long.TryParse(args[1].Trim(), out long ib))
+                    return MushError.ArgumentMustBeInteger.Text();
+                cmp = ia.CompareTo(ib);
+                break;
+            case "F":
+                if (!double.TryParse(args[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double da) ||
+                    !double.TryParse(args[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double db))
+                    return MushError.ArgumentMustBeNumber.Text();
+                cmp = da.CompareTo(db);
+                break;
+            case "D":
+                var daRef = DbFunctions.ParseDbref(args[0], ctx);
+                var dbRef = DbFunctions.ParseDbref(args[1], ctx);
+                cmp = daRef.Value.CompareTo(dbRef.Value);
+                break;
+            default:
+                return "#-1 INVALID COMPARE TYPE";
+        }
+        return cmp < 0 ? "-1" : cmp > 0 ? "1" : "0";
     }
 
     public static string Edit(EvaluationContext ctx, string[] args)
@@ -182,10 +218,22 @@ public static class StringFunctions
         {
             string search = args[i];
             string replace = args[i + 1];
-            if (!string.IsNullOrEmpty(search))
+            if (search == "$")
+                text += replace;
+            else if (search == "^")
+                text = replace + text;
+            else if (string.IsNullOrEmpty(search))
             {
-                text = text.Replace(search, replace);
+                var sb = new StringBuilder();
+                foreach (char c in text)
+                {
+                    sb.Append(replace).Append(c);
+                }
+                sb.Append(replace);
+                text = sb.ToString();
             }
+            else
+                text = text.Replace(search, replace);
         }
         return text;
     }
@@ -193,69 +241,65 @@ public static class StringFunctions
     public static string LJust(EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
-        string text = args[0];
-        if (!int.TryParse(args[1].Trim(), out int width) || width <= 0) return text;
-        char pad = args.Length > 2 && args[2].Length > 0 ? args[2][0] : ' ';
-
-        return text.Length >= width ? text.Substring(0, width) : text.PadRight(width, pad);
+        if (!int.TryParse(args[1].Trim(), out int width) || width < 0)
+            return MushError.ArgumentMustBeInteger.Text();
+        string fill = args.Length > 2 && args[2].Length > 0 ? args[2] : " ";
+        bool truncate = args.Length > 3 && LogicFunctions.IsTruthy(args[3]);
+        return AnsiString.Pad(args[0], width, fill, align: -1, truncate: truncate);
     }
 
     public static string RJust(EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
-        string text = args[0];
-        if (!int.TryParse(args[1].Trim(), out int width) || width <= 0) return text;
-        char pad = args.Length > 2 && args[2].Length > 0 ? args[2][0] : ' ';
-
-        return text.Length >= width ? text.Substring(0, width) : text.PadLeft(width, pad);
+        if (!int.TryParse(args[1].Trim(), out int width) || width < 0)
+            return MushError.ArgumentMustBeInteger.Text();
+        string fill = args.Length > 2 && args[2].Length > 0 ? args[2] : " ";
+        bool truncate = args.Length > 3 && LogicFunctions.IsTruthy(args[3]);
+        return AnsiString.Pad(args[0], width, fill, align: 1, truncate: truncate);
     }
 
     public static string Center(EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
-        string text = args[0];
-        if (!int.TryParse(args[1].Trim(), out int width) || width <= 0) return text;
-        if (text.Length >= width) return text.Substring(0, width);
-
-        char pad = args.Length > 2 && args[2].Length > 0 ? args[2][0] : ' ';
-        int totalPad = width - text.Length;
-        int leftPad = totalPad / 2;
-        int rightPad = totalPad - leftPad;
-
-        return new string(pad, leftPad) + text + new string(pad, rightPad);
+        if (!int.TryParse(args[1].Trim(), out int width) || width < 0)
+            return MushError.ArgumentMustBeInteger.Text();
+        string fill = args.Length > 2 && args[2].Length > 0 ? args[2] : " ";
+        string? rightFill = args.Length > 3 && args[3].Length > 0 ? args[3] : null;
+        return AnsiString.Pad(args[0], width, fill, align: 0, truncate: false, rightFill: rightFill);
     }
 
     public static string Before(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
+        if (args.Length == 0) return string.Empty;
         string text = args[0];
-        string search = args[1];
+        string search = args.Length > 1 && !string.IsNullOrEmpty(args[1]) ? args[1] : " ";
 
-        if (string.IsNullOrEmpty(search)) return text;
-        int idx = text.IndexOf(search, StringComparison.OrdinalIgnoreCase);
+        int idx = text.IndexOf(search, StringComparison.Ordinal);
         return idx >= 0 ? text.Substring(0, idx) : text;
     }
 
     public static string After(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return string.Empty;
+        if (args.Length == 0) return string.Empty;
         string text = args[0];
-        string search = args[1];
+        string search = args.Length > 1 && !string.IsNullOrEmpty(args[1]) ? args[1] : " ";
 
-        if (string.IsNullOrEmpty(search)) return string.Empty;
-        int idx = text.IndexOf(search, StringComparison.OrdinalIgnoreCase);
+        int idx = text.IndexOf(search, StringComparison.Ordinal);
         return idx >= 0 ? text.Substring(idx + search.Length) : string.Empty;
     }
 
     public static string LPos(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return "0";
+        if (args.Length < 2 || string.IsNullOrEmpty(args[1])) return string.Empty;
         string text = args[0];
-        string search = args[1];
-        if (string.IsNullOrEmpty(search)) return "0";
-
-        int idx = text.IndexOf(search, StringComparison.OrdinalIgnoreCase);
-        return (idx >= 0 ? idx + 1 : 0).ToString();
+        char ch = args[1][0];
+        var indices = new List<string>();
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == ch)
+                indices.Add(i.ToString());
+        }
+        return string.Join(" ", indices);
     }
 
     public static string RPos(EvaluationContext ctx, string[] args)
@@ -493,73 +537,108 @@ public static class StringFunctions
 
     public static string Table(EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
-        string delim = args.Length > 3 ? args[3] : " ";
+        if (args.Length == 0) return string.Empty;
+        string delim = args.Length > 3 && !string.IsNullOrEmpty(args[3]) ? args[3] : " ";
         var items = ListFunctions.SplitList(args[0], delim);
-        if (!int.TryParse(args[1].Trim(), out int fieldWidth) || fieldWidth <= 0) return args[0];
+
+        int align = -1;
+        int fieldWidth = 10;
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            string fwSpec = args[1].Trim();
+            if (fwSpec.StartsWith('<')) { align = -1; fwSpec = fwSpec[1..]; }
+            else if (fwSpec.StartsWith('>')) { align = 1; fwSpec = fwSpec[1..]; }
+            else if (fwSpec.StartsWith('-')) { align = 0; fwSpec = fwSpec[1..]; }
+            if (!int.TryParse(fwSpec, out fieldWidth) || fieldWidth <= 0)
+                return MushError.ArgumentMustBePositiveInteger.Text();
+        }
 
         int lineWidth = 78;
-        if (args.Length > 2 && int.TryParse(args[2].Trim(), out int customLineWidth) && customLineWidth > 0)
-        {
-            lineWidth = customLineWidth;
-        }
-        char pad = args.Length > 4 && args[4].Length > 0 ? args[4][0] : ' ';
+        if (args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]) &&
+            (!int.TryParse(args[2].Trim(), out lineWidth) || lineWidth <= 0))
+            return MushError.ArgumentMustBePositiveInteger.Text();
 
-        int colsPerLine = Math.Max(1, lineWidth / fieldWidth);
+        string osep = args.Length > 4 ? args[4] : " ";
+        int step = fieldWidth + osep.Length;
+        int colsPerLine = Math.Max(1, (lineWidth + osep.Length) / Math.Max(1, step));
         var sb = new StringBuilder();
 
         for (int i = 0; i < items.Count; i++)
         {
-            string item = items[i];
-            sb.Append(item.Length >= fieldWidth ? item.Substring(0, fieldWidth) : item.PadRight(fieldWidth, pad));
-            if ((i + 1) % colsPerLine == 0 && i < items.Count - 1)
-            {
-                sb.AppendLine();
-            }
+            sb.Append(AnsiString.Pad(items[i], fieldWidth, " ", align, truncate: true));
+            bool endOfLine = (i + 1) % colsPerLine == 0;
+            if (i < items.Count - 1)
+                sb.Append(endOfLine ? Environment.NewLine : osep);
         }
         return sb.ToString();
     }
 
     public static string Wrap(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
+        if (args.Length < 2) return args.Length > 0 ? args[0] : string.Empty;
         string text = args[0];
-        int width = 78;
-        if (args.Length > 1 && int.TryParse(args[1].Trim(), out int customWidth) && customWidth > 0) width = customWidth;
+        if (!int.TryParse(args[1].Trim(), out int width) || width < 2)
+            return MushError.OutOfRange.Text();
 
-        int firstIndent = args.Length > 2 && int.TryParse(args[2].Trim(), out int fi) && fi >= 0 ? fi : 0;
-        int restIndent = args.Length > 3 && int.TryParse(args[3].Trim(), out int ri) && ri >= 0 ? ri : 0;
-
-        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 0) return string.Empty;
-
-        var lines = new List<string>();
-        var currentLine = new StringBuilder();
-        int currentMax = width - firstIndent;
-        currentLine.Append(new string(' ', firstIndent));
-
-        foreach (var word in words)
+        int width1st = width;
+        if (args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]))
         {
-            if (currentLine.Length + word.Length + (currentLine.Length > firstIndent ? 1 : 0) > currentMax)
+            if (!int.TryParse(args[2].Trim(), out width1st) || width1st < 2)
+                return MushError.OutOfRange.Text();
+        }
+        string lineSep = args.Length > 3 ? args[3] : "\n";
+
+        var allLines = new List<string>();
+        bool firstLine = true;
+        foreach (string para in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            var words = para.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0)
             {
-                lines.Add(currentLine.ToString());
-                currentLine.Clear();
-                currentMax = width - restIndent;
-                currentLine.Append(new string(' ', restIndent));
+                allLines.Add(string.Empty);
+                firstLine = false;
+                continue;
             }
-            if (currentLine.Length > restIndent && (lines.Count > 0 || currentLine.Length > firstIndent))
+
+            var currentLine = new StringBuilder();
+            int maxW = firstLine ? width1st : width;
+            foreach (string rawWord in words)
             {
-                currentLine.Append(' ');
+                string word = rawWord;
+                while (AnsiString.VisibleLength(word) > maxW)
+                {
+                    if (currentLine.Length > 0)
+                    {
+                        allLines.Add(currentLine.ToString());
+                        currentLine.Clear();
+                        firstLine = false;
+                        maxW = width;
+                    }
+                    int chunk = Math.Max(1, maxW - 1);
+                    allLines.Add(AnsiString.Substring(word, 0, chunk) + "-");
+                    word = AnsiString.Substring(word, chunk, AnsiString.VisibleLength(word) - chunk);
+                    firstLine = false;
+                    maxW = width;
+                }
+
+                int wordLen = AnsiString.VisibleLength(word);
+                int curLen = AnsiString.VisibleLength(currentLine.ToString());
+                if (curLen > 0 && curLen + 1 + wordLen > maxW)
+                {
+                    allLines.Add(currentLine.ToString());
+                    currentLine.Clear();
+                    firstLine = false;
+                    maxW = width;
+                }
+                if (currentLine.Length > 0)
+                    currentLine.Append(' ');
+                currentLine.Append(word);
             }
-            currentLine.Append(word);
+            allLines.Add(currentLine.ToString());
+            firstLine = false;
         }
 
-        if (currentLine.Length > 0)
-        {
-            lines.Add(currentLine.ToString());
-        }
-
-        return string.Join(Environment.NewLine, lines);
+        return string.Join(lineSep, allLines);
     }
 
     public static string Strip(EvaluationContext ctx, string[] args)
@@ -572,28 +651,26 @@ public static class StringFunctions
     public static string Secure(EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return string.Empty;
-        var sb = new StringBuilder();
+        var sb = new StringBuilder(args[0].Length);
         foreach (char c in args[0])
         {
-            if (c is '%' or '[' or ']' or '{' or '}')
-            {
-                sb.Append('\\');
-            }
-            sb.Append(c);
+            if (c is '%' or '[' or ']' or '{' or '}' or '(' or ')' or ',' or ';' or '$' or '^' or '\\')
+                sb.Append(' ');
+            else
+                sb.Append(c);
         }
         return sb.ToString();
     }
 
     public static string Escape(EvaluationContext ctx, string[] args)
     {
-        if (args.Length == 0) return string.Empty;
-        var sb = new StringBuilder();
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+        var sb = new StringBuilder(args[0].Length + 4);
+        sb.Append('\\');
         foreach (char c in args[0])
         {
-            if (c is '%' or '[' or ']' or '{' or '}' or '(' or ')' or ',' or ';')
-            {
+            if (c is '%' or '[' or ']' or '{' or '}' or '(' or ')' or ',' or ';' or '$' or '^' or '\\')
                 sb.Append('\\');
-            }
             sb.Append(c);
         }
         return sb.ToString();

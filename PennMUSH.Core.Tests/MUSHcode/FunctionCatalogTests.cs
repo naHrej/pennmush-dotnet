@@ -106,7 +106,7 @@ public class FunctionCatalogTests
         Assert.Equal("heXXo worXd", _evaluator.Evaluate("[edit(hello world,l,X)]", _ctx));
         Assert.Equal("foo", _evaluator.Evaluate("[before(foo:bar,:)]", _ctx));
         Assert.Equal("bar", _evaluator.Evaluate("[after(foo:bar,:)]", _ctx));
-        Assert.Equal("4", _evaluator.Evaluate("[lpos(abcdef,d)]", _ctx));
+        Assert.Equal("3", _evaluator.Evaluate("[lpos(abcdef,d)]", _ctx));
         Assert.Equal("65", _evaluator.Evaluate("[ord(A)]", _ctx));
         Assert.Equal("A", _evaluator.Evaluate("[chr(65)]", _ctx));
         Assert.Equal("forty-two", _evaluator.Evaluate("[spellnum(42)]", _ctx));
@@ -118,7 +118,7 @@ public class FunctionCatalogTests
     public void StringFunctions_SoundexAndEscape_WorkCorrectly()
     {
         Assert.Equal("W252", _evaluator.Evaluate("[soundex(Washington)]", _ctx));
-        Assert.Equal(@"hello\[world\]", _evaluator.Evaluate(@"[secure({hello[world]})]", _ctx));
+        Assert.Equal("hello world ", _evaluator.Evaluate(@"[secure({hello[world]})]", _ctx));
         Assert.Equal("Clean Text", _evaluator.Evaluate("[strip({\x1B[1;31mClean Text\x1B[0m})]", _ctx));
     }
 
