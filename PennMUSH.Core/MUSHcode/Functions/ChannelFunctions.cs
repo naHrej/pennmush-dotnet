@@ -13,9 +13,9 @@ public static class ChannelFunctions
     public static void Register(FunctionRegistry registry)
     {
         registry.Register("CBUFFER", (ctx, args) => CBuffer(registry, ctx, args));
-        registry.Register("CBUFFERADD", (ctx, args) => CBufferAdd(registry, ctx, args));
+        registry.Register("CBUFFERADD", (ctx, args) => CBufferAdd(registry, ctx, args), sideEffect: true);
         registry.Register("CDESC", (ctx, args) => CDesc(registry, ctx, args));
-        registry.Register("CEMIT", (ctx, args) => CEmit(registry, ctx, args));
+        registry.Register("CEMIT", (ctx, args) => CEmit(registry, ctx, args), sideEffect: true);
         registry.Register("CFLAGS", (ctx, args) => CFlags(registry, ctx, args, longNames: false));
         registry.Register("CLFLAGS", (ctx, args) => CFlags(registry, ctx, args, longNames: true));
         registry.Register("CHANNELS", (ctx, args) => ChannelsList(registry, ctx, args));
@@ -169,7 +169,7 @@ public static class ChannelFunctions
 
         var member = ch.GetMember(dbref);
         if (member == null) return "Off";
-        return member.IsMuted ? "Gagged" : "On";
+        return member.IsMuted ? "Gag" : "On";
     }
 
     public static string CTitle(FunctionRegistry reg, EvaluationContext ctx, string[] args)

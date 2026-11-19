@@ -18,6 +18,7 @@ namespace PennMUSH.Core.MUSHcode
         public List<(string Text, int Number)> IterStack { get; private set; } = new();
         public List<string> SwitchStack { get; private set; } = new();
         public bool IterBreakRequested { get; set; }
+        public bool NoSideFX { get; set; }
 
         public int RecursionDepth { get; set; } = 0;
         public int MaxRecursionDepth { get; set; } = 50;

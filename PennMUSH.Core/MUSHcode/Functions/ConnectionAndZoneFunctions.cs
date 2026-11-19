@@ -26,15 +26,15 @@ public static class ConnectionAndZoneFunctions
     public static void Register(FunctionRegistry registry)
     {
         // Section 10: Zone broadcast & nospoof
-        registry.Register("ZEMIT", (ctx, args) => ZEmit(registry, ctx, args, spoofable: true));
-        registry.Register("NSZEMIT", (ctx, args) => ZEmit(registry, ctx, args, spoofable: false));
-        registry.Register("NSCEMIT", (ctx, args) => NsCemit(registry, ctx, args));
-        registry.Register("NSEMIT", (ctx, args) => Section9And18Functions.Emit(registry, ctx, args));
-        registry.Register("NSLEMIT", (ctx, args) => Section9And18Functions.Lemit(registry, ctx, args));
-        registry.Register("NSOEMIT", (ctx, args) => Section9And18Functions.Oemit(registry, ctx, args));
-        registry.Register("NSPEMIT", (ctx, args) => Section9And18Functions.Pemit(registry, ctx, args, prompt: false));
-        registry.Register("NSPROMPT", (ctx, args) => Section9And18Functions.Pemit(registry, ctx, args, prompt: true));
-        registry.Register("NSREMIT", (ctx, args) => Section9And18Functions.Remit(registry, ctx, args));
+        registry.Register("ZEMIT", (ctx, args) => ZEmit(registry, ctx, args, spoofable: true), sideEffect: true);
+        registry.Register("NSZEMIT", (ctx, args) => ZEmit(registry, ctx, args, spoofable: false), sideEffect: true);
+        registry.Register("NSCEMIT", (ctx, args) => NsCemit(registry, ctx, args), sideEffect: true);
+        registry.Register("NSEMIT", (ctx, args) => Section9And18Functions.Emit(registry, ctx, args), sideEffect: true);
+        registry.Register("NSLEMIT", (ctx, args) => Section9And18Functions.Lemit(registry, ctx, args), sideEffect: true);
+        registry.Register("NSOEMIT", (ctx, args) => Section9And18Functions.Oemit(registry, ctx, args), sideEffect: true);
+        registry.Register("NSPEMIT", (ctx, args) => Section9And18Functions.Pemit(registry, ctx, args, prompt: false), sideEffect: true);
+        registry.Register("NSPROMPT", (ctx, args) => Section9And18Functions.Pemit(registry, ctx, args, prompt: true), sideEffect: true);
+        registry.Register("NSREMIT", (ctx, args) => Section9And18Functions.Remit(registry, ctx, args), sideEffect: true);
 
         // Section 12: Connected descriptors / WHO
         registry.Register("CONN", (ctx, args) => ConnSecs(registry, ctx, args));
@@ -121,15 +121,23 @@ public static class ConnectionAndZoneFunctions
     private static ConnectionSnapshot? FindSnapshot(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return null;
+        var looker = reg.Database.GetObject(ctx.Executor);
+        bool seeHidden = AttributePermissions.CanSeeAll(looker);
         var snapshots = GetSnapshots(reg);
         string raw = args[0].Trim();
+        ConnectionSnapshot? snap = null;
         if (int.TryParse(raw, out int port))
         {
-            var byPort = snapshots.FirstOrDefault(s => s.Descriptor == port);
-            if (byPort != null) return byPort;
+            snap = snapshots.FirstOrDefault(s => s.Descriptor == port);
         }
-        var p = reg.Database.GetObject(DbFunctions.ParseDbref(raw, ctx)) ?? reg.Database.FindPlayer(raw.TrimStart('*'));
-        return p != null ? snapshots.FirstOrDefault(s => s.PlayerId == p.Id) : null;
+        if (snap == null)
+        {
+            var p = reg.Database.GetObject(DbFunctions.ParseDbref(raw, ctx)) ?? reg.Database.FindPlayer(raw.TrimStart('*'));
+            if (p != null) snap = snapshots.FirstOrDefault(s => s.PlayerId == p.Id);
+        }
+        if (snap != null && snap.IsHidden && !seeHidden && snap.PlayerId != ctx.Executor)
+            return null;
+        return snap;
     }
 
     public static string ConnSecs(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -148,13 +156,20 @@ public static class ConnectionAndZoneFunctions
     {
         var snap = FindSnapshot(reg, ctx, args);
         if (snap == null) return MushError.Nothing.Text();
+        var looker = reg.Database?.GetObject(ctx.Executor);
+        if (snap.PlayerId != ctx.Executor && !AttributePermissions.CanSeeAll(looker))
+            return MushError.Nothing.Text();
         return ipOnly ? snap.IpAddress : snap.Host;
     }
 
     public static string TermInfo(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         var snap = FindSnapshot(reg, ctx, args);
-        return snap != null ? snap.TerminalType : MushError.Nothing.Text();
+        if (snap == null) return MushError.Nothing.Text();
+        var looker = reg.Database?.GetObject(ctx.Executor);
+        if (snap.PlayerId != ctx.Executor && !AttributePermissions.CanSeeAll(looker))
+            return MushError.Nothing.Text();
+        return snap.TerminalType;
     }
 
     public static string PortsList(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -162,6 +177,9 @@ public static class ConnectionAndZoneFunctions
         if (args.Length == 0 || reg.Database == null) return string.Empty;
         var p = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx)) ?? reg.Database.FindPlayer(args[0].Trim().TrimStart('*'));
         if (p == null) return string.Empty;
+        var looker = reg.Database.GetObject(ctx.Executor);
+        if (p.Id != ctx.Executor && !AttributePermissions.CanSeeAll(looker))
+            return string.Empty;
         var snaps = GetSnapshots(reg).Where(s => s.PlayerId == p.Id);
         return string.Join(" ", snaps.Select(s => s.Descriptor.ToString()));
     }
@@ -222,6 +240,10 @@ public static class ConnectionAndZoneFunctions
             if (args.Length == 0) return string.Empty;
             var zone = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx));
             if (zone == null) return string.Empty;
+            if (zone.Type == ObjectType.Player && !zone.HasFlag("SHARED"))
+                return "#-1 INVALID ZONE";
+            if (mode == WhoMode.Zone && !seeHidden && zone.GetLock(PennMUSH.Core.Locks.LockType.Zone) != null && !zone.EvalLock(PennMUSH.Core.Locks.LockType.Zone, ctx.Executor, reg.Database))
+                return MushError.PermissionDenied.Text();
             snaps = snaps.Where(s =>
             {
                 var pObj = reg.Database.GetObject(s.PlayerId);

@@ -172,11 +172,16 @@ public static class TextFormatFunctions
 
     public static string OobFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
-        if (args.Length < 2 || reg.Database == null || reg.NotificationDispatcher == null)
+        if (args.Length < 2 || reg.Database == null)
             return string.Empty;
         var target = reg.Database.GetObject(DbFunctions.ParseDbref(args[0], ctx))
             ?? reg.Database.MatchObject(ctx.Executor, args[0]);
         if (target == null) return MushError.NoMatch.Text();
+        var actor = reg.Database.GetObject(ctx.Executor);
+        if (actor == null || (!actor.IsWizard && !PennMUSH.Core.Attributes.AttributePermissions.Controls(actor, target)))
+            return MushError.PermissionDenied.Text();
+        if (reg.NotificationDispatcher == null)
+            return string.Empty;
 
         string pkg = args[1].Trim();
         string payload = args.Length > 2 ? args[2] : string.Empty;
