@@ -1,228 +1,174 @@
-# PennMUSH .NET
+# PennMUSH .NET (`pennmush-dotnet`)
 
-A modern, high-performance C# / .NET 10 reimplementation of the **PennMUSH** virtual world engine.
+A modernized, clean-room implementation of the **PennMUSH** virtual world engine built on **.NET 10** (`net10.0`), preserving classic MUSHcode compatibility while adding ASP.NET Core WebSocket/HTTP transports, SQLite persistence, collectible-assembly hot-reloadable C# plugins, and zero-disconnect hot-reboots.
 
-PennMUSH .NET preserves backward compatibility with standard PennMUSH softcode and database flatfiles while replacing legacy single-threaded C constraints with modern asynchronous concurrency, transactional SQLite storage, robust runtime safety guards, and built-in cron scheduling.
-
----
-
-## 🌟 Key Highlights & Architectural Differences
-
-| Feature | Legacy PennMUSH (C) | PennMUSH .NET (C# 13 / .NET 10) |
-| :--- | :--- | :--- |
-| **Runtime & Concurrency** | Single-threaded event loop (`select()` / `poll()`) with blocking operations | Fully asynchronous, multi-threaded task pipeline with deterministic command turn slicing |
-| **Persistence** | Text `.dump` flatfiles prone to corruption on hard crashes | **Dual persistence:** Transactional SQLite (WAL mode, foreign keys, ACID) alongside PennMUSH `.dump` flatfile parser/serializer |
-| **Execution Budget** | 2,500 hard invocation cap (frequently aborts complex softcode) | **250,000 adaptive token budget** with cooperative execution timeouts |
-| **Runaway Protection** | Prone to infinite recursion crashes and ReDoS regex freezes | **Active call-trail cycle detection** + **100ms ReDoS timeout** + **queue flood throttle** |
-| **Object Inheritance** | Linear search through parents / zones with attribute shadowing quirks | **C3 Linearization (DAG)** for clean multi-parent and multi-zone attribute & lock resolution |
-| **Task Scheduling** | Fragile recursive `@wait` loops and external crontab wrappers | **Native 5-field Cron Engine** (`@cron`, `cron_add()`, `cron_list()`) persisted to database |
-| **Networking** | Raw Telnet socket with ad-hoc option parsing | **Dual-transport:** Async Telnet listener (`:4201` + GMCP) + Native WebSocket gateway (`:5119/ws`) with typed JSON protocol |
-| **Presentation & HTML** | Text-only or legacy Pueblo custom tags | **TELOPT NAWS & TTYPE negotiation**, direct HTML streaming for modern web/Pueblo clients, and TrueColor/256/16-color ANSI fallback |
-| **Web Integration** | Requires external web server / CGI | Embedded ASP.NET Core Kestrel server (`:5119`) serving static stylesheets (`/css`), health checks (`/health`), and WebSockets (`/ws`) |
-| **Client RPC & Tooling** | Fragile text scraping (`ProgStart >`, `!@Window:`) | **Structured MUjs Protocol (v1.0):** Capability handshake, atomic code editor RPC, dockable panes, dynamic CSS, and signed script execution |
+- **Runtime**: .NET 10 (`net10.0`) across 4 projects (`PennMUSH.Core`, `PennMUSH.Extensions`, `PennMUSH.Server`, `PennMUSH.Core.Tests`)
+- **MUSHcode Functions**: **567** distinct built-in function registrations across 18 modules (**40** `noParse`, **29** `sideEffect`), plus **18** `function_alias` entries in `game/alias.cnf` (**578** total callable names under default config)
+- **Player Commands**: **139** handler registrations covering **201** distinct built-in C# command names/aliases, plus **21** `command_alias` entries in `game/alias.cnf` (**204** total command names under default config) and pre-login commands (`connect`/`conn`/`co`, `create`/`cr`, `WHO`, `QUIT`)
+- **Test Suite**: **469** tests across **95** test files
 
 ---
 
-## 🏛️ Architecture Overview
+## Architecture Overview
 
 ```mermaid
-flowchart TD
-    subgraph Clients["Connected Clients"]
-        TEL["Telnet Client (:4201 + GMCP)"]
-        MUJS["MUjs Client (WebSocket :5119/ws)"]
-        WEB["Generic Web / WebSocket Client"]
-        PUB["Pueblo / HTML Client"]
+flowchart TB
+    subgraph Clients["Clients & Network"]
+        Telnet["Telnet / MUD Clients\n(TCP :4201 — NAWS, TTYPE, GMCP, Pueblo)"]
+        WS["WebSocket / HTTP Clients\n(Kestrel :5119 / :7069 — /ws, /game, /api, /health, /reboot)"]
     end
 
-    subgraph Server["PennMUSH.Server (ASP.NET Core / .NET 10)"]
-        TELNET_HOST["Telnet Host & Socket Listener"]
-        WS_HOST["WebSocket Gateway Handler (/ws, /game)"]
-        KESTREL["Kestrel HTTP Host (/health, /css)"]
-        SESSION_MGR["Session Manager & Telnet Negotiator (NAWS/TTYPE)"]
-        EDITOR_SESSIONS["Client Editor & Window Session Registry"]
+    subgraph Host["Hot-Reboot Process Host"]
+        MSH["MUSHServerHost\n(@reboot / POST /reboot — 0 client disconnects)"]
+        EXT["ExtensionManager\n(Collectible ExtensionLoadContext + FileSystemWatcher)"]
     end
 
-    subgraph Core["PennMUSH.Core Engine"]
-        DISPATCHER["Command Dispatcher & Trie Prefix Matcher"]
-        CLIENT_CMDS["@client/* Handler & Softcode Functions"]
-        QUEUE["Deterministic Action Queue & Turn Pipeline"]
-        EVAL["Softcode Expression Evaluator (250k Budget + ReDoS Guard)"]
-        CRON["Persistent 5-Field Cron Scheduler"]
-        DAG["C3 Linearized Multi-Parent / Multi-Zone DAG Engine"]
-        COMSYS["Comsys (@channel, +c, @mail)"]
-        DB["In-Memory Object Database (#0, #1, #2...) with MatchObject"]
+    subgraph Engine["PennMUSH.Core Engine"]
+        EVAL["ExpressionEvaluator & FunctionRegistry\n(567 built-ins, @function softcode, Q-registers, MushError catalog)"]
+        CMD["CommandDispatcher & Feedback Catalog\n(201 C# command names, hooks, restrictions, $-commands, exits)"]
+        WORLD["ObjectDatabase & Queues\n(Dbref/Objid, Multi-Parent/Zone DAG, ActionQueue, CronScheduler)"]
+        PRES["Presentation & Protocol\n(927-color table, %k/@moniker, AnsiToHtmlTranslator, @sockset, MUjs)"]
+        COMM["Subsystems\n(Channels, @mail/@malias, Locks, Flags/Powers, @http/@respond, ITextFileCache)"]
     end
 
-    subgraph Storage["Persistence Layer"]
-        FLAT["Flatfile Parser & Serializer (.dump)"]
-        SQLITE["SQLite Storage Engine (WAL / Foreign Keys)"]
+    subgraph Storage["Persistence & Configuration"]
+        MUSHDB[("mush.db (SQLite)\nSqliteStore + RuntimeStateStore (16 tables)")]
+        CONNDB[("connlog.db (SQLite)\nConnectionLogStore")]
+        SQLDB[("Optional sql_database (SQLite)\n@sql / @mapsql / sql()")]
+        CNF["game/*.cnf, txt/, html/, txt/colors.json"]
     end
 
-    TEL --> TELNET_HOST
-    MUJS --> WS_HOST
-    WEB --> WS_HOST
-    PUB --> TELNET_HOST
-    TELNET_HOST --> SESSION_MGR
-    WS_HOST --> SESSION_MGR
-    SESSION_MGR --> DISPATCHER
-    DISPATCHER --> CLIENT_CMDS
-    DISPATCHER --> QUEUE
-    CLIENT_CMDS --> EDITOR_SESSIONS
-    QUEUE --> EVAL
-    CRON --> QUEUE
-    EVAL --> DAG
-    DAG --> DB
-    COMSYS --> DB
-    DB --> FLAT
-    DB --> SQLITE
+    Telnet --> MSH
+    WS --> MSH
+    MSH --> Engine
+    MSH <--> EXT
+    EXT -->|"IExtension / IExtensionHost"| Engine
+    Engine <--> MUSHDB
+    Engine <--> CONNDB
+    Engine <--> SQLDB
+    CNF --> Engine
 ```
 
 ---
 
-## 🚀 Key Subsystems
+## Key Capabilities
 
-### 1. Softcode Evaluator & Runtime Safety
-PennMUSH .NET features a complete MUSHcode expression evaluator supporting ~400 standard softcode functions:
-- **Adaptive Execution Budget:** 250,000 execution tokens per invocation (100x legacy limits) without risking runaway CPU usage.
-- **Cycle & Recursion Protection:** Active `CallTrail` tracking prevents recursive attribute call loops (`A` calling `B` calling `A`) before stack overflow occurs.
-- **ReDoS Guard:** Softcode regular expressions enforce a strict 100ms cancellation timeout.
-- **Async Softcode Primitives:** Native support for non-blocking operations via `async()`, `parallel_map()`, and `bgtask()`.
-
-### 2. Multi-Parent & Multi-Zone DAG Resolution
-Objects support multiple parents (`@parent obj = #p1 #p2`) and multiple zones (`@chzone obj = #z1 #z2`). 
-Attribute, lock, and flag lookups use **C3 Linearization** (the same algorithm used by Python and Dylan for method resolution orders), ensuring:
-- Deterministic attribute lookup across complex diamond inheritance graphs.
-- Prevention of circular inheritance graphs.
-- Clear, predictable attribute inheritance without shadowing bugs.
-
-### 3. Native Cron Scheduling Subsystem
-No more fragile `@wait 60 = @trigger me/TICK` loops or external crontab wrappers.
-- Implements standard 5-field cron expressions: `minute hour dom month dow`.
-- In-game administrative command:
-  ```mushcode
-  @cron/add DailyBackup=0 4 * * * = @dump
-  @cron/list
-  @cron/delete DailyBackup
-  ```
-- Softcode functions: `cron_list()`, `cron_add()`, `cron_del()`, `cron_info()`.
-- Schedules are durable and saved directly into the database.
-
-### 4. Dual Persistence Layer
-- **Flatfile Store:** Imports and exports legacy PennMUSH database files (`mush.dump`), maintaining full compatibility with existing archives and worlds.
-- **SQLite Store:** Modern transactional persistence utilizing SQLite in WAL mode with relational tables for objects, attributes, locks, channels, mail, and cron jobs.
-
-### 5. Modern Presentation & Networking
-- **Telnet Negotiation:** Full support for `TELOPT_NAWS` (client window resizing) and `TELOPT_TTYPE` (terminal capabilities detection).
-- **Rich HTML & Pueblo Support:** Direct raw HTML tags can be streamed to clients reporting Pueblo capability or connected via WebSockets.
-- **Color Translation:** Rich HTML colors (`<span style="color: #55ff55">`) automatically translate to 24-bit TrueColor ANSI, 256-color xterm palette, or 16-color ANSI fallbacks based on terminal capabilities.
-- **Kestrel Web Server:** Hosts live CSS stylesheets (`/css/classic.css`) referenced by Pueblo clients, and serves health endpoints.
-
-### 6. MUjs & Modern Client Communication Protocol (v1.0)
-PennMUSH .NET implements an official, non-hacky communication protocol with [MUjs](https://github.com/naHrej/MUjs) (HTML5/Electron/Vue 3 client), completely replacing legacy string-scraping conventions (`ProgStart >`, `!@style:url:`, `!@Window:`) with structured JSON RPC:
-
-- **Multiplexed WebSocket Protocol:** Dedicated WebSocket gateway (`/ws` and `/game`) binding to `http://0.0.0.0:5119` carrying typed UTF-8 JSON message frames:
-  ```json
-  {
-    "type": "terminal.output",
-    "id": "msg-101",
-    "timestamp": 1793749081000,
-    "payload": { "html": "<div class=\"room-title\">Room Zero</div>" }
-  }
-  ```
-- **Capability Negotiation Handshake:**
-  - Client sends `client.hello` declaring capabilities (`html5`, `editor`, `docking`, `styles`, `audio`, `signed-scripts`).
-  - Server validates and issues `server.hello` containing a cryptographically signed session token, asset base URL, and supported editor languages (`mushcode`, `csharp`, `moocode`).
-  - Graceful fallback for standard Telnet clients via GMCP (`IAC DO GMCP`) or pure ANSI.
-- **Atomic Code Editor RPC:**
-  - `editor.open`: Server instructs MUjs to open the Monaco/Ace editor for an attribute or object with language syntax highlighting, metadata headers, and code body.
-  - `editor.save`: Client transmits saved buffer directly over the RPC channel.
-  - `editor.result`: Server confirms write and returns any compilation/MUSHcode syntax diagnostics.
-- **Dockable Multi-Pane UI Engine:**
-  - `window.update`: Server dynamically spawns, docks (left/right sidebars for automap, inventory, HUD, chat), or detaches windows with custom HTML payloads.
-- **Dynamic Asset & Stylesheet Streaming:**
-  - `style.load`: Injects or swaps remote stylesheets (`/css/...`).
-  - `audio.play`: Triggers ambient audio or sound effects.
-- **In-Game Softcode & Admin API:**
-  - In-game administrative command suite: `@client/edit <target>/<attr>`, `@client/window <id>=<title>:<content>`, `@client/style <url>`, `@client/audio <url>`.
-  - MUSHcode softcode functions: `cedit()`, `cwindow()`, `cstyle()`, `caudio()`.
-
-### 7. PennMUSH Command Aliases & Name Resolution Engine
-- **Trie-Based Prefix Autoaliasing:** Unambiguous command prefixes automatically resolve to canonical commands (e.g. `tak` $\rightarrow$ `take` $\rightarrow$ `get`, `mov` $\rightarrow$ `move` $\rightarrow$ `go`, `inve` $\rightarrow$ `inventory`).
-- **Standard Command Aliases:** Built-in exact alias mappings for `x`/`ex` (`examine`), `l`/`read` (`look`), `i`/`inv` (`inventory`), `th` (`think`), `w` (`whisper`), `p` (`page`), `g`/`take` (`get`), `d`/`throw` (`drop`), `@sw` (`@switch`), `@tr` (`@trigger`), `@tel` (`@teleport`), `@if` (`@ifelse`), and `@recycle` (`@destroy`).
-- **Configuration-Driven Aliases:** Dynamic aliases and exit reservations loaded directly from standard PennMUSH configuration files (`game/mush.cnf`, `game/alias.cnf`, `game/restrict.cnf`).
-- **Universal Object & Name Matcher (`MatchObject`):** Resolves targets across commands (`look`, `examine`, `@set`, `@name`, `@power`, `@teleport`) supporting `here`, `me`, `*<player>`, `#<id>`, room contents (players & objects), carried inventory, and room exits.
+- **MUSHcode Engine & Safety**: Full bracket/brace/escape parser with `noParse` semantics, Q-registers (`%q0–%qz`, `%q<name>`), regex capture registers (`$0–$9`, `$<name>`), centralized `MushError` catalog (**91** templates), invocation/recursion/deadline runaway-loop protection, `@function` user-defined softcode functions, and `async()` / `parallel_map()` / `bgtask()` background tasks.
+- **DAG World Model & Subsystems**: Directed acyclic graph multi-parent inheritance and multi-zone membership (breadth-first DAG traversal with cycle detection), **45** built-in flags, **31** built-in powers, **13** lock types, command hooks (`@hook`), warnings (`@warnings` / `@wcheck`), building quotas with atomic `RQUOTA` accounting, `@decompile`, channels (`@channel`/`@chat`/`addcom`), and threaded `@mail` + `@malias`.
+- **Rich Presentation, ANSI & Web Delivery**: Full **927-entry** X11 / xterm-256 / RGB24 color table (`game/txt/colors.json`), `@moniker` ANSI sanitization and `%k`/`%K`, ANSI-aware `align()`/`wrap()`, Pueblo & `AnsiToHtmlTranslator`, `@sockset` session transforms (`OUTPUTPREFIX`, `OUTPUTSUFFIX`, `STRIPACCENTS`, `PROMPT_NEWLINES`, `NOQUOTA`, `COLORSTYLE`), and `wshtml()` / `wsjson()` WebSocket framing.
+- **MUjs Protocol & Inbound HTTP**: Structured WebSocket/GMCP JSON envelope protocol (`client.hello`, `server.hello`, `terminal.input`/`terminal.output`, `editor.open`/`save`/`result`/`close`, `window.update`, `style.load`, `audio.play`, `ws.json`) backed by `@client` and `cedit()`/`cwindow()`/`cstyle()`/`caudio()`/`client_emit()`, plus softcode HTTP request routing via `http_handler` (`@http` / `@respond`).
+- **SQLite Persistence & Zero-Disconnect Hot-Reboot**: Atomic persistence across `mush.db` (**16** tables covering objects, attributes, flags, powers, parents, zones, cron jobs, channels, mail, mail aliases, softcode functions, and sitelocks), `connlog.db` connection history (`connlog()`, `connrecord()`, `addrlog()`, `@sitelock/player`), and an optional separate SQLite SQL DB (`sql()`, `mapsql()`, `sqlescape()`, `@sql`, `@mapsql`). `MUSHServerHost` persists state and swaps the engine instance in-process without dropping active TCP or WebSocket sockets.
+- **Collectible C# Plugin SDK (`PennMUSH.Extensions`)**: Plugins implement `IExtension` against `IExtensionHost` (commands, functions, tick services, custom protocol handlers), load from memory streams without locking DLLs on disk, and hot-reload automatically via `FileSystemWatcher` or `@plugin` (`/list`, `/load`, `/unload`, `/reload`).
 
 ---
 
-## 📁 Repository Structure
+## Solution & Repository Layout
 
-```
+```text
 pennmush-dotnet/
-├── PennMUSH.slnx                     # Modern .NET solution file
-├── .gitignore                        # Git ignore rules for .NET & SQLite
-├── README.md                         # Project documentation
-├── PennMUSH.Core/                    # Core virtual world engine
-│   ├── Commands/                     # Command dispatchers (@dig, @emit, @cron, etc.)
-│   ├── Common/                       # Dbref, core utilities, C3 linearization
-│   ├── Communication/                # Channels, mail system, comsys
-│   ├── Database/                     # In-memory object model, attribute tree
-│   ├── Evaluation/                   # Softcode evaluator, tokenizer, functions
-│   ├── Flags/                        # Authoritative flag & power tables
-│   ├── Locks/                        # Boolean lock parser and evaluator
-│   ├── Negotiation/                  # Telnet protocol negotiation, Pueblo, ANSI
-│   ├── Persistence/                  # Flatfile (.dump) and SQLite stores
-│   ├── Queue/                        # Deterministic turn queue and async execution
-│   └── Scheduling/                   # 5-field Cron parser and scheduler
-├── PennMUSH.Server/                  # Host executable
-│   ├── Hosting/                      # Telnet server, WebSocket hub, Kestrel host
-│   └── wwwroot/css/                  # Embedded stylesheets for web/Pueblo clients
-└── PennMUSH.Core.Tests/              # Test suite (156 passing unit & integration tests)
-    ├── Commands/
-    ├── Configuration/
-    ├── Evaluation/
-    ├── Flags/
-    ├── Locks/
-    ├── Negotiation/
-    ├── Persistence/
-    ├── Protocol/
-    ├── Scheduling/
-    ├── Server/
-    └── Spatial/
+├── PennMUSH.slnx                  # .NET 10 solution file
+├── PennMUSH.Core/                 # Platform-agnostic MUSH engine library
+│   ├── Access/                    # SiteLock table & connection ACLs
+│   ├── Attributes/                # Standard attribute table, prefix matching & writer
+│   ├── Commands/                  # Dispatcher, command table/catalog, 70+ handlers, Feedback catalog
+│   ├── Communication/             # Channels, @mail, @malias, emits & nospoof formatting
+│   ├── Configuration/             # mush.cnf/alias.cnf/restrict.cnf parser & ConfigCatalog
+│   ├── Database/                  # ObjectDatabase, SqliteStore, RuntimeStateStore, ConnectionLogStore, SqlDatabase
+│   ├── Entities/                  # MUSHObject & parent/zone DAG traversal
+│   ├── Flags/                     # FlagTable (45 flags, 31 powers) & permission checks
+│   ├── Help/                      # HelpStore, ITextFileCache/TextFileCache, SuggestionVocabulary
+│   ├── Http/                      # @http outbound fetch & @respond inbound HTTP channel
+│   ├── Locks/                     # 13 lock types, AST parser & evaluator
+│   ├── Logging/                   # Wizard logs & log management
+│   ├── MUSHcode/                  # ExpressionEvaluator, FunctionRegistry, MushError, 18 Function modules
+│   ├── Presentation/              # 927-color AnsiColorTable, AnsiToHtml/HtmlToAnsi, TelnetNegotiator
+│   ├── Protocol/                  # MUjs ProtocolEnvelope/Payloads, EditorSessionManager, WebSocketMarkup
+│   ├── Queue/                     # ActionQueue, semaphores & PID tracking
+│   ├── Scheduling/                # CronScheduler & persistent @cron jobs
+│   ├── Session/                   # ISessionDirectory, SessionInfo & connection access helpers
+│   └── Types/                     # Dbref & ObjectType
+├── PennMUSH.Extensions/           # Public plugin SDK (IExtension, IExtensionHost, ITickService, IProtocolHandler)
+├── PennMUSH.Server/               # Executable host (Telnet :4201 + ASP.NET Core HTTP/WS)
+│   ├── Commands/                  # Host-only commands (@plugin/@extension, @reboot)
+│   ├── Engine/                    # MUSHServer, MUSHServerHost, ScreenStylesheet
+│   ├── Extensions/                # ExtensionManager, collectible ExtensionLoadContext, ExtensionHostProxy
+│   ├── Network/                   # TelnetListenerService
+│   ├── Session/                   # ConnectionDirectory & MUSHConnection
+│   └── Program.cs                 # Kestrel endpoints & host wiring
+├── PennMUSH.Core.Tests/           # xUnit suite (469 tests across 95 test files)
+├── game/                          # Default runtime data (mush.cnf, alias.cnf, restrict.cnf, txt/, html/)
+├── plugins/                       # External plugin DLL drop-in directory
+└── docs/
+    ├── wiki/                      # Authoritative documentation mirrored to GitHub Wiki
+    └── archive/                   # Historical PR #1–#54 porting & parity logs
 ```
 
 ---
 
-## 🛠️ Getting Started
+## Quick Start
 
 ### Prerequisites
+
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Git
 
-### Building
+### Build & Run Tests
+
 ```bash
+git clone https://github.com/naHrej/pennmush-dotnet.git
+cd pennmush-dotnet
 dotnet build PennMUSH.slnx
-```
-
-### Running Tests
-Execute the comprehensive test suite (all 156 tests passing):
-```bash
 dotnet test PennMUSH.slnx
 ```
 
-### Running the Server
-Launch the unified server:
+### Run the Server
+
 ```bash
 dotnet run --project PennMUSH.Server
 ```
 
 By default:
-- **Telnet Listener:** `0.0.0.0:4201`
-- **WebSocket Gateway:** `ws://0.0.0.0:5119/ws` (and `/game`)
-- **HTTP Server:** `http://0.0.0.0:5119` (Health check at `http://0.0.0.0:5119/health`)
+- **Telnet**: `0.0.0.0:4201` (configurable via `Telnet:Port` / `game/mush.cnf`)
+- **HTTP & WebSockets** (`PennMUSH.Server/Properties/launchSettings.json`): `http://0.0.0.0:5119` (and `https://0.0.0.0:7069` under the `https` profile)
+  - WebSocket MUjs / raw gateways: `/ws`, `/game` (plus `/api` companion socket)
+  - Health & hot-reboot: `GET /health`, `POST /reboot`
+  - Shared screen stylesheet: `GET /html/stylesheet.css`
+  - All other unmatched HTTP routes fall back to the `http_handler` object if configured in `game/mush.cnf`.
+
+First-boot world generation (`WorldBootstrapper`) initializes `#0` Room Zero, `#1` God (`One`, unpassworded on initial bootstrap — set a password promptly with `@password`), and `#2` Master Room, plus the default `Public` channel. At the login prompt:
+
+```text
+connect One
+```
+
+Or create a new player:
+
+```text
+create MyPlayer mysecretpassword
+```
 
 ---
 
-## 📜 License & Credits
+## Documentation Hub
 
-PennMUSH .NET is released under **The Artistic License**, maintaining strict licensing and attribution parity with the parent PennMUSH project.
+Browse the live **[GitHub Wiki](https://github.com/naHrej/pennmush-dotnet/wiki)** (or read the source markdown directly under [`docs/wiki/`](docs/wiki/Home.md)):
 
-See [LICENSE](LICENSE) for the full terms of the Artistic License, and [COPYRITE](COPYRITE) for historical copyrights, derivations (TinyMUSH 2.0 / 2.2, TinyMUD), and upstream credits.
+| Guide / Reference | Summary | Wiki / Source |
+|---|---|---|
+| **Home** | Role-based entry hub and overview | [Home](docs/wiki/Home.md) |
+| **Architecture & Concepts** | Dbrefs/Objids, Multi-Parent/Zone DAGs, command pipeline, queues, hot-reboot | [Architecture-and-Concepts](docs/wiki/Architecture-and-Concepts.md) |
+| **MUSHcode Language Guide** | Evaluation order, `noParse`, `%`-substitutions, Q-registers, `MushError` | [MUSHcode-Language-Guide](docs/wiki/MUSHcode-Language-Guide.md) |
+| **Flags, Powers, Attributes & Locks** | All 45 flags, 31 powers, standard attributes, 13 lock types | [Flags-Powers-Attributes-and-Locks](docs/wiki/Flags-Powers-Attributes-and-Locks.md) |
+| **Colors, Markup & Presentation** | 927-color palette, `@moniker`/`%k`, ANSI-to-HTML, `@sockset`, `wshtml()`/`wsjson()` | [Colors-Markup-and-Presentation](docs/wiki/Colors-Markup-and-Presentation.md) |
+| **MUjs Protocol Reference** | WebSocket/GMCP JSON envelopes, editor & UI dock payloads | [MUjs-Protocol-Reference](docs/wiki/MUjs-Protocol-Reference.md) |
+| **Server Configuration & Persistence** | `mush.cnf` options, SQLite schemas, `ITextFileCache`, HTTP & CI/CD | [Server-Configuration-and-Persistence](docs/wiki/Server-Configuration-and-Persistence.md) |
+| **Plugin Development Guide** | Authoring & hot-reloading `.NET 10` extensions via `PennMUSH.Extensions` | [Plugin-Development-Guide](docs/wiki/Plugin-Development-Guide.md) |
+| **PennMUSH 1.8 Parity & Differences** | Code-verified summary of extensions, partial switches, and omissions | [PennMUSH-1.8-Parity-and-Differences](docs/wiki/PennMUSH-1.8-Parity-and-Differences.md) |
+
+> **Upcoming Reference PRs**: The full Command Reference (**201** C# command names / **204** with `alias.cnf`) and MUSHcode Function API Reference (**567** built-in functions / **578** with `alias.cnf`) are linked in the Wiki sidebar and tracked in follow-up documentation PRs.
+
+---
+
+## License & Heritage
+
+PennMUSH .NET is a clean-room .NET 10 reimplementation inspired by [PennMUSH](https://github.com/pennmush/pennmush). See [COPYRITE](COPYRITE) and [LICENSE](LICENSE) for original PennMUSH heritage and repository licensing terms.
