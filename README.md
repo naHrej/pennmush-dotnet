@@ -58,6 +58,7 @@ flowchart TB
 - **Rich Presentation, ANSI & Web Delivery**: Full **927-entry** X11 / xterm-256 / RGB24 color table (`game/txt/colors.json`), `@moniker` ANSI sanitization and `%k`/`%K`, ANSI-aware `align()`/`wrap()`, Pueblo & `AnsiToHtmlTranslator`, `@sockset` session transforms (`OUTPUTPREFIX`, `OUTPUTSUFFIX`, `STRIPACCENTS`, `PROMPT_NEWLINES`, `NOQUOTA`, `COLORSTYLE`), and `wshtml()` / `wsjson()` WebSocket framing.
 - **MUjs Protocol & Inbound HTTP**: Structured WebSocket/GMCP JSON envelope protocol (`client.hello`, `server.hello`, `terminal.input`/`terminal.output`, `editor.open`/`save`/`result`/`close`, `window.update`, `style.load`, `audio.play`, `ws.json`) backed by `@client` and `cedit()`/`cwindow()`/`cstyle()`/`caudio()`/`client_emit()`, plus softcode HTTP request routing via `http_handler` (`@http` / `@respond`).
 - **SQLite Persistence & Zero-Disconnect Hot-Reboot**: Atomic persistence across `mush.db` (**16** tables covering objects, attributes, flags, powers, parents, zones, cron jobs, channels, mail, mail aliases, softcode functions, and sitelocks), `connlog.db` connection history (`connlog()`, `connrecord()`, `addrlog()`, `@sitelock/player`), and an optional separate SQLite SQL DB (`sql()`, `mapsql()`, `sqlescape()`, `@sql`, `@mapsql`). `MUSHServerHost` persists state and swaps the engine instance in-process without dropping active TCP or WebSocket sockets.
+- **PennMUSH Flatfile Import (`DBF_LABELS` / `dbversion 6`)**: Import existing PennMUSH 1.8.x flatfile dumps (plain text or `.gz` compressed, including labeled flags/powers/locks and sparse dbref layouts) directly into SQLite via CLI flags.
 - **Collectible C# Plugin SDK (`PennMUSH.Extensions`)**: Plugins implement `IExtension` against `IExtensionHost` (commands, functions, tick services, custom protocol handlers), load from memory streams without locking DLLs on disk, and hot-reload automatically via `FileSystemWatcher` or `@plugin` (`/list`, `/load`, `/unload`, `/reload`).
 
 ---
@@ -145,6 +146,24 @@ Or create a new player:
 
 ```text
 create MyPlayer mysecretpassword
+```
+
+### Server CLI Options & Flatfile Import
+
+`PennMUSH.Server` accepts optional CLI flags for custom paths, seeding `#1`'s password, and importing PennMUSH `DBF_LABELS` (`dbversion 6`) flatfiles (`.db` or `.gz`):
+
+- `--db <path>` — Path to the SQLite database file (default: `game/mush.db`)
+- `--config <path>` — Path to `mush.cnf`
+- `--import-flatfile <path>` — Import a PennMUSH flatfile (plain or `.gz`) into the target SQLite database
+- `--import-only` — Exit after completing the flatfile import without starting listeners
+- `--seed-password <password>` — Set `#1` (`God`) password on startup or import
+
+```bash
+# Import a PennMUSH flatfile into a SQLite database and seed #1's password
+dotnet run --project PennMUSH.Server -- --import-flatfile game/outdb.gz --db game/imported.db --seed-password secret --import-only
+
+# Start the server using the imported database
+dotnet run --project PennMUSH.Server -- --db game/imported.db
 ```
 
 ---
