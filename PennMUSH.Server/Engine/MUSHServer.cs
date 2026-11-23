@@ -103,6 +103,9 @@ public class MUSHServer
 
         Database = new ObjectDatabase();
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
+        string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
+        if (!string.IsNullOrEmpty(dbDir))
+            Directory.CreateDirectory(dbDir);
         Storage = new SqliteStore($"Data Source={dbPath}");
         RuntimeState = new RuntimeStateStore($"Data Source={dbPath}");
         Queue = new ActionQueue { IgnoresQueueLimit = id => _sessions.IgnoresQuota(id) };
@@ -320,6 +323,11 @@ public class MUSHServer
             candidates.Add(gameRelative);
             if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
                 candidates.Add(gameRelative + ".gz");
+
+            string repoRelative = Path.GetFullPath(Path.Combine(GameDirectory, "..", path));
+            candidates.Add(repoRelative);
+            if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(repoRelative + ".gz");
         }
 
         foreach (string candidate in candidates)
