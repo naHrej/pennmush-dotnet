@@ -60,7 +60,16 @@ jobs:
         run: |
           Set-Location -Path "C:\Repos\pennmush-dotnet"
           Write-Host "Starting PennMUSH.Server in background..."
-          Start-Process -FilePath "dotnet" -ArgumentList "run watch --project PennMUSH.Server\" -WorkingDirectory "C:\Repos\pennmush-dotnet"
+          # Detach from GitHub Actions runner orphan-process cleanup (RUNNER_TRACKING_ID)
+          $savedTrackingId = $env:RUNNER_TRACKING_ID
+          Remove-Item Env:RUNNER_TRACKING_ID -ErrorAction SilentlyContinue
+          try {
+            Start-Process -FilePath "dotnet" -ArgumentList "run watch --project PennMUSH.Server\" -WorkingDirectory "C:\Repos\pennmush-dotnet"
+          } finally {
+            if ($null -ne $savedTrackingId) {
+              $env:RUNNER_TRACKING_ID = $savedTrackingId
+            }
+          }
           Start-Sleep -Seconds 4
           try {
             $health = Invoke-RestMethod -Uri "http://localhost:5119/health" -TimeoutSec 5 -ErrorAction Stop
