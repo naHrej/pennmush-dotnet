@@ -97,6 +97,18 @@ public class FlatfileImportIntegrationTests
             await server.HandleInputAsync(conn, "think [name(#2)]|[name(#29)]");
             string combined = string.Join("\n", outputs);
             Assert.Contains("Master Room|JHV Mordak", combined);
+
+            // Verify #1 password seeding and login flow
+            Assert.True(server.SeedPlayerPassword(new Dbref(1), "testpass123"));
+            var loginOutputs = new List<string>();
+            var loginConn = new MUSHConnection(line =>
+            {
+                loginOutputs.Add(line);
+                return Task.CompletedTask;
+            });
+            server.RegisterConnection(loginConn);
+            await server.HandleInputAsync(loginConn, "connect One testpass123");
+            Assert.Equal(new Dbref(1), loginConn.PlayerId);
             server.Stop();
 
             var reloaded = new MUSHServer(dbPath);

@@ -301,6 +301,20 @@ public class MUSHServer
         Storage.ReplaceAll(Database, Cron);
     }
 
+    /// <summary>
+    /// Sets (or resets) the password for a player object and persists it to SQLite.
+    /// </summary>
+    public bool SeedPlayerPassword(Dbref playerId, string password)
+    {
+        var player = Database.GetObject(playerId);
+        if (player == null || player.Type != ObjectType.Player)
+            return false;
+
+        PasswordHash.Store(player, password);
+        Storage.Save(Database, Cron);
+        return true;
+    }
+
     private string? ResolveFlatfilePath(string? path)
     {
         if (string.IsNullOrWhiteSpace(path))

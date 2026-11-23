@@ -22,6 +22,8 @@ string? configPath = builder.Configuration["config"]
     ?? builder.Configuration["Config:Path"];
 string? importFlatfilePath = builder.Configuration["import-flatfile"]
     ?? builder.Configuration["ImportFlatfile"];
+string? seedPassword = builder.Configuration["seed-password"]
+    ?? builder.Configuration["SeedPassword"];
 bool importOnly = args.Any(a => string.Equals(a, "--import-only", StringComparison.OrdinalIgnoreCase));
 
 // Register Core MUSH Server Host (handles hot-reboots with zero connection drops)
@@ -39,6 +41,10 @@ builder.Services.AddHostedService<TelnetListenerService>(sp =>
 
 var app = builder.Build();
 var game = app.Services.GetRequiredService<MUSHServerHost>();
+if (!string.IsNullOrEmpty(seedPassword))
+{
+    game.Server.Run(() => game.Server.SeedPlayerPassword(new PennMUSH.Core.Types.Dbref(1), seedPassword));
+}
 if (importOnly)
 {
     Console.WriteLine($"Imported {game.Database.Count} objects into '{dbPath}'.");
