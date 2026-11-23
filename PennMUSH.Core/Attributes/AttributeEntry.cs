@@ -31,7 +31,7 @@ public sealed class AttributeEntry
             return false;
         foreach (char c in name)
         {
-            if (!char.IsLetterOrDigit(c) && c != '_' && c != '-' && c != '`' && c != '.')
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '-' && c != '`' && c != '.' && c != '+' && c != '\'')
                 return false;
         }
         return true;

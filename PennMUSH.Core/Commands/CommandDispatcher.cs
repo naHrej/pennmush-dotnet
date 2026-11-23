@@ -171,7 +171,13 @@ public class CommandDispatcher
             }
         }
 
-        // 2. Check channel prefix (+channel message or +channel/who)
+        // 2. Check $command:action listeners (local room, inventory, self, Master Room)
+        if (execObj != null && TryMatchCommandListener(execObj, input, db, context))
+        {
+            return context;
+        }
+
+        // 3. Check channel prefix (+channel message or +channel/who)
         if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1)
         {
             string chName = context.CommandName.Substring(1);
@@ -215,12 +221,7 @@ public class CommandDispatcher
             }
         }
 
-        // 3. Check $command:action listeners
-        if (execObj != null && TryMatchCommandListener(execObj, input, db, context))
-        {
-            return context;
-        }
-
+        // 4. Unrecognized command
         context.Notify(Feedback.HuhTypeHelpForHelp);
         return context;
     }
@@ -228,30 +229,46 @@ public class CommandDispatcher
     private bool TryMatchCommandListener(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
     {
         var candidates = new List<MUSHObject>();
+        var seen = new HashSet<Dbref>();
+
+        void AddCandidate(MUSHObject? obj)
+        {
+            if (obj != null && seen.Add(obj.Id))
+                candidates.Add(obj);
+        }
 
         // Current room
         if (executor.Location.IsValid)
         {
-            var room = db.GetObject(executor.Location);
-            if (room != null) candidates.Add(room);
+            AddCandidate(db.GetObject(executor.Location));
 
             // Objects in room
             foreach (var item in db.GetContents(executor.Location))
             {
                 if (item.Id != executor.Id)
-                    candidates.Add(item);
+                    AddCandidate(item);
             }
         }
 
         // Executor's inventory
         foreach (var item in db.GetContents(executor.Id))
-            candidates.Add(item);
+            AddCandidate(item);
 
         // Self
-        candidates.Add(executor);
+        AddCandidate(executor);
+
+        // Master Room (#2) globals
+        var masterRoom = new Dbref(2);
+        foreach (var item in db.GetContents(masterRoom))
+        {
+            AddCandidate(item);
+        }
 
         foreach (var candidate in candidates)
         {
+            if (candidate.HasFlag("NO_COMMAND") || candidate.HasFlag("HALT"))
+                continue;
+
             foreach (var listener in candidate.Listeners)
             {
                 if (!listener.Command)
@@ -269,25 +286,28 @@ public class CommandDispatcher
 
     private void ExecuteListenerAction(MUSHObject listener, MUSHObject enactor, string action, string[] captures, ObjectDatabase db, CommandContext context)
     {
-        if (_evaluator != null)
+        foreach (string piece in Handlers.IncludeCommandHandler.SplitCommands(action))
         {
-            var evalCtx = new EvaluationContext(listener.Id, enactor.Id, location: listener.Location, args: captures);
-            string evaluated = _evaluator.Evaluate(action, evalCtx);
-            if (!string.IsNullOrWhiteSpace(evaluated))
+            string trimmed = piece.TrimStart();
+            if (trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&'))
             {
-                if (evaluated.StartsWith('@') || evaluated.StartsWith('"') || evaluated.StartsWith(':') || evaluated.StartsWith(';'))
-                {
-                    Dispatch(listener.Id, evaluated, db);
-                }
-                else
+                var subCtx = DispatchQueued(listener.Id, piece, db, enactor.Id, captures);
+                foreach (var note in subCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
+                foreach (var note in subCtx.Notifications) context.Notifications.Add(note);
+            }
+            else if (_evaluator != null)
+            {
+                var evalCtx = new EvaluationContext(listener.Id, enactor.Id, location: listener.Location, args: captures);
+                string evaluated = _evaluator.Evaluate(piece, evalCtx);
+                if (!string.IsNullOrWhiteSpace(evaluated))
                 {
                     context.Notify(evaluated);
                 }
             }
-        }
-        else
-        {
-            context.Notify(action);
+            else
+            {
+                context.Notify(piece);
+            }
         }
     }
 
