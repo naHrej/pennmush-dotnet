@@ -110,11 +110,36 @@ public class CommandDispatcher
             string head = _evaluator.Evaluate(input.Substring(0, eqIndex), ctx);
             bound = head + input.Substring(eqIndex);
         }
+        else if (TrySplitFirstTopLevelEquals(input, out int argEqIndex))
+        {
+            string head = _evaluator.Evaluate(input.Substring(0, argEqIndex), ctx);
+            string tail = _evaluator.Evaluate(input.Substring(argEqIndex + 1), ctx);
+            bound = head + "=" + tail;
+        }
         else
         {
             bound = _evaluator.Evaluate(input, ctx);
         }
         return ctx;
+    }
+
+    private static bool TrySplitFirstTopLevelEquals(string input, out int eqIndex)
+    {
+        eqIndex = -1;
+        int depth = 0;
+        for (int i = 0; i < input.Length; i++)
+        {
+            char c = input[i];
+            if (c == '\\' && i + 1 < input.Length) { i++; continue; }
+            if (c is '[' or '{' or '(') depth++;
+            else if (c is ']' or '}' or ')') depth = Math.Max(0, depth - 1);
+            else if (c == '=' && depth == 0)
+            {
+                eqIndex = i;
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool IsDeferredRightArgCommand(string input, out int eqIndex)
@@ -224,7 +249,8 @@ public class CommandDispatcher
         }
 
         // 3. Check channel prefix (+channel message or +channel/who)
-        if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1)
+        if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1
+            && (context.Switches.Count > 0 || context.Arguments.Contains(' ') || context.Arguments.Contains('=')))
         {
             string chName = context.CommandName.Substring(1);
             var chanLookup = _commandTable.Lookup("@channel");
