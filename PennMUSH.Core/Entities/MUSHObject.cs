@@ -591,27 +591,54 @@ public class MUSHObject
                 continue;
             if (val[0] == '$')
             {
-                int colon = val.IndexOf(':');
+                int colon = FindUnescapedColon(val);
                 if (colon <= 1)
                     continue;
-                string pattern = val.Substring(1, colon - 1).Trim();
+                string pattern = val.Substring(1, colon - 1).Replace("\\:", ":").Trim();
                 if (pattern.Length == 0)
                     continue;
-                _listeners.Add(new StoredListener(attr.Name, pattern, val[(colon + 1)..].Trim(), Command: true));
+                _listeners.Add(new StoredListener(
+                    attr.Name,
+                    pattern,
+                    val[(colon + 1)..].Trim(),
+                    Command: true,
+                    Regexp: attr.Flags.HasFlag(AttributeFlags.Regexp),
+                    Case: attr.Flags.HasFlag(AttributeFlags.Case)));
             }
             else if (val[0] == '^')
             {
-                int colon = val.IndexOf(':');
-                string pattern = (colon > 1 ? val[1..colon] : val[1..]).Trim();
+                int colon = FindUnescapedColon(val);
+                string pattern = (colon > 1 ? val[1..colon] : val[1..]).Replace("\\:", ":").Trim();
                 if (pattern.Length == 0)
                     continue;
-                _listeners.Add(new StoredListener(attr.Name, pattern, string.Empty, Command: false));
+                _listeners.Add(new StoredListener(
+                    attr.Name,
+                    pattern,
+                    string.Empty,
+                    Command: false,
+                    Regexp: attr.Flags.HasFlag(AttributeFlags.Regexp),
+                    Case: attr.Flags.HasFlag(AttributeFlags.Case)));
             }
         }
+    }
+
+    private static int FindUnescapedColon(string text)
+    {
+        for (int i = 1; i < text.Length; i++)
+        {
+            if (text[i] == '\\' && i + 1 < text.Length)
+            {
+                i++;
+                continue;
+            }
+            if (text[i] == ':')
+                return i;
+        }
+        return -1;
     }
 }
 
 /// <summary>A parsed $command or ^listen pattern stored on the object that owns the attribute.</summary>
-internal readonly record struct StoredListener(string AttributeName, string Pattern, string Action, bool Command);
+internal readonly record struct StoredListener(string AttributeName, string Pattern, string Action, bool Command, bool Regexp = false, bool Case = false);
 
 internal readonly record struct InheritedAttribute(AttributeEntry? Entry, MUSHObject? Source);

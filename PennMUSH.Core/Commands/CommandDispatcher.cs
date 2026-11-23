@@ -345,7 +345,7 @@ public class CommandDispatcher
             {
                 if (!listener.Command)
                     continue;
-                if (PatternMatcher.Match(listener.Pattern, input, out var captures))
+                if (TryMatchListenerPattern(listener, input, out var captures))
                 {
                     ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
                     return true;
@@ -354,6 +354,40 @@ public class CommandDispatcher
         }
 
         return false;
+    }
+
+    private static bool TryMatchListenerPattern(StoredListener listener, string input, out string[] captures)
+    {
+        if (!listener.Regexp)
+            return PatternMatcher.Match(listener.Pattern, input, out captures);
+
+        try
+        {
+            var options = listener.Case
+                ? System.Text.RegularExpressions.RegexOptions.None
+                : System.Text.RegularExpressions.RegexOptions.IgnoreCase;
+            var match = System.Text.RegularExpressions.Regex.Match(input, listener.Pattern, options, TimeSpan.FromSeconds(1));
+            if (!match.Success)
+            {
+                captures = Array.Empty<string>();
+                return false;
+            }
+
+            captures = new string[match.Groups.Count];
+            for (int i = 0; i < match.Groups.Count; i++)
+                captures[i] = match.Groups[i].Value;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            captures = Array.Empty<string>();
+            return false;
+        }
+        catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+        {
+            captures = Array.Empty<string>();
+            return false;
+        }
     }
 
     private void ExecuteListenerAction(MUSHObject listener, MUSHObject enactor, string action, string[] captures, ObjectDatabase db, CommandContext context)
