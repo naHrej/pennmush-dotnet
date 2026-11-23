@@ -32,6 +32,13 @@ public class GameThreadAndDirtySaveTests
     }
 
     [Fact]
+    public void GameMailbox_RunReturnsTheValue()
+    {
+        using var mailbox = new GameMailbox();
+        Assert.Equal(7, mailbox.Run(() => 7));
+    }
+
+    [Fact]
     public async Task TwoSessions_RunCommandsWithoutLosingEitherEdit()
     {
         string path = Path.Combine(Path.GetTempPath(), "game-thread-" + Guid.NewGuid().ToString("N") + ".db");

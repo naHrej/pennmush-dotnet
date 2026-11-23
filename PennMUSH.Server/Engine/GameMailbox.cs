@@ -41,7 +41,8 @@ public sealed class GameMailbox : IDisposable
     public T Run<T>(Func<T> action)
     {
         T result = default!;
-        Run(() => result = action());
+        // The body must be a statement. An expression lambda would return T and bind back to this method.
+        Run(() => { result = action(); });
         return result;
     }
 
