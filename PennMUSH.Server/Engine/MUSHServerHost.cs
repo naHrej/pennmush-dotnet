@@ -18,6 +18,7 @@ public class MUSHServerHost : IDisposable
     private readonly string _dbPath;
     private readonly string? _configPath;
     private readonly SiteLockTable _siteLocks = new();
+    private string? _importFlatfilePath;
     private MUSHServer _server;
 
     public MUSHServer Server => _server;
@@ -25,16 +26,19 @@ public class MUSHServerHost : IDisposable
     public ChannelRegistry Channels => _server.Channels;
     public IReadOnlyCollection<MUSHConnection> Connections => _activeConnections.Values.ToList();
 
-    public MUSHServerHost(string dbPath = "mush.db", string? configPath = null)
+    public MUSHServerHost(string dbPath = "mush.db", string? configPath = null, string? importFlatfilePath = null)
     {
         _dbPath = dbPath;
         _configPath = configPath;
+        _importFlatfilePath = importFlatfilePath;
         _server = CreateServer();
     }
 
     private MUSHServer CreateServer()
     {
-        var server = new MUSHServer(_dbPath, _configPath, _siteLocks);
+        string? importPath = _importFlatfilePath;
+        _importFlatfilePath = null; // Never re-import over live state on subsequent hot-reboots.
+        var server = new MUSHServer(_dbPath, _configPath, _siteLocks, importPath);
         server.OnRebootRequested += () => Reboot();
         server.OnQuietRebootRequested += () => Reboot(announce: false);
         server.OnShutdownRequested += () => Shutdown();

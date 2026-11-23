@@ -3,6 +3,7 @@ namespace PennMUSH.Core.Database;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
@@ -434,6 +435,39 @@ public static class FlatfileStore
         {
             var garbage = new MUSHObject(new Dbref(db.Count), "Garbage", ObjectType.Garbage, new Dbref(1));
             db.SetObject(garbage);
+        }
+
+        db.RebuildIndexes();
+    }
+
+    /// <summary>
+    /// Loads a PennMUSH flatfile database from disk, transparently decompressing gzip-compressed files.
+    /// </summary>
+    public static void LoadFile(ObjectDatabase db, string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Flatfile path cannot be empty.", nameof(path));
+
+        using var fileStream = File.OpenRead(path);
+        bool isGzip = path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase);
+        if (!isGzip && fileStream.Length >= 2)
+        {
+            int b0 = fileStream.ReadByte();
+            int b1 = fileStream.ReadByte();
+            fileStream.Position = 0;
+            isGzip = b0 == 0x1F && b1 == 0x8B;
+        }
+
+        if (isGzip)
+        {
+            using var gzip = new GZipStream(fileStream, CompressionMode.Decompress);
+            using var reader = new StreamReader(gzip);
+            Load(db, reader);
+        }
+        else
+        {
+            using var reader = new StreamReader(fileStream);
+            Load(db, reader);
         }
     }
 
