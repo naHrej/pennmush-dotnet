@@ -102,9 +102,31 @@ public static class AnsiString
         if (string.IsNullOrEmpty(fill)) fill = " ";
         if (fill.Length == 1) return new string(fill[0], count);
 
-        var sb = new StringBuilder(count);
+        var glyphs = Parse(fill, out string trailing);
+        if (glyphs.Count == 0)
+            return new string(' ', count);
+
+        var sb = new StringBuilder(count * 2);
+        bool hasAnsi = trailing.Length > 0;
         for (int i = 0; i < count; i++)
-            sb.Append(fill[i % fill.Length]);
+        {
+            var g = glyphs[i % glyphs.Count];
+            if (g.Prefix.Length > 0)
+            {
+                sb.Append(g.Prefix);
+                hasAnsi = true;
+            }
+            sb.Append(g.Char);
+        }
+
+        if (trailing.Length > 0)
+        {
+            sb.Append(trailing);
+        }
+        else if (hasAnsi)
+        {
+            sb.Append("\x1B[0m");
+        }
         return sb.ToString();
     }
 
@@ -133,8 +155,16 @@ public static class AnsiString
     private static string ReverseFill(string fill)
     {
         if (fill.Length <= 1) return fill;
-        char[] arr = fill.ToCharArray();
-        Array.Reverse(arr);
-        return new string(arr);
+        var glyphs = Parse(fill, out string trailing);
+        if (glyphs.Count <= 1) return fill;
+
+        var sb = new StringBuilder(fill.Length);
+        for (int i = glyphs.Count - 1; i >= 0; i--)
+        {
+            sb.Append(glyphs[i].Prefix);
+            sb.Append(glyphs[i].Char);
+        }
+        sb.Append(trailing);
+        return sb.ToString();
     }
 }

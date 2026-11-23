@@ -257,10 +257,23 @@ public static class DbFunctions
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         int slash = args[0].IndexOf('/');
-        if (slash <= 0 || slash >= args[0].Length - 1) return MushError.NoMatch.Text();
-
-        var dbref = ParseDbref(args[0].Substring(0, slash), ctx);
-        string attrName = args[0].Substring(slash + 1).Trim();
+        Dbref dbref;
+        string attrName;
+        if (slash == -1)
+        {
+            dbref = ctx.Executor;
+            attrName = args[0].Trim();
+            if (attrName.Length == 0) return MushError.NoMatch.Text();
+        }
+        else if (slash <= 0 || slash >= args[0].Length - 1)
+        {
+            return MushError.NoMatch.Text();
+        }
+        else
+        {
+            dbref = ParseDbref(args[0].Substring(0, slash), ctx);
+            attrName = args[0].Substring(slash + 1).Trim();
+        }
 
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
@@ -345,10 +358,23 @@ public static class DbFunctions
         }
 
         int slash = args[0].IndexOf('/');
-        if (slash <= 0 || slash >= args[0].Length - 1) return MushError.NoMatch.Text();
-
-        var dbref = ParseDbref(args[0].Substring(0, slash), ctx);
-        string attrName = args[0].Substring(slash + 1).Trim();
+        Dbref dbref;
+        string attrName;
+        if (slash == -1)
+        {
+            dbref = ctx.Executor;
+            attrName = args[0].Trim();
+            if (attrName.Length == 0) return MushError.NoMatch.Text();
+        }
+        else if (slash <= 0 || slash >= args[0].Length - 1)
+        {
+            return MushError.NoMatch.Text();
+        }
+        else
+        {
+            dbref = ParseDbref(args[0].Substring(0, slash), ctx);
+            attrName = args[0].Substring(slash + 1).Trim();
+        }
 
         var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();

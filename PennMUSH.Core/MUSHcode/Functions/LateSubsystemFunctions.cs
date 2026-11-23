@@ -86,6 +86,7 @@ public static class LateSubsystemFunctions
             "starting_money" => reg.StartingMoney.ToString(CultureInfo.InvariantCulture),
             "use_quota" => reg.IsQuotaEnabled ? "yes" : "no",
             "starting_quota" => reg.EffectiveStartingQuota.ToString(CultureInfo.InvariantCulture),
+            "player_name_len" => "16",
             _ => MushError.Nothing.Text()
         };
     }

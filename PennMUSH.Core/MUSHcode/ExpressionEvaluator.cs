@@ -196,6 +196,28 @@ public class ExpressionEvaluator
                         sb.Append(context.GetArgument(next - (char)48));
                         i += 2;
                     }
+                    else if ((next == 'i' || next == 'I') && i + 2 < expression.Length)
+                    {
+                        char levelChar = expression[i + 2];
+                        if (char.IsDigit(levelChar))
+                        {
+                            int level = levelChar - '0';
+                            if (level < context.IterStack.Count)
+                                sb.Append(context.IterStack[^(level + 1)].Text);
+                            i += 3;
+                        }
+                        else if (levelChar == 'l' || levelChar == 'L')
+                        {
+                            if (context.IterStack.Count > 0)
+                                sb.Append(context.IterStack[0].Text);
+                            i += 3;
+                        }
+                        else
+                        {
+                            sb.Append(next);
+                            i += 2;
+                        }
+                    }
                     else if (next == (char)113 || next == (char)81) // %q, %Q
                     {
                         if (i + 2 < expression.Length && expression[i + 2] == (char)60) // %q<name>
