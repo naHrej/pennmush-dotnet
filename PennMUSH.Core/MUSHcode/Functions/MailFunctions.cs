@@ -230,7 +230,7 @@ public static class MailFunctions
         int sentTotal = 0, sentUnread = 0, sentCleared = 0;
         if (reg.Database != null)
         {
-            foreach (var obj in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Player))
+            foreach (var obj in reg.Database.ByType(ObjectType.Player))
             {
                 for (int f = 0; f <= 15; f++)
                 {
@@ -334,7 +334,7 @@ public static class MailFunctions
         int sentTotal = 0, sentUnread = 0, sentCleared = 0, sentBytes = 0;
         if (reg.Database != null)
         {
-            foreach (var obj in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Player))
+            foreach (var obj in reg.Database.ByType(ObjectType.Player))
             {
                 for (int f = 0; f <= 15; f++)
                 {

@@ -8,6 +8,12 @@ public class ObjectDatabase
 {
     private readonly List<MUSHObject?> _objects = new();
     private readonly HashSet<Dbref> _connected = new();
+    private readonly ObjectIndex _index = new();
+
+    public ChangeTracker Changes { get; } = new();
+
+    /// <summary>Raised when a player moves, including a direct location write. Not raised while a database is loading.</summary>
+    public Action<MUSHObject, Dbref, Dbref>? PlayerLocationChanged { get; set; }
 
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
@@ -16,6 +22,8 @@ public class ObjectDatabase
     {
         _objects.Clear();
         _connected.Clear();
+        _index.Clear();
+        Changes.Clear();
     }
 
     public void SetConnected(Dbref id, bool connected)
@@ -36,16 +44,70 @@ public class ObjectDatabase
         {
             _objects.Add(null);
         }
+        Watch(obj);
         _objects[obj.Id.Value] = obj;
+        if (MUSHObject.Quiet == 0)
+            _index.Update(obj, GetExits);
     }
 
     public MUSHObject CreateObject(string name, ObjectType type, Dbref owner)
     {
         var id = new Dbref(_objects.Count);
         var obj = new MUSHObject(id, name, type, owner);
+        Watch(obj);
         _objects.Add(obj);
+        Changes.MarkObject(obj.Id);
+        if (MUSHObject.Quiet == 0)
+            _index.Update(obj, GetExits);
         return obj;
     }
+
+    public void RebuildIndexes() => _index.Rebuild(GetAllObjects(), GetExits);
+
+    public IEnumerable<MUSHObject> ByType(ObjectType type) => _index.OfType(type, GetById);
+
+    public IEnumerable<MUSHObject> ByOwner(Dbref owner) => _index.OwnedBy(owner, GetById);
+
+    public IEnumerable<MUSHObject> ByZone(Dbref zone) => _index.InZone(zone, GetById);
+
+    public IEnumerable<MUSHObject> ChildrenOf(Dbref parent) => _index.ChildrenOf(parent, GetById);
+
+    private void Watch(MUSHObject obj)
+    {
+        obj.Changed = () =>
+        {
+            Changes.MarkObject(obj.Id);
+            if (MUSHObject.Quiet != 0)
+                return;
+            var move = _index.Update(obj, GetExits);
+            if (move.Moved)
+                PlayerLocationChanged?.Invoke(obj, new Dbref(move.FromRoom), new Dbref(move.ToRoom));
+            DropDescendantAttributes(obj);
+        };
+    }
+
+    private void DropDescendantAttributes(MUSHObject obj)
+    {
+        var seen = new HashSet<int> { obj.Id.Value };
+        var pending = new Queue<Dbref>();
+        foreach (var child in _index.ChildrenOf(obj.Id, GetById))
+            pending.Enqueue(child.Id);
+
+        while (pending.Count > 0)
+        {
+            var id = pending.Dequeue();
+            if (!seen.Add(id.Value))
+                continue;
+            var child = GetObject(id);
+            if (child == null)
+                continue;
+            child.DropInheritedAttributes();
+            foreach (var grand in _index.ChildrenOf(id, GetById))
+                pending.Enqueue(grand.Id);
+        }
+    }
+
+    private MUSHObject? GetById(int id) => GetObject(new Dbref(id));
 
     public MUSHObject? GetObject(Dbref id)
     {
@@ -214,18 +276,7 @@ public class ObjectDatabase
         if (string.IsNullOrWhiteSpace(nameOrAlias)) return null;
         string search = nameOrAlias.Trim();
 
-        foreach (var exit in GetExits(roomRef))
-        {
-            // Exit name may contain aliases separated by ';' (e.g. "North;n;out")
-            var aliases = exit.Name.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var alias in aliases)
-            {
-                if (alias.Equals(search, StringComparison.OrdinalIgnoreCase))
-                    return exit;
-            }
-        }
-
-        return null;
+        return _index.FindExit(roomRef, search, GetById);
     }
 
     public MUSHObject? FindInContents(Dbref containerRef, string nameOrDbref)
@@ -265,8 +316,7 @@ public class ObjectDatabase
             if (cand != null && cand.Type == ObjectType.Player) return cand;
         }
 
-        return _objects.FirstOrDefault(o => o != null && o.Type == ObjectType.Player &&
-            string.Equals(o.Name, search, StringComparison.OrdinalIgnoreCase));
+        return _index.FindPlayer(search, GetById);
     }
 
     public MUSHObject? FindObject(string nameOrDbref)
@@ -278,7 +328,7 @@ public class ObjectDatabase
             return GetObject(new Dbref(id));
         }
 
-        return _objects.FirstOrDefault(o => o != null && string.Equals(o.Name, search, StringComparison.OrdinalIgnoreCase));
+        return _index.FindByName(search, GetById);
     }
 
     public MUSHObject? MatchObject(Dbref executor, string nameOrDbref)

@@ -700,9 +700,13 @@ public class FindCommandHandler : ICommandHandler
             return false;
         }
 
-        var hits = db.GetAllObjects()
+        IEnumerable<MUSHObject> visible = actor.IsWizard
+            ? db.GetAllObjects()
+            : db.ByOwner(actor.Id).Concat(new[] { actor });
+        var hits = visible
+            .GroupBy(obj => obj.Id.Value)
+            .Select(group => group.First())
             .Where(obj => obj.Type != ObjectType.None)
-            .Where(obj => actor.IsWizard || obj.Owner == actor.Id || obj.Id == actor.Id)
             .Where(obj => low < 0 || (obj.Id.Value >= low && obj.Id.Value <= high))
             .Where(obj => name.Length == 0 || obj.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
             .OrderBy(obj => obj.Id.Value)
@@ -887,7 +891,7 @@ public class PoorCommandHandler : ICommandHandler
         }
 
         int count = 0;
-        foreach (var player in db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player))
+        foreach (var player in db.ByType(ObjectType.Player))
         {
             player.Pennies = amount;
             count++;

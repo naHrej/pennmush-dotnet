@@ -117,7 +117,11 @@ public class ActionQueue
         }
     }
 
-    public List<CommandContext> ProcessReady(DateTimeOffset now, CommandDispatcher dispatcher, ObjectDatabase db)
+    public List<CommandContext> ProcessReady(
+        DateTimeOffset now,
+        CommandDispatcher dispatcher,
+        ObjectDatabase db,
+        Action<Exception, QueueEntry>? onError = null)
     {
         List<QueueEntry> ready;
         lock (_lock)
@@ -129,7 +133,16 @@ public class ActionQueue
 
         var results = new List<CommandContext>();
         foreach (var entry in ready)
-            results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments, entry.Registers));
+        {
+            try
+            {
+                results.Add(dispatcher.DispatchQueued(entry.Executor, entry.Command, db, entry.Enactor, entry.Arguments, entry.Registers));
+            }
+            catch (Exception ex) when (onError != null)
+            {
+                onError(ex, entry);
+            }
+        }
 
         return results;
     }

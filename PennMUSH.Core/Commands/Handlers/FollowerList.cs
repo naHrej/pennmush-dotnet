@@ -160,7 +160,7 @@ internal static class FollowerList
 
         pool.AddRange(db.GetContents(actor.Id));
         if (!nearbyOnly)
-            pool.AddRange(db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player));
+            pool.AddRange(db.ByType(ObjectType.Player));
 
         var distinct = pool.GroupBy(obj => obj.Id.Value).Select(group => group.First()).ToList();
         var exact = distinct.Where(obj => Matches(obj, name, exact: true)).ToList();

@@ -33,9 +33,12 @@ public class MUSHServer
 {
     private readonly ConcurrentDictionary<string, MUSHConnection> _connections = new();
     private readonly ConnectionDirectory _sessions;
-    private readonly ConcurrentDictionary<Dbref, string> _playerPasswords = new();
+    private readonly RoomSessions _rooms = new();
     private readonly CancellationTokenSource _cts = new();
+    private readonly GameMailbox _game = new();
     private readonly object _outboundLock = new();
+    private int _stopped;
+    private DateTimeOffset _nextAutosave = DateTimeOffset.UtcNow;
     private Task _outbound = Task.CompletedTask;
     private bool _shutdownRequested;
     private bool _quietRebootRequested;
@@ -71,6 +74,18 @@ public class MUSHServer
 
     public IReadOnlyCollection<MUSHConnection> Connections => _connections.Values.ToList();
 
+    /// <summary>
+    /// When set, the game thread flushes dirty rows about once a second.
+    /// <c>@dump</c>, reboot, and shutdown flush immediately either way.
+    /// </summary>
+    public bool AutosaveEnabled { get; set; } = true;
+
+    public void Run(Action action) => _game.Run(action);
+
+    public T Run<T>(Func<T> action) => _game.Run(action);
+
+    public Task RunAsync(Action action) => _game.RunAsync(action);
+
     public MUSHServer(string dbPath = "mush.db", string? configPath = null, SiteLockTable? siteLocks = null)
     {
         _sessions = new ConnectionDirectory(_connections, UnregisterConnection);
@@ -87,6 +102,7 @@ public class MUSHServer
         }
 
         Database = new ObjectDatabase();
+        Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         Storage = new SqliteStore($"Data Source={dbPath}");
         RuntimeState = new RuntimeStateStore($"Data Source={dbPath}");
         Queue = new ActionQueue { IgnoresQueueLimit = id => _sessions.IgnoresQuota(id) };
@@ -95,6 +111,11 @@ public class MUSHServer
         Mail = new MailStore();
         MailAliases = new PennMUSH.Core.Communication.Mail.MailAliasTable();
         SiteLocks = siteLocks ?? new SiteLockTable();
+        Cron.Changed = () => Database.Changes.MarkCron();
+        Channels.Changed = () => Database.Changes.MarkRuntime();
+        Mail.Changed = () => Database.Changes.MarkRuntime();
+        MailAliases.Changed = () => Database.Changes.MarkRuntime();
+        SiteLocks.Changed = () => Database.Changes.MarkRuntime();
         Logs = new WizardLog(Path.Combine(GameDirectory, "log"));
         Http.Handler = Config.HttpHandler;
         if (!string.IsNullOrWhiteSpace(Config.SqlDatabase))
@@ -119,13 +140,8 @@ public class MUSHServer
             Storage.Save(Database, Cron);
         }
 
-        // Ensure default Public channel
-        if (Channels.GetChannel("Public") == null)
-        {
-            Channels.CreateChannel("Public", new Dbref(1), ChannelFlags.Public | ChannelFlags.Player, "General public discussion channel");
-        }
-
         Functions = new FunctionRegistry(Database);
+        Functions.Changed = () => Database.Changes.MarkRuntime();
         Functions.NotificationDispatcher = DispatchNotification;
         Functions.EditorSessions = EditorSessions;
         Functions.Scheduler = Cron;
@@ -133,10 +149,23 @@ public class MUSHServer
         Functions.SqlDatabase = Sql;
         ConnectionLog.OpenFile(Path.Combine(GameDirectory, "connlog.db"));
         Functions.ConnectionLog = ConnectionLog;
-        RuntimeState.Load(Channels, Mail, MailAliases, Functions, SiteLocks);
+        Database.Changes.Suspend();
+        try
+        {
+            RuntimeState.Load(Channels, Mail, MailAliases, Functions, SiteLocks);
+        }
+        finally
+        {
+            Database.Changes.Clear();
+            Database.Changes.Resume();
+        }
+
+        if (Channels.GetChannel("Public") == null)
+        {
+            Channels.CreateChannel("Public", new Dbref(1), ChannelFlags.Public | ChannelFlags.Player, "General public discussion channel");
+        }
         Functions.Passwords = new CallbackPasswords((id, password) =>
         {
-            _playerPasswords[id] = password;
             var player = Database.GetObject(id);
             if (player != null)
                 PasswordHash.Store(player, password);
@@ -445,11 +474,20 @@ public class MUSHServer
 
     public void SaveAll()
     {
-        Storage.Save(Database, Cron);
-        RuntimeState.Save(Channels, Mail, MailAliases, Functions, SiteLocks);
+        _game.Run(FlushPending);
+    }
+
+    private void FlushPending()
+    {
+        Storage.Flush(Database, Cron, RuntimeState, Channels, Mail, MailAliases, Functions, SiteLocks);
     }
 
     public void RegisterConnection(MUSHConnection conn, bool isReconnect = false)
+    {
+        _game.Run(() => RegisterConnectionCore(conn, isReconnect));
+    }
+
+    private void RegisterConnectionCore(MUSHConnection conn, bool isReconnect)
     {
         _connections[conn.Id] = conn;
         string host = string.IsNullOrWhiteSpace(conn.Host) ? "localhost" : conn.Host;
@@ -465,6 +503,9 @@ public class MUSHServer
         // If player is already authenticated or re-registering across a hot-reboot, do not re-show login screen
         if (isReconnect || conn.PlayerId.IsValid)
         {
+            var player = Database.GetObject(conn.PlayerId);
+            if (player != null)
+                _rooms.Place(conn, player.Location);
             return;
         }
 
@@ -503,8 +544,14 @@ public class MUSHServer
 
     public void UnregisterConnection(MUSHConnection conn)
     {
+        _game.Run(() => UnregisterConnectionCore(conn));
+    }
+
+    private void UnregisterConnectionCore(MUSHConnection conn)
+    {
         if (!_connections.TryRemove(conn.Id, out _))
             return;
+        _rooms.Remove(conn);
         conn.Close();
         ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
         if (conn.PlayerId.IsValid)
@@ -525,14 +572,12 @@ public class MUSHServer
 
         conn.NoteInput(trimmed.Length);
 
-        // Check for JSON protocol envelope (e.g. from MUjs)
         if (trimmed.StartsWith('{') && ProtocolSerializer.TryParseType(trimmed, out var protoType, out var protoId))
         {
             await HandleProtocolEnvelopeAsync(conn, protoType!, protoId, trimmed, ct);
             return;
         }
 
-        // If not logged in, handle login commands
         if (!conn.PlayerId.IsValid)
         {
             await HandleLoginAsync(conn, trimmed, ct);
@@ -542,48 +587,49 @@ public class MUSHServer
         if (trimmed.Equals("QUIT", StringComparison.OrdinalIgnoreCase))
         {
             if (!await SendScreenAsync(conn, Config.QuitFile, ct))
-            {
                 await conn.SendLineAsync("Goodbye!", ct);
-            }
             conn.Close();
-        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
+            await _game.RunAsync(() => ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit"));
             return;
         }
 
-        // Dispatch in-game command. Login WHO stays on the login path.
+        if (!string.IsNullOrEmpty(conn.OutputPrefix))
+            await conn.SendLineAsync(conn.OutputPrefix, ct);
+
+        var outcome = await _game.RunAsync(() => DispatchCommand(conn, trimmed));
+        await FlushOutbound();
+
+        if (!string.IsNullOrEmpty(conn.OutputSuffix))
+            await conn.SendLineAsync(conn.OutputSuffix, ct);
+
+        if (outcome.Shutdown || outcome.QuietReboot)
+        {
+            await FlushOutbound();
+            await _game.RunAsync(() =>
+            {
+                if (outcome.QuietReboot)
+                    OnQuietRebootRequested?.Invoke();
+                else
+                    OnShutdownRequested?.Invoke();
+            });
+        }
+    }
+
+    private readonly record struct CommandOutcome(bool Shutdown, bool QuietReboot);
+
+    private CommandOutcome DispatchCommand(MUSHConnection conn, string trimmed)
+    {
         _sessions.SourceDescriptor = conn.Descriptor;
         try
         {
-            if (!string.IsNullOrEmpty(conn.OutputPrefix))
-                await conn.SendLineAsync(conn.OutputPrefix, ct);
-
             var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
             bool shutdown = _shutdownRequested;
             bool quietReboot = _quietRebootRequested;
             _shutdownRequested = false;
             _quietRebootRequested = false;
             foreach (var note in context.TargetedNotifications)
-            {
                 DispatchNotification(note);
-            }
-            await FlushOutbound();
-
-            if (!string.IsNullOrEmpty(conn.OutputSuffix))
-                await conn.SendLineAsync(conn.OutputSuffix, ct);
-
-            if (context.CommandName.StartsWith('@'))
-            {
-                Storage.Save(Database, Cron);
-            }
-
-            if (shutdown || quietReboot)
-            {
-                await FlushOutbound();
-                if (quietReboot)
-                    OnQuietRebootRequested?.Invoke();
-                else
-                    OnShutdownRequested?.Invoke();
-            }
+            return new CommandOutcome(shutdown, quietReboot);
         }
         finally
         {
@@ -608,162 +654,182 @@ public class MUSHServer
         string[] parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         string cmd = parts[0].ToUpperInvariant();
 
+        if (cmd == "QUIT")
+        {
+            if (!await SendScreenAsync(conn, Config.QuitFile, ct))
+                await conn.SendLineAsync("Goodbye!", ct);
+            conn.Close();
+            await _game.RunAsync(() => ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit"));
+            return;
+        }
+
+        if (cmd == "WHO")
+        {
+            var lines = await _game.RunAsync(() => BuildWhoLines());
+            foreach (string line in lines)
+                await conn.SendLineAsync(line, ct);
+            return;
+        }
+
+        var script = await _game.RunAsync(() => PlanLogin(conn, parts, cmd));
+        foreach (var step in script.Steps)
+        {
+            if (step.Line != null)
+                await conn.SendLineAsync(step.Line, ct);
+            else if (step.Screen != null)
+                await SendScreenAsync(conn, step.Screen, ct);
+            else if (step.Announced)
+                await SendAnnouncedMotdAsync(conn, step.Royalty, ct);
+        }
+
+        if (script.Arrive)
+        {
+            await _game.RunAsync(() =>
+            {
+                ShowArrival(script.Player);
+                var player = Database.GetObject(script.Player);
+                if (player != null)
+                    BroadcastToRoom(player.Location, $"{player.Name} has connected.", player.Id);
+            });
+            await FlushOutbound();
+        }
+    }
+
+    private readonly record struct LoginStep(string? Line, string? Screen, bool Announced, bool Royalty);
+
+    private sealed class LoginScript
+    {
+        public List<LoginStep> Steps { get; } = new();
+        public bool Arrive;
+        public Dbref Player;
+    }
+
+    private LoginScript PlanLogin(MUSHConnection conn, string[] parts, string cmd)
+    {
+        var script = new LoginScript();
         switch (cmd)
         {
-            case "QUIT":
-                if (!await SendScreenAsync(conn, Config.QuitFile, ct))
-                {
-                    await conn.SendLineAsync("Goodbye!", ct);
-                }
-                conn.Close();
-        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
-                break;
-
-            case "WHO":
-                await ShowWhoAsync(conn, ct);
-                break;
-
             case "CONNECT" or "CONN" or "CO" when parts.Length >= 2:
-            {
-                string name = parts[1];
-                string password = parts.Length > 2 ? parts[2] : "";
-
-                var player = Database.GetAllObjects().FirstOrDefault(o =>
-                    o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
-
-                if (player == null)
-                {
-                    await conn.SendLineAsync("Either that player does not exist, or has a different password.", ct);
-                    break;
-                }
-
-                if (player.HasFlag("GUEST")
-                    ? !SiteLocks.Can(conn.Host, SiteLockTable.Guest)
-                    : !SiteLocks.Can(conn.Host, SiteLockTable.Connect))
-                {
-                    await conn.SendLineAsync(player.HasFlag("GUEST")
-                        ? "Guest connections not allowed."
-                        : "Player connections not allowed.", ct);
-                    break;
-                }
-
-                _playerPasswords.TryGetValue(player.Id, out var saved);
-                if (!PasswordHash.Accepts(player, password, saved))
-                {
-                    await conn.SendLineAsync("Either that player does not exist, or has a different password.", ct);
-                    break;
-                }
-
-                conn.PlayerId = player.Id;
-                Database.SetConnected(player.Id, true);
-                ConnectionLog.UpdatePlayer(conn.ConnLogId, player.Id, player.Name);
-                await conn.SendLineAsync($"Welcome back to {Config.MudName}, {player.Name}!", ct);
-
-                // Send MOTD
-                await SendScreenAsync(conn, Config.MotdFile, ct);
-
-                // Wizard and royalty see the wizard connect file
-                if (player.IsRoyalty)
-                {
-                    await SendScreenAsync(conn, Config.WizmotdFile, ct);
-                }
-
-                await SendAnnouncedMotdAsync(conn, player, ct);
-
-                // Auto-join Public channel
-                var pubCh = Channels.GetChannel("Public");
-                pubCh?.AddMember(player.Id);
-
-                // Check unread mail
-                var stats = Mail.GetMailStats(player.Id);
-                if (stats.UnreadCount > 0)
-                {
-                    await conn.SendLineAsync($"You have {stats.UnreadCount} unread mail message(s). Type '@mail' to read.", ct);
-                }
-
-                ShowArrival(player.Id);
-                BroadcastToRoom(player.Location, $"{player.Name} has connected.", player.Id);
+                PlanConnect(conn, parts, script);
                 break;
-            }
-
             case "CREATE" or "CR" when parts.Length >= 3:
-            {
-                string name = parts[1];
-                string password = parts[2];
-
-                bool exists = Database.GetAllObjects().Any(o =>
-                    o.Type == ObjectType.Player && string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase));
-
-                if (exists)
-                {
-                    await conn.SendLineAsync("That name is already in use.", ct);
-                    break;
-                }
-
-                if (!SiteLocks.Can(conn.Host, SiteLockTable.Create))
-                {
-                    await conn.SendLineAsync("Creation is NOT allowed", ct);
-                    break;
-                }
-
-                var newPlayer = Database.CreateObject(name, ObjectType.Player, Dbref.Nothing);
-                newPlayer.Owner = newPlayer.Id;
-                newPlayer.Home = Config.DefaultHome;
-                newPlayer.Pennies = Config.StartingMoney;
-                newPlayer.Warnings = WarningBits.Normal;
-                _playerPasswords[newPlayer.Id] = password;
-                PasswordHash.Store(newPlayer, password);
-                Database.MoveObject(newPlayer.Id, Config.PlayerStart);
-
-                Storage.Save(Database);
-
-                conn.PlayerId = newPlayer.Id;
-                Database.SetConnected(newPlayer.Id, true);
-                await conn.SendLineAsync($"Character {name} created! Welcome to {Config.MudName}.", ct);
-
-                // Send New User greeting
-                await SendScreenAsync(conn, Config.NewuserFile, ct);
-                await SendAnnouncedMotdAsync(conn, newPlayer, ct);
-
-                var pubCh = Channels.GetChannel("Public");
-                pubCh?.AddMember(newPlayer.Id);
-
-                ShowArrival(newPlayer.Id);
-                BroadcastToRoom(newPlayer.Location, $"{newPlayer.Name} has connected.", newPlayer.Id);
+                PlanCreate(conn, parts, script);
                 break;
-            }
-
             default:
-                await conn.SendLineAsync("Valid login commands: connect <name> <password>, create <name> <password>, WHO, QUIT", ct);
+                script.Steps.Add(new LoginStep("Valid login commands: connect <name> <password>, create <name> <password>, WHO, QUIT", null, false, false));
                 break;
         }
+        return script;
     }
 
-    private async Task SendAnnouncedMotdAsync(MUSHConnection conn, MUSHObject player, CancellationToken ct)
+    private void PlanConnect(MUSHConnection conn, string[] parts, LoginScript script)
     {
-        foreach (string line in Motd.ConnectLines(player.IsRoyalty))
+        string name = parts[1];
+        string password = parts.Length > 2 ? parts[2] : "";
+        var player = Database.FindPlayer(name);
+
+        if (player == null)
         {
-            await conn.SendLineAsync(line, ct);
+            script.Steps.Add(new LoginStep("Either that player does not exist, or has a different password.", null, false, false));
+            return;
         }
+
+        if (player.HasFlag("GUEST")
+            ? !SiteLocks.Can(conn.Host, SiteLockTable.Guest)
+            : !SiteLocks.Can(conn.Host, SiteLockTable.Connect))
+        {
+            script.Steps.Add(new LoginStep(
+                player.HasFlag("GUEST") ? "Guest connections not allowed." : "Player connections not allowed.",
+                null, false, false));
+            return;
+        }
+
+        if (!PasswordHash.Accepts(player, password, memory: null))
+        {
+            script.Steps.Add(new LoginStep("Either that player does not exist, or has a different password.", null, false, false));
+            return;
+        }
+
+        conn.PlayerId = player.Id;
+        _rooms.Place(conn, player.Location);
+        Database.SetConnected(player.Id, true);
+        ConnectionLog.UpdatePlayer(conn.ConnLogId, player.Id, player.Name);
+        Channels.GetChannel("Public")?.AddMember(player.Id);
+
+        script.Steps.Add(new LoginStep($"Welcome back to {Config.MudName}, {player.Name}!", null, false, false));
+        script.Steps.Add(new LoginStep(null, Config.MotdFile, false, false));
+        if (player.IsRoyalty)
+            script.Steps.Add(new LoginStep(null, Config.WizmotdFile, false, false));
+        script.Steps.Add(new LoginStep(null, null, true, player.IsRoyalty));
+        var stats = Mail.GetMailStats(player.Id);
+        if (stats.UnreadCount > 0)
+            script.Steps.Add(new LoginStep($"You have {stats.UnreadCount} unread mail message(s). Type '@mail' to read.", null, false, false));
+        script.Arrive = true;
+        script.Player = player.Id;
     }
 
-    private async Task ShowWhoAsync(MUSHConnection conn, CancellationToken ct)
+    private void PlanCreate(MUSHConnection conn, string[] parts, LoginScript script)
     {
+        string name = parts[1];
+        string password = parts[2];
+        bool exists = Database.FindPlayer(name) != null;
+        if (exists)
+        {
+            script.Steps.Add(new LoginStep("That name is already in use.", null, false, false));
+            return;
+        }
+
+        if (!SiteLocks.Can(conn.Host, SiteLockTable.Create))
+        {
+            script.Steps.Add(new LoginStep("Creation is NOT allowed", null, false, false));
+            return;
+        }
+
+        var newPlayer = Database.CreateObject(name, ObjectType.Player, Dbref.Nothing);
+        newPlayer.Owner = newPlayer.Id;
+        newPlayer.Home = Config.DefaultHome;
+        newPlayer.Pennies = Config.StartingMoney;
+        newPlayer.Warnings = WarningBits.Normal;
+        PasswordHash.Store(newPlayer, password);
+        Database.MoveObject(newPlayer.Id, Config.PlayerStart);
+        conn.PlayerId = newPlayer.Id;
+        _rooms.Place(conn, newPlayer.Location);
+        Database.SetConnected(newPlayer.Id, true);
+        Channels.GetChannel("Public")?.AddMember(newPlayer.Id);
+
+        script.Steps.Add(new LoginStep($"Character {name} created! Welcome to {Config.MudName}.", null, false, false));
+        script.Steps.Add(new LoginStep(null, Config.NewuserFile, false, false));
+        script.Steps.Add(new LoginStep(null, null, true, false));
+        script.Arrive = true;
+        script.Player = newPlayer.Id;
+    }
+
+    private List<string> BuildWhoLines()
+    {
+        var lines = new List<string>
+        {
+            "Player Name          Location   Connected",
+            "----------------------------------------------------------------"
+        };
         var active = _connections.Values.Where(c => c.PlayerId.IsValid && !c.Hidden).ToList();
-        await conn.SendLineAsync("Player Name          Location   Connected", ct);
-        await conn.SendLineAsync("----------------------------------------------------------------", ct);
         foreach (var c in active)
         {
             var p = Database.GetObject(c.PlayerId);
-            if (p != null)
-            {
-                var loc = Database.GetObject(p.Location);
-                string locName = loc != null ? loc.Name : p.Location.ToString();
-                string duration = FormatDuration(DateTimeOffset.UtcNow - c.ConnectedAt);
-                await conn.SendLineAsync($"{p.Name,-20} {locName,-10} {duration}", ct);
-            }
+            if (p == null)
+                continue;
+            var loc = Database.GetObject(p.Location);
+            string locName = loc != null ? loc.Name : p.Location.ToString();
+            string duration = FormatDuration(DateTimeOffset.UtcNow - c.ConnectedAt);
+            lines.Add($"{p.Name,-20} {locName,-10} {duration}");
         }
-        await conn.SendLineAsync($"Total online: {active.Count}", ct);
+        lines.Add($"Total online: {active.Count}");
+        return lines;
+    }
+
+    private async Task SendAnnouncedMotdAsync(MUSHConnection conn, bool royalty, CancellationToken ct)
+    {
+        foreach (string line in Motd.ConnectLines(royalty))
+            await conn.SendLineAsync(line, ct);
     }
 
     private static string FormatDuration(TimeSpan ts)
@@ -853,6 +919,38 @@ public class MUSHServer
         }
     }
 
+    private ServerHelloPayload ApplyClientHello(MUSHConnection conn, ClientHelloPayload hello)
+    {
+        conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+        conn.Capabilities.IsWebSocket = true;
+        conn.Capabilities.SupportsHtml = true;
+        if (!string.IsNullOrWhiteSpace(hello.Client))
+            conn.Capabilities.TerminalType = hello.Client;
+
+        foreach (var cap in hello.Capabilities)
+        {
+            conn.ClientCapabilities.Add(cap);
+            if (cap.Equals("gmcp", StringComparison.OrdinalIgnoreCase))
+                conn.Capabilities.SupportsGmcp = true;
+            else if (cap.Equals("rgb24", StringComparison.OrdinalIgnoreCase)
+                || cap.Equals("truecolor", StringComparison.OrdinalIgnoreCase))
+                conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.TrueColor;
+            else if (cap.Equals("xterm256", StringComparison.OrdinalIgnoreCase)
+                && conn.Capabilities.ColorMode < PennMUSH.Core.Presentation.ColorDepth.Color256)
+                conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.Color256;
+        }
+
+        string token = Convert.ToBase64String(System.Security.Cryptography.HMACSHA256.HashData(
+            _tokenSecret,
+            System.Text.Encoding.UTF8.GetBytes(conn.Id + ":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds())));
+        conn.SessionToken = token;
+        var features = new ServerFeatures(
+            MaxWindowCount: 8,
+            SupportedLanguages: new[] { "mushcode", "csharp", "moocode" },
+            AssetBaseUrl: !string.IsNullOrEmpty(Config.MudUrl) ? Config.MudUrl : "http://localhost:5000");
+        return new ServerHelloPayload("pennmush-dotnet", "1.0.0", token, features);
+    }
+
     private string WithNospoof(Dbref listenerId, Dbref speakerId, bool spoofable, string message)
     {
         if (!spoofable || !speakerId.IsValid || !listenerId.IsValid)
@@ -872,50 +970,7 @@ public class MUSHServer
                 var hello = ProtocolSerializer.DeserializePayload<ClientHelloPayload>(json);
                 if (hello != null)
                 {
-                    conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
-                    conn.Capabilities.IsWebSocket = true;
-                    conn.Capabilities.SupportsHtml = true;
-                    if (!string.IsNullOrWhiteSpace(hello.Client))
-                        conn.Capabilities.TerminalType = hello.Client;
-
-                    foreach (var cap in hello.Capabilities)
-                    {
-                        conn.ClientCapabilities.Add(cap);
-                        if (cap.Equals("gmcp", StringComparison.OrdinalIgnoreCase))
-                        {
-                            conn.Capabilities.SupportsGmcp = true;
-                        }
-                        else if (cap.Equals("rgb24", StringComparison.OrdinalIgnoreCase)
-                            || cap.Equals("truecolor", StringComparison.OrdinalIgnoreCase))
-                        {
-                            conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.TrueColor;
-                        }
-                        else if (cap.Equals("xterm256", StringComparison.OrdinalIgnoreCase)
-                            && conn.Capabilities.ColorMode < PennMUSH.Core.Presentation.ColorDepth.Color256)
-                        {
-                            conn.Capabilities.ColorMode = PennMUSH.Core.Presentation.ColorDepth.Color256;
-                        }
-                    }
-
-                    string token = Convert.ToBase64String(System.Security.Cryptography.HMACSHA256.HashData(
-                        _tokenSecret,
-                        System.Text.Encoding.UTF8.GetBytes(conn.Id + ":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-                    ));
-                    conn.SessionToken = token;
-
-                    var features = new ServerFeatures(
-                        MaxWindowCount: 8,
-                        SupportedLanguages: new[] { "mushcode", "csharp", "moocode" },
-                        AssetBaseUrl: !string.IsNullOrEmpty(Config.MudUrl) ? Config.MudUrl : "http://localhost:5000"
-                    );
-
-                    var serverHello = new ServerHelloPayload(
-                        Server: "pennmush-dotnet",
-                        Version: "1.0.0",
-                        SessionToken: token,
-                        Features: features
-                    );
-
+                    var serverHello = await _game.RunAsync(() => ApplyClientHello(conn, hello));
                     await conn.SendEnvelopeAsync("server.hello", serverHello, id, ct);
                     if (!string.IsNullOrEmpty(conn.PublicBaseUrl) && ScreenStylesheet.Load(GameDirectory) != null)
                     {
@@ -943,12 +998,10 @@ public class MUSHServer
                 var save = ProtocolSerializer.DeserializePayload<EditorSavePayload>(json);
                 if (save != null)
                 {
-                    var result = EditorSessions.SaveSession(save.SessionId, save.Code, Database, conn.PlayerId);
+                    var result = await _game.RunAsync(() => EditorSessions.SaveSession(save.SessionId, save.Code, Database, conn.PlayerId));
                     await conn.SendEnvelopeAsync("editor.result", result, id, ct);
                     if (result.Success)
-                    {
-                        Storage.Save(Database, Cron);
-                    }
+                        await _game.RunAsync(FlushPending);
                 }
                 break;
 
@@ -956,7 +1009,7 @@ public class MUSHServer
                 var close = ProtocolSerializer.DeserializePayload<EditorSavePayload>(json);
                 if (close != null)
                 {
-                    EditorSessions.CloseSession(close.SessionId);
+                    await _game.RunAsync(() => EditorSessions.CloseSession(close.SessionId));
                 }
                 break;
 
@@ -979,16 +1032,22 @@ public class MUSHServer
 
     public void SendToRoom(Dbref roomRef, string message, Dbref excludePlayerId = default, Dbref speaker = default, bool spoofable = false)
     {
-        foreach (var c in _connections.Values)
+        foreach (var c in _rooms.In(roomRef))
         {
-            if (c.PlayerId.IsValid && (!excludePlayerId.IsValid || c.PlayerId != excludePlayerId))
-            {
-                var p = Database.GetObject(c.PlayerId);
-                if (p != null && p.Location == roomRef)
-                {
-                    TrackOutbound(c.SendLineAsync(WithNospoof(c.PlayerId, speaker, spoofable, message)));
-                }
-            }
+            if (!c.PlayerId.IsValid)
+                continue;
+            if (excludePlayerId.IsValid && c.PlayerId == excludePlayerId)
+                continue;
+            TrackOutbound(c.SendLineAsync(WithNospoof(c.PlayerId, speaker, spoofable, message)));
+        }
+    }
+
+    private void Relocate(MUSHObject player, Dbref room)
+    {
+        foreach (var conn in _connections.Values)
+        {
+            if (conn.PlayerId == player.Id)
+                _rooms.Place(conn, room);
         }
     }
 
@@ -1087,27 +1146,57 @@ public class MUSHServer
 
     private async Task QueueTickLoopAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        while (!ct.IsCancellationRequested && !_game.IsStopped)
         {
             try
             {
-                Cron.ProcessDueJobs(DateTimeOffset.UtcNow, Queue);
-                var readyContexts = Queue.ProcessReady(DateTimeOffset.UtcNow, Dispatcher, Database);
-                foreach (var ctx in readyContexts)
-                {
-                    foreach (var note in ctx.TargetedNotifications)
-                    {
-                        DispatchNotification(note);
-                    }
-                }
-                _sessions.FlushDisconnects();
+                await _game.RunAsync(TickOnce);
             }
-            catch
+            catch (ObjectDisposedException)
             {
-                // Suppress background tick errors
+                break;
+            }
+            catch (Exception ex)
+            {
+                try { Logs.Append(WizardLogKind.Err, "queue tick: " + ex.Message); }
+                catch { }
             }
 
-            await Task.Delay(100, ct);
+            try
+            {
+                await Task.Delay(100, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    private void TickOnce()
+    {
+        try
+        {
+            Cron.ProcessDueJobs(DateTimeOffset.UtcNow, Queue);
+            var readyContexts = Queue.ProcessReady(DateTimeOffset.UtcNow, Dispatcher, Database, (ex, entry) =>
+            {
+                Logs.Append(WizardLogKind.Err, $"queue #{entry.Executor.Value} {entry.Command}: {ex.Message}");
+            });
+            foreach (var ctx in readyContexts)
+            {
+                foreach (var note in ctx.TargetedNotifications)
+                    DispatchNotification(note);
+            }
+            _sessions.FlushDisconnects();
+            if (AutosaveEnabled && DateTimeOffset.UtcNow >= _nextAutosave)
+            {
+                _nextAutosave = DateTimeOffset.UtcNow.AddSeconds(1);
+                FlushPending();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logs.Append(WizardLogKind.Err, "queue tick: " + ex.Message);
         }
     }
 
@@ -1117,21 +1206,49 @@ public class MUSHServer
     /// </summary>
     public void PrepareForReboot()
     {
+        _game.Run(PrepareForRebootCore);
+    }
+
+    private void PrepareForRebootCore()
+    {
         try { _cts.Cancel(); } catch { }
-        Storage.Save(Database, Cron);
-        Extensions.Dispose();
+        try { FlushPending(); } catch { }
+        try { Extensions.Dispose(); } catch { }
         _connections.Clear();
+        try { Storage.Dispose(); } catch { }
+        _game.StopAfterCurrent();
     }
 
     public void Stop()
     {
+        if (_game.IsStopped)
+        {
+            StopCore();
+            return;
+        }
+
+        try
+        {
+            _game.Run(StopCore);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private void StopCore()
+    {
+        if (Interlocked.Exchange(ref _stopped, 1) != 0)
+            return;
         try { _cts.Cancel(); } catch { }
-        Storage.Save(Database, Cron);
-        Extensions.Dispose();
+        try { FlushPending(); } catch { }
+        try { Extensions.Dispose(); } catch { }
         foreach (var conn in _connections.Values)
         {
             conn.Close();
-        ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
+            ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
         }
+        try { Storage.Dispose(); } catch { }
+        _game.StopAfterCurrent();
     }
 }

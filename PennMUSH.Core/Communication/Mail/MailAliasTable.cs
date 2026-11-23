@@ -8,12 +8,97 @@ using PennMUSH.Core.Types;
 
 public sealed class MailAlias
 {
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private int _nameFlags;
+    private int _memberFlags;
+    private Dbref _owner;
+
+    public Action? Changed { get; set; }
     public List<Dbref> Members { get; } = new();
-    public int NameFlags { get; set; }
-    public int MemberFlags { get; set; }
-    public Dbref Owner { get; set; }
+
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (_name == value)
+                return;
+            _name = value ?? string.Empty;
+            Changed?.Invoke();
+        }
+    }
+
+    public string Description
+    {
+        get => _description;
+        set
+        {
+            if (_description == value)
+                return;
+            _description = value ?? string.Empty;
+            Changed?.Invoke();
+        }
+    }
+
+    public int NameFlags
+    {
+        get => _nameFlags;
+        set
+        {
+            if (_nameFlags == value)
+                return;
+            _nameFlags = value;
+            Changed?.Invoke();
+        }
+    }
+
+    public int MemberFlags
+    {
+        get => _memberFlags;
+        set
+        {
+            if (_memberFlags == value)
+                return;
+            _memberFlags = value;
+            Changed?.Invoke();
+        }
+    }
+
+    public Dbref Owner
+    {
+        get => _owner;
+        set
+        {
+            if (_owner == value)
+                return;
+            _owner = value;
+            Changed?.Invoke();
+        }
+    }
+
+    public void AddMembers(IEnumerable<Dbref> members)
+    {
+        Members.AddRange(members);
+        Changed?.Invoke();
+    }
+
+    public void ReplaceMembers(IEnumerable<Dbref> members)
+    {
+        Members.Clear();
+        Members.AddRange(members);
+        Changed?.Invoke();
+    }
+
+    public void RemoveMemberSlot(int index)
+    {
+        int last = Members.Count - 1;
+        Members[index] = Members[last];
+        Members.RemoveAt(last);
+        Changed?.Invoke();
+    }
+
+    public void Touch() => Changed?.Invoke();
 }
 
 /// <summary>
@@ -30,20 +115,29 @@ public sealed class MailAliasTable
 
     private readonly List<MailAlias> _aliases = new();
 
+    public Action? Changed { get; set; }
+
+    private void Touch() => Changed?.Invoke();
+
     public int Count => _aliases.Count;
     public int Capacity { get; private set; }
     public IReadOnlyList<MailAlias> Aliases => _aliases;
 
     public void Clear()
     {
+        if (_aliases.Count == 0 && Capacity == 0)
+            return;
         _aliases.Clear();
         Capacity = 0;
+        Touch();
     }
 
     public void ImportAlias(MailAlias alias)
     {
+        alias.Changed = Touch;
         _aliases.Add(alias);
         NoteAdded();
+        Touch();
     }
 
     public void NoteAdded()
@@ -123,14 +217,17 @@ public sealed class MailAliasTable
         int last = _aliases.Count - 1;
         _aliases[index] = _aliases[last];
         _aliases.RemoveAt(last);
+        Touch();
     }
 
     public int IndexOf(MailAlias alias) => _aliases.IndexOf(alias);
 
     public MailAlias Add(MailAlias alias)
     {
+        alias.Changed = Touch;
         _aliases.Add(alias);
         NoteAdded();
+        Touch();
         return alias;
     }
 

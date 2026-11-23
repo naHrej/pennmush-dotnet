@@ -91,7 +91,7 @@ public class WarningsCommandTests
         string path = Path.Combine(Path.GetTempPath(), "warnings-" + Path.GetRandomFileName() + ".db");
         try
         {
-            var store = new SqliteStore($"Data Source={path}");
+            using var store = new SqliteStore($"Data Source={path}");
             store.Save(_db);
             var loaded = new ObjectDatabase();
             Assert.True(store.Load(loaded));

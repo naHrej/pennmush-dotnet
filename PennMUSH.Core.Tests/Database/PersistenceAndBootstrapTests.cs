@@ -98,7 +98,7 @@ public class PersistenceAndBootstrapTests
 
         try
         {
-            var sqlite = new SqliteStore(connStr);
+            using var sqlite = new SqliteStore(connStr);
             var originalDb = new ObjectDatabase();
             var god = WorldBootstrapper.GenerateBaseWorld(originalDb);
 

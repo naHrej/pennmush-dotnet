@@ -16,6 +16,10 @@ public class MailStore
     private readonly ConcurrentDictionary<Dbref, int> _activeFolders = new();
     private readonly object _lock = new();
 
+    public Action? Changed { get; set; }
+
+    private void Touch() => Changed?.Invoke();
+
     public MailMessage SendMail(Dbref sender, Dbref recipient, string subject, string body, bool urgent = false)
     {
         var msg = new MailMessage
@@ -36,6 +40,7 @@ public class MailStore
             box.Add(msg);
         }
 
+        Touch();
         return msg;
     }
 
@@ -47,6 +52,7 @@ public class MailStore
     public void SetCurrentFolder(Dbref player, int folder)
     {
         _activeFolders[player] = Math.Clamp(folder, 0, 15);
+        Touch();
     }
 
     public IReadOnlyList<MailMessage> ExportAllMessages()
@@ -77,6 +83,7 @@ public class MailStore
             _nextMailId = maxId + 1;
         foreach (var kv in activeFolders)
             _activeFolders[kv.Key] = Math.Clamp(kv.Value, 0, 15);
+        Touch();
     }
 
     public IReadOnlyList<MailMessage> GetMessages(Dbref player, int? folder = null, bool includeCleared = false)
@@ -108,6 +115,7 @@ public class MailStore
         var msg = GetMessageByNumber(player, number);
         if (msg == null) return false;
         msg.Flags |= MailFlags.Read;
+        Touch();
         return true;
     }
 
@@ -119,6 +127,7 @@ public class MailStore
             msg.Flags |= MailFlags.Cleared;
         else
             msg.Flags &= ~MailFlags.Cleared;
+        Touch();
         return true;
     }
 
@@ -129,6 +138,8 @@ public class MailStore
         lock (box)
         {
             int removed = box.RemoveAll(m => m.IsCleared);
+            if (removed > 0)
+                Touch();
             return removed;
         }
     }

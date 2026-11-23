@@ -65,7 +65,7 @@ public class RestartCommandHandler : ICommandHandler
             return false;
         }
 
-        foreach (var player in db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player).ToList())
+        foreach (var player in db.ByType(ObjectType.Player).ToList())
         {
             context.NotifyTarget(player.Id, Feedback.YourObjectsHaveBeenGloballyHaltedBy.Text(("value", $"{actor.Name}")));
             Halt(context, db, player);
@@ -74,7 +74,7 @@ public class RestartCommandHandler : ICommandHandler
         foreach (var obj in db.GetAllObjects())
             QueueStartup(db, obj);
 
-        foreach (var player in db.GetAllObjects().Where(obj => obj.Type == ObjectType.Player))
+        foreach (var player in db.ByType(ObjectType.Player))
             context.NotifyTarget(player.Id, Feedback.YourObjectsAreBeingGloballyRestartedBy.Text(("value", $"{actor.Name}")));
         return true;
     }

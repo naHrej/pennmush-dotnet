@@ -83,9 +83,7 @@ public class SiteLockCommandHandler : ICommandHandler
             context.Notify(Feedback.WhatSiteDidYouWantToLock);
             return false;
         }
-        var target = db.GetAllObjects().FirstOrDefault(obj =>
-            obj.Type == PennMUSH.Core.Types.ObjectType.Player
-            && obj.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var target = db.FindPlayer(name);
         if (target == null)
         {
             context.Notify(Feedback.IDontSeeThatObject);

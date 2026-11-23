@@ -4,25 +4,69 @@ using System;
 using System.IO;
 using System.Linq;
 using Microsoft.Data.Sqlite;
+using PennMUSH.Core.Communication.Channels;
+using PennMUSH.Core.Communication.Mail;
+using PennMUSH.Core.Access;
 using PennMUSH.Core.Entities;
+using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 
-public class SqliteStore
+public class SqliteStore : IDisposable
 {
-    private readonly string _connectionString;
+    private readonly SqliteConnection _connection;
+    private readonly SqliteCommand _upsertObject;
+    private readonly SqliteCommand _insertAttribute;
+    private readonly SqliteCommand _insertFlag;
+    private readonly SqliteCommand _insertPower;
+    private readonly SqliteCommand _insertParent;
+    private readonly SqliteCommand _insertZone;
+    private readonly SqliteCommand _deleteObject;
+    private bool _disposed;
 
     public SqliteStore(string connectionString = "Data Source=mush.db")
     {
-        _connectionString = connectionString;
+        _connection = new SqliteConnection(connectionString);
+        _connection.Open();
+        using (var pragma = _connection.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA journal_mode=WAL;";
+            pragma.ExecuteNonQuery();
+        }
         InitializeSchema();
+        _upsertObject = Prepare(@"
+            INSERT INTO objects (id, name, type, location, contents, exits, next, owner, home, pennies, warnings, created_at, modified_at)
+            VALUES ($id, $name, $type, $loc, $con, $ex, $next, $owner, $home, $pennies, $warnings, $created, $modified)
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                type = excluded.type,
+                location = excluded.location,
+                contents = excluded.contents,
+                exits = excluded.exits,
+                next = excluded.next,
+                owner = excluded.owner,
+                home = excluded.home,
+                pennies = excluded.pennies,
+                warnings = excluded.warnings,
+                created_at = excluded.created_at,
+                modified_at = excluded.modified_at;");
+        _insertAttribute = Prepare("INSERT INTO attributes (object_id, name, value, setter, flags) VALUES ($id, $name, $val, $setter, $flags);");
+        _insertFlag = Prepare("INSERT INTO flags (object_id, flag) VALUES ($id, $flag);");
+        _insertPower = Prepare("INSERT INTO powers (object_id, power) VALUES ($id, $power);");
+        _insertParent = Prepare("INSERT INTO parents (object_id, parent_id, priority) VALUES ($id, $pid, $prio);");
+        _insertZone = Prepare("INSERT INTO zones (object_id, zone_id) VALUES ($id, $zid);");
+        _deleteObject = Prepare("DELETE FROM objects WHERE id = $id;");
+    }
+
+    private SqliteCommand Prepare(string sql)
+    {
+        var command = _connection.CreateCommand();
+        command.CommandText = sql;
+        return command;
     }
 
     public void InitializeSchema()
     {
-        using var conn = new SqliteConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = conn.CreateCommand();
+        using var cmd = _connection.CreateCommand();
         cmd.CommandText = @"
             CREATE TABLE IF NOT EXISTS objects (
                 id INTEGER PRIMARY KEY,
@@ -86,7 +130,7 @@ public class SqliteStore
             );
         ";
         cmd.ExecuteNonQuery();
-        using var alter = conn.CreateCommand();
+        using var alter = _connection.CreateCommand();
         alter.CommandText = "ALTER TABLE objects ADD COLUMN warnings INTEGER NOT NULL DEFAULT 0";
         try
         {
@@ -100,131 +144,196 @@ public class SqliteStore
 
     public void Save(ObjectDatabase db, Scheduling.CronScheduler? cron = null)
     {
-        using var conn = new SqliteConnection(_connectionString);
-        conn.Open();
-
-        using var tx = conn.BeginTransaction();
-
-        using (var clearCmd = conn.CreateCommand())
-        {
-            clearCmd.Transaction = tx;
-            clearCmd.CommandText = "DELETE FROM attributes; DELETE FROM flags; DELETE FROM powers; DELETE FROM parents; DELETE FROM zones; DELETE FROM objects; DELETE FROM cron_jobs;";
-            clearCmd.ExecuteNonQuery();
-        }
-
-        foreach (var obj in db.GetAllObjects())
-        {
-            using (var objCmd = conn.CreateCommand())
-            {
-                objCmd.Transaction = tx;
-                objCmd.CommandText = @"
-                    INSERT INTO objects (id, name, type, location, contents, exits, next, owner, home, pennies, warnings, created_at, modified_at)
-                    VALUES ($id, $name, $type, $loc, $con, $ex, $next, $owner, $home, $pennies, $warnings, $created, $modified);
-                ";
-                objCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                objCmd.Parameters.AddWithValue("$name", obj.Name);
-                objCmd.Parameters.AddWithValue("$type", (int)obj.Type);
-                objCmd.Parameters.AddWithValue("$loc", obj.Location.Value);
-                objCmd.Parameters.AddWithValue("$con", obj.Contents.Value);
-                objCmd.Parameters.AddWithValue("$ex", obj.Exits.Value);
-                objCmd.Parameters.AddWithValue("$next", obj.Next.Value);
-                objCmd.Parameters.AddWithValue("$owner", obj.Owner.Value);
-                objCmd.Parameters.AddWithValue("$home", obj.Home.Value);
-                objCmd.Parameters.AddWithValue("$pennies", obj.Pennies);
-                objCmd.Parameters.AddWithValue("$warnings", (long)obj.Warnings);
-                objCmd.Parameters.AddWithValue("$created", obj.CreationTime.ToUnixTimeSeconds());
-                objCmd.Parameters.AddWithValue("$modified", obj.ModificationTime.ToUnixTimeSeconds());
-                objCmd.ExecuteNonQuery();
-            }
-
-            foreach (var attr in obj.Attributes)
-            {
-                using var attrCmd = conn.CreateCommand();
-                attrCmd.Transaction = tx;
-                attrCmd.CommandText = "INSERT INTO attributes (object_id, name, value, setter, flags) VALUES ($id, $name, $val, $setter, $flags);";
-                attrCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                attrCmd.Parameters.AddWithValue("$name", attr.Name);
-                attrCmd.Parameters.AddWithValue("$val", attr.Value);
-                attrCmd.Parameters.AddWithValue("$setter", attr.Creator.Value);
-                attrCmd.Parameters.AddWithValue("$flags", (int)attr.Flags);
-                attrCmd.ExecuteNonQuery();
-            }
-
-            foreach (var f in obj.Flags)
-            {
-                using var fCmd = conn.CreateCommand();
-                fCmd.Transaction = tx;
-                fCmd.CommandText = "INSERT INTO flags (object_id, flag) VALUES ($id, $flag);";
-                fCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                fCmd.Parameters.AddWithValue("$flag", f);
-                fCmd.ExecuteNonQuery();
-            }
-
-            foreach (var p in obj.Powers)
-            {
-                using var pCmd = conn.CreateCommand();
-                pCmd.Transaction = tx;
-                pCmd.CommandText = "INSERT INTO powers (object_id, power) VALUES ($id, $power);";
-                pCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                pCmd.Parameters.AddWithValue("$power", p);
-                pCmd.ExecuteNonQuery();
-            }
-
-            for (int pIdx = 0; pIdx < obj.Parents.Count; pIdx++)
-            {
-                using var parentCmd = conn.CreateCommand();
-                parentCmd.Transaction = tx;
-                parentCmd.CommandText = "INSERT INTO parents (object_id, parent_id, priority) VALUES ($id, $pid, $prio);";
-                parentCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                parentCmd.Parameters.AddWithValue("$pid", obj.Parents[pIdx].Value);
-                parentCmd.Parameters.AddWithValue("$prio", pIdx);
-                parentCmd.ExecuteNonQuery();
-            }
-
-            foreach (var z in obj.Zones)
-            {
-                using var zCmd = conn.CreateCommand();
-                zCmd.Transaction = tx;
-                zCmd.CommandText = "INSERT INTO zones (object_id, zone_id) VALUES ($id, $zid);";
-                zCmd.Parameters.AddWithValue("$id", obj.Id.Value);
-                zCmd.Parameters.AddWithValue("$zid", z.Value);
-                zCmd.ExecuteNonQuery();
-            }
-        }
-
         if (cron != null)
+            db.Changes.MarkCron();
+        Flush(db, cron, null, null, null, null, null, null);
+    }
+
+    public void Flush(
+        ObjectDatabase db,
+        Scheduling.CronScheduler? cron,
+        RuntimeStateStore? runtime,
+        ChannelRegistry? channels,
+        MailStore? mail,
+        MailAliasTable? mailAliases,
+        FunctionRegistry? functions,
+        SiteLockTable? siteLocks)
+    {
+        DirtyBatch batch = db.Changes.Take();
+        if (!batch.Any)
+            return;
+
+        using var tx = _connection.BeginTransaction();
+        try
         {
-            foreach (var job in cron.GetAllJobs())
-            {
-                using var cCmd = conn.CreateCommand();
-                cCmd.Transaction = tx;
-                cCmd.CommandText = @"
-                    INSERT INTO cron_jobs (id, expression, creator, target, command, last_run, next_run, is_paused)
-                    VALUES ($jid, $expr, $creator, $target, $cmd, $last, $next, $paused);
-                ";
-                cCmd.Parameters.AddWithValue("$jid", job.Id);
-                cCmd.Parameters.AddWithValue("$expr", job.Expression);
-                cCmd.Parameters.AddWithValue("$creator", job.Creator.Value);
-                cCmd.Parameters.AddWithValue("$target", job.Target.Value);
-                cCmd.Parameters.AddWithValue("$cmd", job.Command);
-                cCmd.Parameters.AddWithValue("$last", job.LastRun.HasValue ? job.LastRun.Value.ToUnixTimeSeconds() : (object)DBNull.Value);
-                cCmd.Parameters.AddWithValue("$next", job.NextRun.ToUnixTimeSeconds());
-                cCmd.Parameters.AddWithValue("$paused", job.IsPaused ? 1 : 0);
-                cCmd.ExecuteNonQuery();
-            }
+            foreach (int id in batch.Objects)
+                WriteObject(tx, db.GetObject(new Dbref(id)));
+            foreach (int id in batch.Removed)
+                DeleteObject(tx, id);
+            if (batch.Cron && cron != null)
+                WriteCron(tx, cron);
+            if (batch.Runtime && runtime != null)
+                runtime.Write(_connection, tx, channels, mail, mailAliases, functions, siteLocks);
+            tx.Commit();
+        }
+        catch
+        {
+            try { tx.Rollback(); } catch (SqliteException) { }
+            db.Changes.Restore(batch);
+            throw;
+        }
+    }
+
+    private void WriteObject(SqliteTransaction tx, MUSHObject? obj)
+    {
+        if (obj == null)
+            return;
+
+        DeleteChildren(tx, obj.Id.Value);
+
+        Bind(_upsertObject, tx,
+            ("$id", obj.Id.Value),
+            ("$name", obj.Name),
+            ("$type", (int)obj.Type),
+            ("$loc", obj.Location.Value),
+            ("$con", obj.Contents.Value),
+            ("$ex", obj.Exits.Value),
+            ("$next", obj.Next.Value),
+            ("$owner", obj.Owner.Value),
+            ("$home", obj.Home.Value),
+            ("$pennies", obj.Pennies),
+            ("$warnings", (long)obj.Warnings),
+            ("$created", obj.CreationTime.ToUnixTimeSeconds()),
+            ("$modified", obj.ModificationTime.ToUnixTimeSeconds()));
+        _upsertObject.ExecuteNonQuery();
+
+        foreach (var attr in obj.Attributes)
+        {
+            Bind(_insertAttribute, tx,
+                ("$id", obj.Id.Value),
+                ("$name", attr.Name),
+                ("$val", attr.Value),
+                ("$setter", attr.Creator.Value),
+                ("$flags", (int)attr.Flags));
+            _insertAttribute.ExecuteNonQuery();
         }
 
-        tx.Commit();
+        foreach (var flag in obj.Flags)
+        {
+            Bind(_insertFlag, tx, ("$id", obj.Id.Value), ("$flag", flag));
+            _insertFlag.ExecuteNonQuery();
+        }
+
+        foreach (var power in obj.Powers)
+        {
+            Bind(_insertPower, tx, ("$id", obj.Id.Value), ("$power", power));
+            _insertPower.ExecuteNonQuery();
+        }
+
+        for (int index = 0; index < obj.Parents.Count; index++)
+        {
+            Bind(_insertParent, tx,
+                ("$id", obj.Id.Value),
+                ("$pid", obj.Parents[index].Value),
+                ("$prio", index));
+            _insertParent.ExecuteNonQuery();
+        }
+
+        foreach (var zone in obj.Zones)
+        {
+            Bind(_insertZone, tx, ("$id", obj.Id.Value), ("$zid", zone.Value));
+            _insertZone.ExecuteNonQuery();
+        }
+    }
+
+    private void DeleteChildren(SqliteTransaction tx, int id)
+    {
+        foreach (string table in new[] { "attributes", "flags", "powers", "parents", "zones" })
+        {
+            using var command = _connection.CreateCommand();
+            command.Transaction = tx;
+            command.CommandText = $"DELETE FROM {table} WHERE object_id = $id;";
+            command.Parameters.AddWithValue("$id", id);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private void DeleteObject(SqliteTransaction tx, int id)
+    {
+        DeleteChildren(tx, id);
+        Bind(_deleteObject, tx, ("$id", id));
+        _deleteObject.ExecuteNonQuery();
+    }
+
+    private void WriteCron(SqliteTransaction tx, Scheduling.CronScheduler cron)
+    {
+        using var clear = _connection.CreateCommand();
+        clear.Transaction = tx;
+        clear.CommandText = "DELETE FROM cron_jobs;";
+        clear.ExecuteNonQuery();
+
+        foreach (var job in cron.GetAllJobs())
+        {
+            using var command = _connection.CreateCommand();
+            command.Transaction = tx;
+            command.CommandText = @"
+                INSERT INTO cron_jobs (id, expression, creator, target, command, last_run, next_run, is_paused)
+                VALUES ($jid, $expr, $creator, $target, $cmd, $last, $next, $paused);";
+            command.Parameters.AddWithValue("$jid", job.Id);
+            command.Parameters.AddWithValue("$expr", job.Expression);
+            command.Parameters.AddWithValue("$creator", job.Creator.Value);
+            command.Parameters.AddWithValue("$target", job.Target.Value);
+            command.Parameters.AddWithValue("$cmd", job.Command);
+            command.Parameters.AddWithValue("$last", job.LastRun.HasValue ? job.LastRun.Value.ToUnixTimeSeconds() : DBNull.Value);
+            command.Parameters.AddWithValue("$next", job.NextRun.ToUnixTimeSeconds());
+            command.Parameters.AddWithValue("$paused", job.IsPaused ? 1 : 0);
+            command.ExecuteNonQuery();
+        }
+    }
+
+    private static void Bind(SqliteCommand command, SqliteTransaction tx, params (string Name, object Value)[] parameters)
+    {
+        command.Transaction = tx;
+        command.Parameters.Clear();
+        foreach (var (name, value) in parameters)
+            command.Parameters.AddWithValue(name, value);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _upsertObject.Dispose();
+        _insertAttribute.Dispose();
+        _insertFlag.Dispose();
+        _insertPower.Dispose();
+        _insertParent.Dispose();
+        _insertZone.Dispose();
+        _deleteObject.Dispose();
+        _connection.Dispose();
     }
 
     public bool Load(ObjectDatabase db, Scheduling.CronScheduler? cron = null)
     {
         db.Clear();
+        MUSHObject.Quiet++;
+        db.Changes.Suspend();
+        try
+        {
+            return LoadInto(db, cron);
+        }
+        finally
+        {
+            db.Changes.Clear();
+            db.Changes.Resume();
+            MUSHObject.Quiet--;
+        }
+    }
 
-        using var conn = new SqliteConnection(_connectionString);
-        conn.Open();
-
-        using var cmd = conn.CreateCommand();
+    private bool LoadInto(ObjectDatabase db, Scheduling.CronScheduler? cron)
+    {
+        using var cmd = _connection.CreateCommand();
         cmd.CommandText = "SELECT id, name, type, location, contents, exits, next, owner, home, pennies, created_at, modified_at, warnings FROM objects ORDER BY id;";
         using var reader = cmd.ExecuteReader();
 
@@ -265,7 +374,7 @@ public class SqliteStore
         if (!hasRows) return false;
 
         // Load attributes
-        using (var aCmd = conn.CreateCommand())
+        using (var aCmd = _connection.CreateCommand())
         {
             aCmd.CommandText = "SELECT object_id, name, value, setter, flags FROM attributes;";
             using var aReader = aCmd.ExecuteReader();
@@ -285,7 +394,7 @@ public class SqliteStore
         }
 
         // Load flags
-        using (var fCmd = conn.CreateCommand())
+        using (var fCmd = _connection.CreateCommand())
         {
             fCmd.CommandText = "SELECT object_id, flag FROM flags;";
             using var fReader = fCmd.ExecuteReader();
@@ -297,7 +406,7 @@ public class SqliteStore
         }
 
         // Load powers
-        using (var pCmd = conn.CreateCommand())
+        using (var pCmd = _connection.CreateCommand())
         {
             pCmd.CommandText = "SELECT object_id, power FROM powers;";
             using var pReader = pCmd.ExecuteReader();
@@ -309,7 +418,7 @@ public class SqliteStore
         }
 
         // Load parents
-        using (var parentCmd = conn.CreateCommand())
+        using (var parentCmd = _connection.CreateCommand())
         {
             parentCmd.CommandText = "SELECT object_id, parent_id FROM parents ORDER BY object_id, priority;";
             using var parentReader = parentCmd.ExecuteReader();
@@ -321,7 +430,7 @@ public class SqliteStore
         }
 
         // Load zones
-        using (var zCmd = conn.CreateCommand())
+        using (var zCmd = _connection.CreateCommand())
         {
             zCmd.CommandText = "SELECT object_id, zone_id FROM zones;";
             using var zReader = zCmd.ExecuteReader();
@@ -335,7 +444,7 @@ public class SqliteStore
         // Load cron jobs
         if (cron != null)
         {
-            using var cronCmd = conn.CreateCommand();
+            using var cronCmd = _connection.CreateCommand();
             cronCmd.CommandText = "SELECT id, expression, creator, target, command, last_run, next_run, is_paused FROM cron_jobs;";
             using var cronReader = cronCmd.ExecuteReader();
             while (cronReader.Read())
@@ -361,6 +470,7 @@ public class SqliteStore
             }
         }
 
+        db.RebuildIndexes();
         return true;
     }
 }

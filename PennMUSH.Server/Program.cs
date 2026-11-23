@@ -40,14 +40,16 @@ app.UseStaticFiles();
 // Health Check Endpoint
 app.MapGet("/health", (MUSHServerHost host) =>
 {
-    return Results.Ok(new
+    var server = host.Server;
+    var body = server.Run(() => new
     {
         status = "Healthy",
         version = $"PennMUSH .NET {ServerVersion.Text}",
-        objects = host.Database.Count,
+        objects = server.Database.Count,
         connectedSessions = host.Connections.Count,
-        channels = host.Channels.GetAllChannels().Select(c => c.Name)
+        channels = server.Channels.GetAllChannels().Select(c => c.Name).ToArray()
     });
+    return Results.Ok(body);
 });
 
 // Admin Hot-Reboot Endpoint
@@ -149,14 +151,14 @@ app.MapFallback(async (HttpContext context, MUSHServerHost host) =>
     foreach (var header in context.Request.Headers)
         headers[header.Key] = header.Value.ToString();
     var server = host.Server;
-    var exchange = server.Http.Handle(
+    var exchange = server.Run(() => server.Http.Handle(
         server.Dispatcher,
         server.Evaluator,
         server.Database,
         context.Request.Method,
         context.Request.Path + context.Request.QueryString,
         body,
-        headers);
+        headers));
     if (!exchange.Handled)
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;

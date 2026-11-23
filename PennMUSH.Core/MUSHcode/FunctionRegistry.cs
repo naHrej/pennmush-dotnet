@@ -120,9 +120,21 @@ public class FunctionRegistry
     public IReadOnlyList<SoftFunction> ListSoft()
         => _soft.Values.OrderBy(function => function.Thing.Value).ThenBy(function => function.Name, StringComparer.Ordinal).ToList();
 
-    public void SaveSoft(SoftFunction function) => _soft[function.Name] = function;
+    public Action? Changed { get; set; }
 
-    public bool RemoveSoft(string name) => _soft.Remove(name);
+    public void SaveSoft(SoftFunction function)
+    {
+        _soft[function.Name] = function;
+        Changed?.Invoke();
+    }
+
+    public bool RemoveSoft(string name)
+    {
+        if (!_soft.Remove(name))
+            return false;
+        Changed?.Invoke();
+        return true;
+    }
 
     public bool TryAlias(string name, out string canonical)
         => _softAliases.TryGetValue(name, out canonical!);

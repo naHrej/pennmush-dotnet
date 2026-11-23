@@ -159,7 +159,7 @@ public class CronSchedulerTests
 
         try
         {
-            var sqlite = new SqliteStore(connStr);
+            using var sqlite = new SqliteStore(connStr);
             var originalDb = new ObjectDatabase();
             WorldBootstrapper.GenerateBaseWorld(originalDb);
 
