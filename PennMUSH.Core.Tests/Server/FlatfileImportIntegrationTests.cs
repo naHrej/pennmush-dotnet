@@ -46,9 +46,15 @@ public class FlatfileImportIntegrationTests
             await server.HandleInputAsync(conn, "look");
             await server.HandleInputAsync(conn, "think [name(#8)]|[get(#8/NOTE)]");
             await server.HandleInputAsync(conn, "think [lflags(#1)]");
+            await server.HandleInputAsync(conn, "n");
+            await server.HandleInputAsync(conn, "s");
+            server.Channels.GetChannel("Public")?.AddMember(new Dbref(1));
+            await server.HandleInputAsync(conn, "+pub Testing partial channel");
 
             string combined = string.Join("\n", outputs);
             Assert.Contains("Room Zero", combined);
+            Assert.Contains("Hall", combined);
+            Assert.Contains("[Public] One: Testing partial channel", combined);
             Assert.Contains("Widget|He said \"hi\" \\ back", combined);
             Assert.Contains("WIZARD", combined);
             server.Stop();
@@ -113,6 +119,10 @@ public class FlatfileImportIntegrationTests
 
             var reloaded = new MUSHServer(dbPath);
             Assert.Equal(214, reloaded.Database.Count);
+            var reloadedLoginConn = new MUSHConnection(_ => Task.CompletedTask);
+            reloaded.RegisterConnection(reloadedLoginConn);
+            await reloaded.HandleInputAsync(reloadedLoginConn, "connect One testpass123");
+            Assert.Equal(new Dbref(1), reloadedLoginConn.PlayerId);
             reloaded.Stop();
         }
         finally

@@ -43,7 +43,7 @@ public class ChatCommandHandler : ICommandHandler
             return false;
         }
 
-        var ch = _channels.GetChannel(chName);
+        var ch = _channels.MatchChannel(chName, out _);
         if (ch == null || !ch.Visible(executor, db))
         {
             context.Notify(Feedback.ChatNoSuchChannel);

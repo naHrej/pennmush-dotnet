@@ -28,7 +28,7 @@ public class ClockCommandHandler : ICommandHandler
         }
 
         string name = context.LeftArg.Trim();
-        var channel = _channels.GetChannel(name);
+        var channel = _channels.MatchChannel(name, out _);
         if (channel == null)
         {
             context.Notify(Feedback.ChatIDontRecognizeThatChannel);
