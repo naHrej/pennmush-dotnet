@@ -68,11 +68,17 @@ public class CommandDispatcher
 
     internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args, IReadOnlyDictionary<string, string>? registers = null)
     {
-        string bound = BindQueuedCommand(executor, enactor, input, args, registers, db);
+        var evalCtx = BindQueuedCommand(executor, enactor, input, args, registers, db, out string bound);
         if (string.IsNullOrWhiteSpace(bound))
             return new CommandContext { Executor = executor, Enactor = enactor };
         var context = Parse(executor, bound, enactor);
-        if (registers != null)
+        context.PositionalArgs = args;
+        if (evalCtx != null)
+        {
+            foreach (var register in evalCtx.Registers)
+                context.Registers[register.Key] = register.Value;
+        }
+        else if (registers != null)
         {
             foreach (var register in registers)
                 context.Registers[register.Key] = register.Value;
@@ -81,10 +87,13 @@ public class CommandDispatcher
         return Run(context, db, true);
     }
 
-    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, IReadOnlyDictionary<string, string>? registers, ObjectDatabase db)
+    private EvaluationContext? BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, IReadOnlyDictionary<string, string>? registers, ObjectDatabase db, out string bound)
     {
         if (_evaluator == null)
-            return input;
+        {
+            bound = input;
+            return null;
+        }
         var ctx = new EvaluationContext(
             executor,
             enactor,
@@ -96,7 +105,44 @@ public class CommandDispatcher
                 ctx.SetRegister(register.Key, register.Value);
         }
 
-        return _evaluator.Evaluate(input, ctx);
+        if (IsDeferredRightArgCommand(input, out int eqIndex))
+        {
+            string head = _evaluator.Evaluate(input.Substring(0, eqIndex), ctx);
+            bound = head + input.Substring(eqIndex);
+        }
+        else
+        {
+            bound = _evaluator.Evaluate(input, ctx);
+        }
+        return ctx;
+    }
+
+    private static bool IsDeferredRightArgCommand(string input, out int eqIndex)
+    {
+        eqIndex = -1;
+        string trimmed = input.TrimStart();
+        int space = trimmed.IndexOf(' ');
+        if (space <= 0) return false;
+        string cmd = trimmed.Substring(0, space);
+        int slash = cmd.IndexOf('/');
+        if (slash > 0) cmd = cmd.Substring(0, slash);
+
+        bool isDeferred = cmd.Equals("@switch", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@sw", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@select", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@ifelse", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@skip", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@dolist", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@wait", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@force", StringComparison.OrdinalIgnoreCase);
+
+        if (!isDeferred) return false;
+
+        int leading = input.Length - trimmed.Length;
+        int relEq = trimmed.IndexOf('=');
+        if (relEq <= space) return false;
+        eqIndex = leading + relEq;
+        return true;
     }
 
     private CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, Dbref? enactor, bool hooks)

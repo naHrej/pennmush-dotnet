@@ -33,8 +33,12 @@ public class SwitchCommandHandler : ICommandHandler
         string expr = context.LeftArg;
         if (_evaluator != null)
         {
-            var evalCtx = new EvaluationContext(context.Executor, context.Enactor);
+            var evalCtx = new EvaluationContext(context.Executor, context.Enactor, args: context.PositionalArgs);
+            foreach (var register in context.Registers)
+                evalCtx.SetRegister(register.Key, register.Value);
             expr = _evaluator.Evaluate(expr, evalCtx);
+            foreach (var register in evalCtx.Registers)
+                context.Registers[register.Key] = register.Value;
         }
 
         // Split right arg by commas (respecting braces if needed)
@@ -71,9 +75,36 @@ public class SwitchCommandHandler : ICommandHandler
 
     private void ExecuteAction(Dbref executor, string action, ObjectDatabase db, CommandContext parentContext)
     {
-        var res = _dispatcher.Dispatch(executor, action, db);
-        foreach (var note in res.TargetedNotifications) parentContext.TargetedNotifications.Add(note);
-        foreach (var note in res.Notifications) parentContext.Notifications.Add(note);
+        string body = StripOuterBraces(action.Trim());
+        foreach (string piece in IncludeCommandHandler.SplitCommands(body))
+        {
+            var res = _dispatcher.DispatchQueued(executor, piece, db, parentContext.Enactor, parentContext.PositionalArgs, parentContext.Registers);
+            foreach (var register in res.Registers)
+                parentContext.Registers[register.Key] = register.Value;
+            foreach (var note in res.TargetedNotifications) parentContext.TargetedNotifications.Add(note);
+            foreach (var note in res.Notifications) parentContext.Notifications.Add(note);
+        }
+    }
+
+    private static string StripOuterBraces(string text)
+    {
+        if (text.Length < 2 || text[0] != '{' || text[^1] != '}')
+            return text;
+
+        int depth = 0;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (c == '\\' && i + 1 < text.Length) { i++; continue; }
+            if (c == '{') depth++;
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0 && i < text.Length - 1)
+                    return text;
+            }
+        }
+        return depth == 0 ? text[1..^1].Trim() : text;
     }
 
     private static List<string> SplitArgs(string input)
@@ -85,8 +116,9 @@ public class SwitchCommandHandler : ICommandHandler
         for (int i = 0; i < input.Length; i++)
         {
             char c = input[i];
+            if (c == '\\' && i + 1 < input.Length) { i++; continue; }
             if (c is '[' or '{' or '(') depth++;
-            else if (c is ']' or '}' or ')') depth--;
+            else if (c is ']' or '}' or ')') depth = Math.Max(0, depth - 1);
             else if (c == ',' && depth == 0)
             {
                 list.Add(input.Substring(start, i - start));
@@ -127,24 +159,32 @@ public class DolistCommandHandler : ICommandHandler
         string rawList = context.LeftArg;
         if (_evaluator != null)
         {
-            var evalCtx = new EvaluationContext(context.Executor, context.Enactor);
+            var evalCtx = new EvaluationContext(context.Executor, context.Enactor, args: context.PositionalArgs);
+            foreach (var register in context.Registers)
+                evalCtx.SetRegister(register.Key, register.Value);
             rawList = _evaluator.Evaluate(rawList, evalCtx);
+            foreach (var register in evalCtx.Registers)
+                context.Registers[register.Key] = register.Value;
         }
 
         var items = rawList.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        string template = context.RightArg;
+        string template = IncludeCommandHandler.Unwrap(context.RightArg);
 
         for (int i = 0; i < items.Length; i++)
         {
             string item = items[i];
             string substituted = template
                 .Replace("##", item)
-                .Replace("#@", (i + 1).ToString())
-                .Replace("%0", item);
+                .Replace("#@", (i + 1).ToString());
 
-            var res = _dispatcher.Dispatch(context.Executor, substituted, db);
-            foreach (var note in res.TargetedNotifications) context.TargetedNotifications.Add(note);
-            foreach (var note in res.Notifications) context.Notifications.Add(note);
+            foreach (string piece in IncludeCommandHandler.SplitCommands(substituted))
+            {
+                var res = _dispatcher.DispatchQueued(context.Executor, piece, db, context.Enactor, context.PositionalArgs, context.Registers);
+                foreach (var register in res.Registers)
+                    context.Registers[register.Key] = register.Value;
+                foreach (var note in res.TargetedNotifications) context.TargetedNotifications.Add(note);
+                foreach (var note in res.Notifications) context.Notifications.Add(note);
+            }
         }
 
         return true;
@@ -252,7 +292,7 @@ public class ForceCommandHandler : ICommandHandler
         }
 
         var execObj = db.GetObject(context.Executor);
-        var target = db.FindObject(context.LeftArg.Trim());
+        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatTarget);
@@ -265,7 +305,7 @@ public class ForceCommandHandler : ICommandHandler
             return false;
         }
 
-        var res = _dispatcher.Dispatch(target.Id, context.RightArg.Trim(), db);
+        var res = _dispatcher.DispatchQueued(target.Id, context.RightArg.Trim(), db, context.Executor, context.PositionalArgs, context.Registers);
         foreach (var note in res.TargetedNotifications) context.TargetedNotifications.Add(note);
         foreach (var note in res.Notifications) context.Notifications.Add(note);
         return true;

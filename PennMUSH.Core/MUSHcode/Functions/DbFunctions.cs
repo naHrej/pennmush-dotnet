@@ -47,7 +47,7 @@ public static class DbFunctions
         registry.Register("ZONE", (ctx, args) => ZoneFunc(registry, ctx, args));
         registry.Register("LZONE", (ctx, args) => LzoneFunc(registry, ctx, args));
         registry.Register("INZONE", (ctx, args) => InzoneFunc(registry, ctx, args));
-        registry.Register("NUM", (ctx, args) => NumFunc(ctx, args));
+        registry.Register("NUM", (ctx, args) => NumFunc(registry, ctx, args));
         registry.Register("RNUM", (ctx, args) => RnumFunc(ctx, args));
         registry.Register("FULLNAME", (ctx, args) => FullNameFunc(registry, ctx, args));
         registry.Register("RLOC", (ctx, args) => RlocFunc(registry, ctx, args));
@@ -554,10 +554,15 @@ public static class DbFunctions
         return obj.InZone(zoneRef) ? "1" : "0";
     }
 
-    public static string NumFunc(EvaluationContext ctx, string[] args)
+    public static string NumFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0) return MushError.NoMatch.Text();
         var dbref = ParseDbref(args[0], ctx);
+        if (!dbref.IsValid && reg.Database != null)
+        {
+            var matched = reg.Database.MatchObject(ctx.Executor, args[0].Trim());
+            if (matched != null) dbref = matched.Id;
+        }
         return dbref.IsValid ? dbref.ToString() : MushError.NoMatch.Text();
     }
 
