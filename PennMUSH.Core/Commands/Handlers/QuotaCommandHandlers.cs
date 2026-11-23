@@ -199,10 +199,8 @@ public static class QuotaRules
         }
 
         bool quiet = context.Switches.Contains("quiet");
-        foreach (var who in db.GetAllObjects())
+        foreach (var who in db.ByType(ObjectType.Player))
         {
-            if (who.Type != ObjectType.Player)
-                continue;
             int owned = Owned(db, who.Id);
             if (IsUnlimited(who, db) || !useQuota)
             {
@@ -291,11 +289,9 @@ public static class QuotaRules
     public static int Owned(ObjectDatabase db, Dbref who)
     {
         int owned = 0;
-        foreach (var obj in db.GetAllObjects())
+        foreach (var obj in db.ByOwner(who))
         {
-            if (obj.Type == ObjectType.Garbage || obj.Id == who)
-                continue;
-            if (obj.Owner == who)
+            if (obj.Id != who)
                 owned++;
         }
         return owned;

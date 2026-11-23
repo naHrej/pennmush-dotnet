@@ -27,9 +27,17 @@ public sealed class SiteLockTable
 
     private readonly List<SiteRule> _rules = new();
 
+    public Action? Changed { get; set; }
+
     public IReadOnlyList<SiteRule> Rules => _rules;
 
-    public void ClearRules() => _rules.Clear();
+    public void ClearRules()
+    {
+        if (_rules.Count == 0)
+            return;
+        _rules.Clear();
+        Changed?.Invoke();
+    }
 
     public bool Can(string host, uint flag)
     {
@@ -58,9 +66,12 @@ public sealed class SiteLockTable
         {
             _rules.Add(new SiteRule { Host = "@sitelock", Can = MarkerFlag, Marker = true });
             _rules.Add(rule);
-            return;
         }
-        _rules.Insert(marker + 1, rule);
+        else
+        {
+            _rules.Insert(marker + 1, rule);
+        }
+        Changed?.Invoke();
     }
 
     public int Remove(string pattern)
@@ -78,6 +89,8 @@ public sealed class SiteLockTable
                 _rules.RemoveAt(index);
                 removed = 1;
             }
+            if (removed > 0)
+                Changed?.Invoke();
             return removed;
         }
 
@@ -89,6 +102,8 @@ public sealed class SiteLockTable
                 removed++;
             }
         }
+        if (removed > 0)
+            Changed?.Invoke();
         return removed;
     }
 

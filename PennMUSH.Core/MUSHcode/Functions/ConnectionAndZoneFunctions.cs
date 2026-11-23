@@ -122,7 +122,7 @@ public static class ConnectionAndZoneFunctions
             ?? reg.Database.MatchObject(ctx.Executor, args[0]);
         if (zone == null) return MushError.NoMatch.Text();
 
-        foreach (var room in reg.Database.GetAllObjects().Where(o => o.Type == ObjectType.Room && o.InZone(zone.Id)))
+        foreach (var room in reg.Database.ByZone(zone.Id).Where(o => o.Type == ObjectType.Room))
         {
             reg.NotificationDispatcher.Invoke(new Notification(
                 NotificationScope.Room,
@@ -157,8 +157,8 @@ public static class ConnectionAndZoneFunctions
 
         var now = DateTimeOffset.UtcNow;
         int desc = 1;
-        return reg.Database.GetAllObjects()
-            .Where(o => o.Type == ObjectType.Player && reg.Database.IsConnected(o.Id))
+        return reg.Database.ByType(ObjectType.Player)
+            .Where(o => reg.Database.IsConnected(o.Id))
             .OrderBy(o => o.Id.Value)
             .Select(o => new ConnectionSnapshot(o.Id, desc++, "localhost", "127.0.0.1", "ANSI", now, now, o.HasFlag("DARK")))
             .ToList();

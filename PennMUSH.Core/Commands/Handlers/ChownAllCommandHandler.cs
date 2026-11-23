@@ -55,9 +55,9 @@ public class ChownAllCommandHandler : ICommandHandler
         var types = SelectedTypes(context.Switches);
         bool preserve = context.Switches.Contains("preserve");
         int count = 0;
-        foreach (var obj in db.GetAllObjects())
+        foreach (var obj in db.ByOwner(victim.Id).ToList())
         {
-            if (obj.Owner != victim.Id || !types.Contains(obj.Type))
+            if (!types.Contains(obj.Type))
                 continue;
             Transfer(context, actor, obj, recipient, preserve);
             count++;

@@ -32,19 +32,22 @@ internal static class ListenerSearch
     public static List<string> MatchingAttributes(MUSHObject obj, string input)
     {
         var names = new List<string>();
-        foreach (var attr in obj.Attributes)
+        foreach (var listener in obj.Listeners)
         {
-            if (TryParse(attr.Value, out string pattern, out _) && PatternMatcher.Match(pattern, input, out _))
-                names.Add(attr.Name);
+            if (listener.Command && PatternMatcher.Match(listener.Pattern, input, out _))
+                names.Add(listener.AttributeName);
         }
         return names;
     }
 
     public static bool TryFirst(MUSHObject obj, string input, out string action, out string[] captures)
     {
-        foreach (var attr in obj.Attributes)
+        foreach (var listener in obj.Listeners)
         {
-            if (TryParse(attr.Value, out string pattern, out action) && PatternMatcher.Match(pattern, input, out captures))
+            if (!listener.Command)
+                continue;
+            action = listener.Action;
+            if (PatternMatcher.Match(listener.Pattern, input, out captures))
                 return true;
         }
         action = string.Empty;
@@ -305,7 +308,7 @@ public class SweepCommandHandler : ICommandHandler
             string online = db.IsConnected(obj.Id) ? " (connected)" : string.Empty;
             context.Notify(Feedback.ValueValueSpeechValue, ("value", $"{obj.Name}"), ("value2", $"{where}"), ("value3", $"{online}"));
         }
-        if (obj.Attributes.Any(attr => ListenerSearch.IsCommand(attr.Value)))
+        if (obj.Listeners.Any(listener => listener.Command))
             context.Notify(thisRoom ? Feedback.CommandsEntryThisRoom : Feedback.CommandsEntry, ("value", obj.Name));
         if (obj.HasFlag("AUDIBLE"))
             context.Notify(thisRoom ? Feedback.BroadcastingThisRoom : Feedback.Broadcasting, ("value", obj.Name));
@@ -709,13 +712,9 @@ public class SearchCommandHandler : ICommandHandler
         var listen = obj.GetAttribute("LISTEN");
         if (listen != null && PatternMatcher.Match(listen.Value, text, out _))
             return true;
-        foreach (var attr in obj.Attributes)
+        foreach (var listener in obj.Listeners)
         {
-            if (!attr.Value.StartsWith('^'))
-                continue;
-            int colon = attr.Value.IndexOf(':');
-            string pattern = (colon > 1 ? attr.Value[1..colon] : attr.Value[1..]).Trim();
-            if (pattern.Length > 0 && PatternMatcher.Match(pattern, text, out _))
+            if (!listener.Command && PatternMatcher.Match(listener.Pattern, text, out _))
                 return true;
         }
         return false;

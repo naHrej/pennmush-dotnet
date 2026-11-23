@@ -106,7 +106,19 @@ CREATE TABLE IF NOT EXISTS sitelocks (
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
         using var tx = conn.BeginTransaction();
+        Write(conn, tx, channels, mail, mailAliases, functions, siteLocks);
+        tx.Commit();
+    }
 
+    public void Write(
+        SqliteConnection conn,
+        SqliteTransaction tx,
+        ChannelRegistry? channels,
+        MailStore? mail,
+        MailAliasTable? mailAliases,
+        FunctionRegistry? functions,
+        SiteLockTable? siteLocks)
+    {
         if (channels != null)
         {
             Exec(conn, tx, "DELETE FROM channel_locks; DELETE FROM channel_members; DELETE FROM channels;");
@@ -240,8 +252,6 @@ CREATE TABLE IF NOT EXISTS sitelocks (
                 c.ExecuteNonQuery();
             }
         }
-
-        tx.Commit();
     }
 
     public void Load(

@@ -51,7 +51,7 @@ public static class LateSubsystemFunctions
             return "99999";
 
         int rquota = QuotaRules.PeekRemaining(reg.Database, obj, reg.EffectiveStartingQuota);
-        int owned = reg.Database.GetAllObjects().Count(o => o.Type != ObjectType.Garbage && o.Owner == obj.Id);
+        int owned = reg.Database.ByOwner(obj.Id).Count();
         return (owned + rquota).ToString(CultureInfo.InvariantCulture);
     }
 

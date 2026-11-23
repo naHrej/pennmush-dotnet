@@ -252,23 +252,14 @@ public class CommandDispatcher
 
         foreach (var candidate in candidates)
         {
-            foreach (var attr in candidate.Attributes)
+            foreach (var listener in candidate.Listeners)
             {
-                string val = attr.Value;
-                if (!string.IsNullOrEmpty(val) && val.StartsWith('$'))
+                if (!listener.Command)
+                    continue;
+                if (PatternMatcher.Match(listener.Pattern, input, out var captures))
                 {
-                    int colon = val.IndexOf(':');
-                    if (colon > 1)
-                    {
-                        string pattern = val.Substring(1, colon - 1).Trim();
-                        string action = val.Substring(colon + 1).Trim();
-
-                        if (PatternMatcher.Match(pattern, input, out var captures))
-                        {
-                            ExecuteListenerAction(candidate, executor, action, captures, db, context);
-                            return true;
-                        }
-                    }
+                    ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
+                    return true;
                 }
             }
         }

@@ -11,6 +11,10 @@ public class CronScheduler
 {
     private readonly ConcurrentDictionary<string, CronJob> _jobs = new(StringComparer.OrdinalIgnoreCase);
 
+    public Action? Changed { get; set; }
+
+    private void Touch() => Changed?.Invoke();
+
     public bool AddOrUpdateJob(string id, string expression, Dbref creator, Dbref target, string command, out string? error, bool paused = false, DateTimeOffset? now = null)
     {
         error = null;
@@ -34,12 +38,16 @@ public class CronScheduler
         };
 
         _jobs[id.Trim()] = job;
+        Touch();
         return true;
     }
 
     public bool DeleteJob(string id)
     {
-        return _jobs.TryRemove(id.Trim(), out _);
+        if (!_jobs.TryRemove(id.Trim(), out _))
+            return false;
+        Touch();
+        return true;
     }
 
     public CronJob? GetJob(string id)
@@ -57,6 +65,7 @@ public class CronScheduler
         var job = GetJob(id);
         if (job == null) return false;
         job.IsPaused = true;
+        Touch();
         return true;
     }
 
@@ -67,6 +76,7 @@ public class CronScheduler
         job.IsPaused = false;
         var baseTime = now ?? DateTimeOffset.UtcNow;
         job.NextRun = job.ParsedExpression.GetNextOccurrence(baseTime);
+        Touch();
         return true;
     }
 
@@ -85,6 +95,8 @@ public class CronScheduler
             }
         }
 
+        if (triggered.Count > 0)
+            Touch();
         return triggered;
     }
 }

@@ -12,16 +12,25 @@ public class ChannelRegistry
 {
     private readonly ConcurrentDictionary<string, Channel> _channels = new(StringComparer.OrdinalIgnoreCase);
 
+    public Action? Changed { get; set; }
+
     public bool CreateChannel(string name, Dbref owner, ChannelFlags flags = ChannelFlags.Public | ChannelFlags.Player, string description = "")
     {
         if (string.IsNullOrWhiteSpace(name)) return false;
-        var channel = new Channel(name.Trim(), owner, flags) { Description = description };
-        return _channels.TryAdd(name.Trim(), channel);
+        var channel = new Channel(name.Trim(), owner, flags) { Changed = () => Changed?.Invoke() };
+        channel.Description = description;
+        if (!_channels.TryAdd(name.Trim(), channel))
+            return false;
+        Changed?.Invoke();
+        return true;
     }
 
     public bool DeleteChannel(string name)
     {
-        return _channels.TryRemove(name.Trim(), out _);
+        if (!_channels.TryRemove(name.Trim(), out _))
+            return false;
+        Changed?.Invoke();
+        return true;
     }
 
     public Channel? GetChannel(string name)

@@ -67,9 +67,16 @@ public class MUSHServerHost : IDisposable
 
     public void Reboot(bool announce = true)
     {
-        lock (_rebootLock)
+        _server.Run(() =>
         {
-            Console.WriteLine("[MUSHServerHost] Executing hot-reboot of game engine...");
+            lock (_rebootLock)
+                RebootCore(announce);
+        });
+    }
+
+    private void RebootCore(bool announce)
+    {
+        Console.WriteLine("[MUSHServerHost] Executing hot-reboot of game engine...");
 
             if (announce)
             {
@@ -94,19 +101,21 @@ public class MUSHServerHost : IDisposable
                     : "GAME: Reboot finished.");
             }
 
-            Console.WriteLine($"[MUSHServerHost] Hot-reboot completed successfully. {_activeConnections.Count} player connections preserved.");
-        }
+        Console.WriteLine($"[MUSHServerHost] Hot-reboot completed successfully. {_activeConnections.Count} player connections preserved.");
     }
 
     public void Shutdown()
     {
-        lock (_rebootLock)
+        _server.Run(() =>
         {
-            _server.Stop();
-            foreach (var conn in _activeConnections.Values)
-                conn.Close();
-            ProcessExit?.Invoke();
-        }
+            lock (_rebootLock)
+            {
+                _server.Stop();
+                foreach (var conn in _activeConnections.Values)
+                    conn.Close();
+                ProcessExit?.Invoke();
+            }
+        });
     }
 
     public void Dispose()

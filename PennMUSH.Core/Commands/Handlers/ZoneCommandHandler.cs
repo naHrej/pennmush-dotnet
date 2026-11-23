@@ -225,7 +225,7 @@ public class ChzoneAllCommandHandler : ICommandHandler
         bool preserve = context.Switches.Contains("preserve");
         int changed = 0;
         int skipped = 0;
-        foreach (var obj in db.GetAllObjects().Where(obj => obj.Owner == owner.Id).ToList())
+        foreach (var obj in db.ByOwner(owner.Id).ToList())
         {
             if (ZoneOperations.MoveToZone(context, db, obj, zone, preserve) == null)
                 changed++;
@@ -272,7 +272,7 @@ public class ZemitCommandHandler : ICommandHandler
             return false;
         }
 
-        var rooms = db.GetAllObjects().Where(obj => obj.Type == ObjectType.Room && obj.InZone(zone.Id)).ToList();
+        var rooms = db.ByZone(zone.Id).Where(obj => obj.Type == ObjectType.Room).ToList();
         if (rooms.Count == 0)
         {
             context.Notify(Feedback.NoRoomsAreInThatZone);

@@ -192,8 +192,7 @@ public class MaliasCommandHandler : ICommandHandler
             context.Notify(Feedback.MailNoValidRecipientsForAliasList);
             return false;
         }
-        alias.Members.Clear();
-        alias.Members.AddRange(members);
+        alias.ReplaceMembers(members);
         context.Notify(Feedback.MailAliasListSet);
         return true;
     }
@@ -238,7 +237,7 @@ public class MaliasCommandHandler : ICommandHandler
             context.Notify(Feedback.MailNoValidRecipientsForAliasList);
             return false;
         }
-        alias.Members.AddRange(members);
+        alias.AddMembers(members);
         context.Notify(Feedback.MailAliasSetRedefined, ("value", $"{shown}"));
         return true;
     }
@@ -273,9 +272,7 @@ public class MaliasCommandHandler : ICommandHandler
                 context.Notify(Feedback.MailPlayerIsNotInAlias, ("player", $"{token}"), ("alias", $"{shown}"));
                 continue;
             }
-            int last = alias.Members.Count - 1;
-            alias.Members[index - 1] = alias.Members[last];
-            alias.Members.RemoveAt(last);
+            alias.RemoveMemberSlot(index - 1);
             context.Notify(Feedback.MailRemovedFromAlias, ("value", $"{MailAliasTable.Unparse(player)}"), ("alias", $"{shown}"));
         }
         context.Notify(Feedback.MailAliasSetRedefined, ("value", $"{shown}"));

@@ -621,8 +621,10 @@ public static class DbFunctions
 
     private static Dbref FindExitSourceRoom(ObjectDatabase db, Dbref exitId)
     {
-        foreach (var room in db.GetAllObjects().Where(r => r.Type == ObjectType.Room && r.Exits.IsValid))
+        foreach (var room in db.ByType(ObjectType.Room))
         {
+            if (!room.Exits.IsValid)
+                continue;
             var curr = room.Exits;
             var seen = new HashSet<Dbref>();
             while (curr.IsValid && seen.Add(curr))
@@ -1471,10 +1473,7 @@ public static class DbFunctions
         var parentObj = ResolveObj(reg, ctx, args[0]);
         if (parentObj == null) return countOnly ? "0" : MushError.NoMatch.Text();
 
-        var children = reg.Database.GetAllObjects()
-            .Where(o => o.Type != ObjectType.Garbage && o.Parents.Contains(parentObj.Id))
-            .OrderBy(o => o.Id.Value)
-            .ToList();
+        var children = reg.Database.ChildrenOf(parentObj.Id).ToList();
 
         return countOnly
             ? children.Count.ToString()
@@ -1786,9 +1785,7 @@ public static class DbFunctions
         var player = ResolveObj(reg, ctx, args[0]);
         if (player == null) return MushError.NoMatch.Text();
 
-        long total = reg.Database.GetAllObjects()
-            .Where(o => o.Type != ObjectType.Garbage && o.Owner == player.Id)
-            .Sum(o => (long)EstimateObjectBytes(o));
+        long total = reg.Database.ByOwner(player.Id).Sum(o => (long)EstimateObjectBytes(o));
         return total.ToString();
     }
 
@@ -1807,9 +1804,12 @@ public static class DbFunctions
         }
 
         int rooms = 0, exits = 0, things = 0, players = 0, garbage = 0;
-        foreach (var obj in reg.Database.GetAllObjects())
+        var counted = all
+            ? Enum.GetValues<ObjectType>().Where(type => type is ObjectType.Room or ObjectType.Exit or ObjectType.Thing or ObjectType.Player or ObjectType.Garbage)
+                .SelectMany(type => reg.Database.ByType(type))
+            : reg.Database.ByOwner(ownerFilter);
+        foreach (var obj in counted)
         {
-            if (!all && obj.Owner != ownerFilter) continue;
             switch (obj.Type)
             {
                 case ObjectType.Room: rooms++; break;
