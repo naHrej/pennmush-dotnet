@@ -86,7 +86,7 @@ public class MUSHServer
 
     public Task RunAsync(Action action) => _game.RunAsync(action);
 
-    public MUSHServer(string dbPath = "mush.db", string? configPath = null, SiteLockTable? siteLocks = null)
+    public MUSHServer(string dbPath = "mush.db", string? configPath = null, SiteLockTable? siteLocks = null, string? importFlatfilePath = null)
     {
         _sessions = new ConnectionDirectory(_connections, UnregisterConnection);
         string? resolvedConfig = ResolveConfigPath(configPath);
@@ -103,6 +103,9 @@ public class MUSHServer
 
         Database = new ObjectDatabase();
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
+        string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
+        if (!string.IsNullOrEmpty(dbDir))
+            Directory.CreateDirectory(dbDir);
         Storage = new SqliteStore($"Data Source={dbPath}");
         RuntimeState = new RuntimeStateStore($"Data Source={dbPath}");
         Queue = new ActionQueue { IgnoresQueueLimit = id => _sessions.IgnoresQuota(id) };
@@ -134,10 +137,26 @@ public class MUSHServer
         }
 
         bool loaded = Storage.Load(Database, Cron);
-        if (!loaded || Database.Count == 0)
+        if (!string.IsNullOrWhiteSpace(importFlatfilePath))
         {
-            WorldBootstrapper.GenerateBaseWorld(Database);
-            Storage.Save(Database, Cron);
+            string resolvedImport = ResolveFlatfilePath(importFlatfilePath)
+                ?? throw new FileNotFoundException($"Flatfile database '{importFlatfilePath}' was not found.", importFlatfilePath);
+            FlatfileStore.LoadFile(Database, resolvedImport);
+            Storage.ReplaceAll(Database, Cron);
+        }
+        else if (!loaded || Database.Count == 0)
+        {
+            string? configuredIndb = ResolveFlatfilePath(Config.InputDatabase);
+            if (configuredIndb != null)
+            {
+                FlatfileStore.LoadFile(Database, configuredIndb);
+                Storage.ReplaceAll(Database, Cron);
+            }
+            else
+            {
+                WorldBootstrapper.GenerateBaseWorld(Database);
+                Storage.Save(Database, Cron);
+            }
         }
 
         Functions = new FunctionRegistry(Database);
@@ -257,6 +276,78 @@ public class MUSHServer
             {
                 return path;
             }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Imports a PennMUSH flatfile (plain or gzip-compressed) into the live database and persists it to SQLite.
+    /// </summary>
+    public void ImportFlatfile(string flatfilePath)
+    {
+        string resolved = ResolveFlatfilePath(flatfilePath)
+            ?? throw new FileNotFoundException($"Flatfile database '{flatfilePath}' was not found.", flatfilePath);
+        FlatfileStore.LoadFile(Database, resolved);
+        Storage.ReplaceAll(Database, Cron);
+    }
+
+    /// <summary>
+    /// Imports a PennMUSH flatfile from a <see cref="TextReader"/> into the live database and persists it to SQLite.
+    /// </summary>
+    public void ImportFlatfile(TextReader reader)
+    {
+        FlatfileStore.Load(Database, reader);
+        Storage.ReplaceAll(Database, Cron);
+    }
+
+    /// <summary>
+    /// Sets (or resets) the password for a player object and persists it to SQLite.
+    /// </summary>
+    public bool SeedPlayerPassword(Dbref playerId, string password)
+    {
+        var player = Database.GetObject(playerId);
+        if (player == null || player.Type != ObjectType.Player)
+            return false;
+
+        PasswordHash.Store(player, password);
+        Storage.Save(Database, Cron);
+        return true;
+    }
+
+    private string? ResolveFlatfilePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var candidates = new List<string>();
+        if (Path.IsPathRooted(path))
+        {
+            candidates.Add(path);
+            if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(path + ".gz");
+        }
+        else
+        {
+            candidates.Add(Path.GetFullPath(path));
+            if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(Path.GetFullPath(path + ".gz"));
+
+            string gameRelative = Path.Combine(GameDirectory, path);
+            candidates.Add(gameRelative);
+            if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(gameRelative + ".gz");
+
+            string repoRelative = Path.GetFullPath(Path.Combine(GameDirectory, "..", path));
+            candidates.Add(repoRelative);
+            if (!path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
+                candidates.Add(repoRelative + ".gz");
+        }
+
+        foreach (string candidate in candidates)
+        {
+            if (File.Exists(candidate))
+                return candidate;
         }
 
         return null;

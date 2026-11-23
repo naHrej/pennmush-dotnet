@@ -33,7 +33,7 @@ public class CemitCommandHandler : ICommandHandler
             return false;
         }
 
-        var ch = _channels.GetChannel(chName);
+        var ch = _channels.MatchChannel(chName, out _);
         if (ch == null)
         {
             context.Notify(Feedback.ChannelNotFound, ("channel", $"{chName}"));

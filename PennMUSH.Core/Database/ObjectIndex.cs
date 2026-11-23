@@ -133,7 +133,8 @@ public sealed class ObjectIndex
             || previous.ExitSource != next.ExitSource
             || previous.Next != next.Next
             || previous.Type != next.Type
-            || !string.Equals(previous.Name, next.Name, StringComparison.Ordinal);
+            || !string.Equals(previous.Name, next.Name, StringComparison.Ordinal)
+            || !string.Equals(previous.Alias, next.Alias, StringComparison.OrdinalIgnoreCase);
         if (link)
         {
             if (previous != null && previous.Type == ObjectType.Exit && previous.ExitSource >= 0)
@@ -163,6 +164,16 @@ public sealed class ObjectIndex
             {
                 if (!map.ContainsKey(part))
                     map[part] = exit.Id.Value;
+            }
+
+            string? aliasAttr = exit.GetAttribute("ALIAS")?.Value;
+            if (!string.IsNullOrWhiteSpace(aliasAttr))
+            {
+                foreach (string part in aliasAttr.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (!map.ContainsKey(part))
+                        map[part] = exit.Id.Value;
+                }
             }
         }
 
@@ -221,6 +232,7 @@ public sealed class ObjectIndex
     private sealed class Keys
     {
         public string Name = string.Empty;
+        public string Alias = string.Empty;
         public ObjectType Type;
         public int Owner = -1;
         public int Location = -1;
@@ -233,6 +245,7 @@ public sealed class ObjectIndex
         public static Keys From(MUSHObject obj) => new()
         {
             Name = obj.Name ?? string.Empty,
+            Alias = obj.Type == ObjectType.Exit ? (obj.GetAttribute("ALIAS")?.Value ?? string.Empty) : string.Empty,
             Type = obj.Type,
             Owner = obj.Owner.IsValid ? obj.Owner.Value : -1,
             Location = obj.Location.IsValid ? obj.Location.Value : -1,

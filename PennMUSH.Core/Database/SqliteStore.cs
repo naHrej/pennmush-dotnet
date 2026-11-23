@@ -8,6 +8,7 @@ using PennMUSH.Core.Communication.Channels;
 using PennMUSH.Core.Communication.Mail;
 using PennMUSH.Core.Access;
 using PennMUSH.Core.Entities;
+using PennMUSH.Core.Locks;
 using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 
@@ -20,6 +21,7 @@ public class SqliteStore : IDisposable
     private readonly SqliteCommand _insertPower;
     private readonly SqliteCommand _insertParent;
     private readonly SqliteCommand _insertZone;
+    private readonly SqliteCommand _insertLock;
     private readonly SqliteCommand _deleteObject;
     private bool _disposed;
 
@@ -54,6 +56,7 @@ public class SqliteStore : IDisposable
         _insertPower = Prepare("INSERT INTO powers (object_id, power) VALUES ($id, $power);");
         _insertParent = Prepare("INSERT INTO parents (object_id, parent_id, priority) VALUES ($id, $pid, $prio);");
         _insertZone = Prepare("INSERT INTO zones (object_id, zone_id) VALUES ($id, $zid);");
+        _insertLock = Prepare("INSERT INTO locks (object_id, lock_type, lock_key, creator, flags) VALUES ($id, $type, $key, $creator, $flags);");
         _deleteObject = Prepare("DELETE FROM objects WHERE id = $id;");
     }
 
@@ -118,6 +121,15 @@ public class SqliteStore : IDisposable
                 PRIMARY KEY (object_id, zone_id)
             );
 
+            CREATE TABLE IF NOT EXISTS locks (
+                object_id INTEGER NOT NULL,
+                lock_type TEXT NOT NULL,
+                lock_key TEXT NOT NULL,
+                creator INTEGER NOT NULL,
+                flags INTEGER NOT NULL,
+                PRIMARY KEY (object_id, lock_type)
+            );
+
             CREATE TABLE IF NOT EXISTS cron_jobs (
                 id TEXT PRIMARY KEY,
                 expression TEXT NOT NULL,
@@ -147,6 +159,42 @@ public class SqliteStore : IDisposable
         if (cron != null)
             db.Changes.MarkCron();
         Flush(db, cron, null, null, null, null, null, null);
+    }
+
+    /// <summary>
+    /// Replaces all stored objects in SQLite with the current contents of <paramref name="db"/>.
+    /// </summary>
+    public void ReplaceAll(ObjectDatabase db, Scheduling.CronScheduler? cron = null)
+    {
+        using var tx = _connection.BeginTransaction();
+        try
+        {
+            foreach (string table in new[] { "attributes", "flags", "powers", "parents", "zones", "locks", "objects" })
+            {
+                using var clear = _connection.CreateCommand();
+                clear.Transaction = tx;
+                clear.CommandText = $"DELETE FROM {table};";
+                clear.ExecuteNonQuery();
+            }
+
+            foreach (var obj in db.GetAllObjects())
+            {
+                WriteObject(tx, obj);
+            }
+
+            if (cron != null)
+            {
+                WriteCron(tx, cron);
+            }
+
+            tx.Commit();
+            db.Changes.Clear();
+        }
+        catch
+        {
+            try { tx.Rollback(); } catch (SqliteException) { }
+            throw;
+        }
     }
 
     public void Flush(
@@ -244,11 +292,22 @@ public class SqliteStore : IDisposable
             Bind(_insertZone, tx, ("$id", obj.Id.Value), ("$zid", zone.Value));
             _insertZone.ExecuteNonQuery();
         }
+
+        foreach (var lockEntry in obj.Locks)
+        {
+            Bind(_insertLock, tx,
+                ("$id", obj.Id.Value),
+                ("$type", lockEntry.Type),
+                ("$key", lockEntry.Key.Unparse()),
+                ("$creator", lockEntry.Creator.Value),
+                ("$flags", (long)lockEntry.Flags));
+            _insertLock.ExecuteNonQuery();
+        }
     }
 
     private void DeleteChildren(SqliteTransaction tx, int id)
     {
-        foreach (string table in new[] { "attributes", "flags", "powers", "parents", "zones" })
+        foreach (string table in new[] { "attributes", "flags", "powers", "parents", "zones", "locks" })
         {
             using var command = _connection.CreateCommand();
             command.Transaction = tx;
@@ -310,6 +369,7 @@ public class SqliteStore : IDisposable
         _insertPower.Dispose();
         _insertParent.Dispose();
         _insertZone.Dispose();
+        _insertLock.Dispose();
         _deleteObject.Dispose();
         _connection.Dispose();
     }
@@ -438,6 +498,26 @@ public class SqliteStore : IDisposable
             {
                 var obj = db.GetObject(new Dbref(zReader.GetInt32(0)));
                 obj?.AddZone(new Dbref(zReader.GetInt32(1)));
+            }
+        }
+
+        // Load locks
+        using (var lCmd = _connection.CreateCommand())
+        {
+            lCmd.CommandText = "SELECT object_id, lock_type, lock_key, creator, flags FROM locks;";
+            using var lReader = lCmd.ExecuteReader();
+            while (lReader.Read())
+            {
+                var obj = db.GetObject(new Dbref(lReader.GetInt32(0)));
+                if (obj != null)
+                {
+                    obj.SetLock(
+                        lReader.GetString(1),
+                        LockParser.Parse(lReader.GetString(2)),
+                        new Dbref(lReader.GetInt32(3)),
+                        (LockFlags)lReader.GetInt64(4)
+                    );
+                }
             }
         }
 

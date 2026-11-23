@@ -58,7 +58,7 @@ public class WaitCommandHandler : ICommandHandler
         if (double.TryParse(left, out double seconds))
         {
             var delay = TimeSpan.FromSeconds(Math.Max(0, seconds));
-            var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, delay);
+            var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, delay, args: context.PositionalArgs, registers: context.Registers);
             if (entry == null)
             {
                 context.Notify(Feedback.QueueLimitExceeded);
@@ -70,7 +70,7 @@ public class WaitCommandHandler : ICommandHandler
         else
         {
             // Semaphore wait
-            var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, semaphore: left);
+            var entry = _queue.Enqueue(context.Executor, context.Enactor, commandToRun, semaphore: left, args: context.PositionalArgs, registers: context.Registers);
             if (entry == null)
             {
                 context.Notify(Feedback.QueueLimitExceeded);

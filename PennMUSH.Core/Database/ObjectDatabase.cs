@@ -46,6 +46,7 @@ public class ObjectDatabase
         }
         Watch(obj);
         _objects[obj.Id.Value] = obj;
+        Changes.MarkObject(obj.Id);
         if (MUSHObject.Quiet == 0)
             _index.Update(obj, GetExits);
     }

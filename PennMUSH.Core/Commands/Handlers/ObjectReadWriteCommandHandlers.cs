@@ -140,7 +140,7 @@ public class CopyAttributeCommandHandler : ICommandHandler
     internal static bool Controls(MUSHObject actor, MUSHObject target) =>
         actor.IsWizard || target.Owner == actor.Id || target.Id == actor.Id;
 
-    internal static bool TrySplitAttr(string text, out string objectName, out string attribute)
+    internal static bool TrySplitAttr(string text, out string objectName, out string attribute, bool allowWildcard = false)
     {
         objectName = "";
         attribute = "";
@@ -151,7 +151,9 @@ public class CopyAttributeCommandHandler : ICommandHandler
             return false;
         objectName = text[..slash].Trim();
         attribute = text[(slash + 1)..].Trim();
-        return objectName.Length > 0 && AttributeEntry.IsValidName(attribute);
+        if (objectName.Length == 0 || attribute.Length == 0)
+            return false;
+        return allowWildcard ? true : AttributeEntry.IsValidName(attribute);
     }
 
     internal static List<string> SplitComma(string text)
@@ -174,7 +176,7 @@ public class EditAttributeCommandHandler : ICommandHandler
             context.Notify(Feedback.PermissionDenied);
             return false;
         }
-        if (!CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out var objectName, out var attrName)
+        if (!CopyAttributeCommandHandler.TrySplitAttr(context.LeftArg, out var objectName, out var attrName, allowWildcard: true)
             || string.IsNullOrWhiteSpace(context.RightArg) || !context.RightArg.Contains(','))
         {
             context.Notify(Feedback.UsageEditObjectAttributeOldNew);
@@ -193,8 +195,12 @@ public class EditAttributeCommandHandler : ICommandHandler
             return false;
         }
 
-        var entry = target.GetAttribute(attrName);
-        if (entry == null)
+        bool isWildcard = attrName.Contains('*') || attrName.Contains('?');
+        var entries = isWildcard
+            ? target.Attributes.Where(a => PatternMatcher.Match(attrName, a.Name, out _)).ToList()
+            : (target.GetAttribute(attrName) is { } single ? new List<AttributeEntry> { single } : new List<AttributeEntry>());
+
+        if (entries.Count == 0)
         {
             context.Notify(Feedback.NoSuchAttribute);
             return false;
@@ -211,64 +217,79 @@ public class EditAttributeCommandHandler : ICommandHandler
 
         bool quiet = context.Switches.Contains("quiet");
         bool check = context.Switches.Contains("check");
-        string updated;
+        Regex? compiledRegex = null;
         if (context.Switches.Contains("regexp"))
         {
             var options = context.Switches.Contains("nocase") ? RegexOptions.IgnoreCase : RegexOptions.None;
-            Regex regex;
             try
             {
-                regex = new Regex(oldText, options, TimeSpan.FromSeconds(1));
+                compiledRegex = new Regex(oldText, options, TimeSpan.FromSeconds(1));
             }
             catch (ArgumentException)
             {
                 context.Notify(Feedback.InvalidRegularExpression);
                 return false;
             }
-
-            int count = context.Switches.Contains("all") ? int.MaxValue : 1;
-            updated = regex.Replace(entry.Value, newText, count);
-        }
-        else if (context.Switches.Contains("first"))
-        {
-            int at = entry.Value.IndexOf(oldText, StringComparison.Ordinal);
-            updated = at < 0
-                ? entry.Value
-                : string.Concat(entry.Value.AsSpan(0, at), newText, entry.Value.AsSpan(at + oldText.Length));
-        }
-        else
-        {
-            updated = entry.Value.Replace(oldText, newText, StringComparison.Ordinal);
         }
 
-        if (updated == entry.Value)
+        bool anyEdited = false;
+        foreach (var entry in entries)
         {
+            string updated;
+            if (compiledRegex != null)
+            {
+                int count = context.Switches.Contains("all") ? int.MaxValue : 1;
+                updated = compiledRegex.Replace(entry.Value, newText, count);
+            }
+            else if (context.Switches.Contains("first"))
+            {
+                int at = entry.Value.IndexOf(oldText, StringComparison.Ordinal);
+                updated = at < 0
+                    ? entry.Value
+                    : string.Concat(entry.Value.AsSpan(0, at), newText, entry.Value.AsSpan(at + oldText.Length));
+            }
+            else
+            {
+                updated = entry.Value.Replace(oldText, newText, StringComparison.Ordinal);
+            }
+
+            if (updated == entry.Value)
+            {
+                if (!isWildcard && !quiet)
+                    context.Notify(Feedback.NothingToChange);
+                continue;
+            }
+
+            if (check)
+            {
+                if (!quiet)
+                    context.Notify(Feedback.WouldEditTo, ("value", updated));
+                anyEdited = true;
+                continue;
+            }
+
+            var err = target.SetAttribute(entry.Name, updated, context.Executor, entry.Flags, actor.IsWizard);
+            if (err == AttributeErrorCode.Locked)
+            {
+                context.Notify(Feedback.IsLocked2, ("value", $"{entry.Name}"));
+                if (!isWildcard) return false;
+                continue;
+            }
+            if (err != AttributeErrorCode.Okay)
+            {
+                context.Notify(Feedback.CouldNotEdit, ("value", $"{err}"));
+                if (!isWildcard) return false;
+                continue;
+            }
+
+            anyEdited = true;
             if (!quiet)
-                context.Notify(Feedback.NothingToChange);
-            return true;
+                context.Notify(Feedback.Edited);
         }
 
-        if (check)
-        {
-            if (!quiet)
-                context.Notify(Feedback.WouldEditTo, ("value", updated));
-            return true;
-        }
+        if (isWildcard && !anyEdited && !quiet)
+            context.Notify(Feedback.NothingToChange);
 
-        var err = target.SetAttribute(entry.Name, updated, context.Executor, entry.Flags, actor.IsWizard);
-        if (err == AttributeErrorCode.Locked)
-        {
-            context.Notify(Feedback.IsLocked2, ("value", $"{entry.Name}"));
-            return false;
-        }
-        if (err != AttributeErrorCode.Okay)
-        {
-            context.Notify(Feedback.CouldNotEdit, ("value", $"{err}"));
-            return false;
-        }
-
-        if (!quiet)
-            context.Notify(Feedback.Edited);
         return true;
     }
 }

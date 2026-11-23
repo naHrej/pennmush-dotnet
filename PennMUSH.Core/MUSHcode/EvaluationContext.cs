@@ -119,7 +119,7 @@ namespace PennMUSH.Core.MUSHcode
                 MaxInvocations = this.MaxInvocations,
                 CancellationToken = this.CancellationToken,
                 ExecutionDeadline = this.ExecutionDeadline,
-                Registers = new Dictionary<string, string>(Registers, StringComparer.OrdinalIgnoreCase),
+                Registers = this.Registers,
                 RegexCaptures = RegexCaptures != null ? new Dictionary<string, string>(RegexCaptures, StringComparer.Ordinal) : null,
                 CallTrail = new HashSet<string>(CallTrail, StringComparer.OrdinalIgnoreCase),
                 IterStack = new List<(string Text, int Number)>(IterStack),

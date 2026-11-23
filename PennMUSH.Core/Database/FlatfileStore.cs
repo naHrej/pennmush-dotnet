@@ -3,8 +3,10 @@ namespace PennMUSH.Core.Database;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using PennMUSH.Core.Attributes;
+using PennMUSH.Core.Commands;
 using PennMUSH.Core.Entities;
 using PennMUSH.Core.Flags;
 using PennMUSH.Core.Locks;
@@ -106,22 +108,29 @@ public static class FlatfileStore
             throw new FormatException("Invalid flatfile header format.");
         }
 
-        int indbFlags = 0;
+        uint indbFlags = 0;
         if (int.TryParse(line.Substring(2).Trim(), out int v))
         {
-            if (v > 256)
+            uint uv = unchecked((uint)v);
+            if (uv > 256)
             {
-                indbFlags = ((v - 2) / 256) - 5;
+                indbFlags = ((uv - 2) / 256) - 5;
             }
         }
 
-        bool isAuthenticPenn = indbFlags != 0;
-
-        // Skip header lines until object count (~<count> or integer line)
+        // Skip header lines (including dbversion, savedtime, +FLAGS/+POWER/+ATTRIBUTES LIST)
+        // until object count (~<count> or integer line).
+        int dbVersion = 0;
         int objectCount = 0;
         while ((line = reader.ReadLine()) != null)
         {
             line = line.Trim();
+            if (line.StartsWith("dbversion ", StringComparison.Ordinal)
+                && int.TryParse(line.AsSpan(10).Trim(), out int parsedVer))
+            {
+                dbVersion = parsedVer;
+                continue;
+            }
             if (line.StartsWith('~') && int.TryParse(line.Substring(1), out objectCount))
             {
                 break;
@@ -131,6 +140,9 @@ public static class FlatfileStore
                 break;
             }
         }
+
+        bool hasLabels = (indbFlags & DBF_LABELS) != 0 || dbVersion >= 1;
+        bool isAuthenticPenn = indbFlags != 0 || hasLabels;
 
         while ((line = reader.ReadLine()) != null)
         {
@@ -148,6 +160,12 @@ public static class FlatfileStore
                 {
                     var garbage = new MUSHObject(new Dbref(db.Count), "Garbage", ObjectType.Garbage, new Dbref(1));
                     db.SetObject(garbage);
+                }
+
+                if (hasLabels)
+                {
+                    db.SetObject(LoadLabeledObject(id, reader));
+                    continue;
                 }
 
                 string name = ReadString(reader);
@@ -412,6 +430,246 @@ public static class FlatfileStore
                 }
             }
         }
+
+        while (db.Count < objectCount)
+        {
+            var garbage = new MUSHObject(new Dbref(db.Count), "Garbage", ObjectType.Garbage, new Dbref(1));
+            db.SetObject(garbage);
+        }
+
+        db.RebuildIndexes();
+    }
+
+    /// <summary>
+    /// Loads a PennMUSH flatfile database from disk, transparently decompressing gzip-compressed files.
+    /// </summary>
+    public static void LoadFile(ObjectDatabase db, string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException("Flatfile path cannot be empty.", nameof(path));
+
+        using var fileStream = File.OpenRead(path);
+        bool isGzip = path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase);
+        if (!isGzip && fileStream.Length >= 2)
+        {
+            int b0 = fileStream.ReadByte();
+            int b1 = fileStream.ReadByte();
+            fileStream.Position = 0;
+            isGzip = b0 == 0x1F && b1 == 0x8B;
+        }
+
+        if (isGzip)
+        {
+            using var gzip = new GZipStream(fileStream, CompressionMode.Decompress);
+            using var reader = new StreamReader(gzip);
+            Load(db, reader);
+        }
+        else
+        {
+            using var reader = new StreamReader(fileStream);
+            Load(db, reader);
+        }
+    }
+
+    /// <summary>
+    /// Parses a modern PennMUSH <c>DBF_LABELS</c> (<c>dbversion 6</c>) object record.
+    /// </summary>
+    private static MUSHObject LoadLabeledObject(Dbref id, TextReader reader)
+    {
+        string name = ReadLabeledValue(reader, "name");
+        int loc = ParseDbrefId(ReadLabeledValue(reader, "location"));
+        int con = ParseDbrefId(ReadLabeledValue(reader, "contents"));
+        int ex = ParseDbrefId(ReadLabeledValue(reader, "exits"));
+        int next = ParseDbrefId(ReadLabeledValue(reader, "next"));
+        int parent = ParseDbrefId(ReadLabeledValue(reader, "parent"));
+
+        int lockCount = int.Parse(ReadLabeledValue(reader, "lockcount"));
+        var locks = new List<(string type, Dbref creator, LockFlags flags, string key)>(lockCount);
+        for (int i = 0; i < lockCount; i++)
+        {
+            string lType = ReadLabeledValue(reader, "type");
+            int lCreator = ParseDbrefId(ReadLabeledValue(reader, "creator"));
+            LockFlags lFlags = ParseLockFlags(ReadLabeledValue(reader, "flags"));
+            var (nextLabel, nextVal) = ReadLabeledField(reader);
+            if (nextLabel == "derefs")
+            {
+                (nextLabel, nextVal) = ReadLabeledField(reader);
+            }
+            string lKey = nextLabel == "key" ? nextVal : string.Empty;
+            locks.Add((lType, new Dbref(lCreator), lFlags, lKey));
+        }
+
+        int owner = ParseDbrefId(ReadLabeledValue(reader, "owner"));
+        int zone = ParseDbrefId(ReadLabeledValue(reader, "zone"));
+        int pennies = int.Parse(ReadLabeledValue(reader, "pennies"));
+        var objType = (ObjectType)int.Parse(ReadLabeledValue(reader, "type"));
+        string flagsStr = ReadLabeledValue(reader, "flags");
+        string powersStr = ReadLabeledValue(reader, "powers");
+        uint warnings = ParseWarnings(ReadLabeledValue(reader, "warnings"));
+        long.TryParse(ReadLabeledValue(reader, "created"), out long creationTime);
+        long.TryParse(ReadLabeledValue(reader, "modified"), out long modTime);
+
+        var obj = new MUSHObject(id, name, objType, new Dbref(owner))
+        {
+            Location = new Dbref(loc),
+            Contents = new Dbref(con),
+            Exits = new Dbref(ex),
+            Next = new Dbref(next),
+            Pennies = pennies,
+            Warnings = warnings
+        };
+
+        if (creationTime > 0) obj.CreationTime = DateTimeOffset.FromUnixTimeSeconds(creationTime);
+        if (modTime > 0) obj.ModificationTime = DateTimeOffset.FromUnixTimeSeconds(modTime);
+
+        if (parent >= 0) obj.AddParent(new Dbref(parent));
+        if (zone >= 0) obj.AddZone(new Dbref(zone));
+
+        foreach (var f in flagsStr.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            obj.AddFlag(f);
+
+        foreach (var p in powersStr.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            obj.AddPower(p);
+
+        foreach (var (lType, lCreator, lFlags, lKey) in locks)
+        {
+            obj.SetLock(lType, LockParser.Parse(lKey), lCreator, lFlags);
+        }
+
+        int attrCount = int.Parse(ReadLabeledValue(reader, "attrcount"));
+        for (int i = 0; i < attrCount; i++)
+        {
+            string attrName = ReadLabeledValue(reader, "name");
+            int attrCreator = ParseDbrefId(ReadLabeledValue(reader, "owner"));
+            AttributeFlags attrFlags = ParseAttributeFlags(ReadLabeledValue(reader, "flags"));
+            var (nextLabel, nextVal) = ReadLabeledField(reader);
+            if (nextLabel == "derefs")
+            {
+                (nextLabel, nextVal) = ReadLabeledField(reader);
+            }
+            string attrVal = nextLabel == "value" ? nextVal : string.Empty;
+            obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), attrFlags);
+        }
+
+        return obj;
+    }
+
+    private static string ReadLabeledValue(TextReader reader, string expectedLabel)
+    {
+        var (label, value) = ReadLabeledField(reader);
+        if (!string.Equals(label, expectedLabel, StringComparison.Ordinal))
+        {
+            throw new FormatException($"Expected DBF_LABELS field '{expectedLabel}' but found '{label}'.");
+        }
+        return value;
+    }
+
+    private static (string label, string value) ReadLabeledField(TextReader reader)
+    {
+        while (true)
+        {
+            int ch = reader.Peek();
+            if (ch == -1) return (string.Empty, string.Empty);
+            if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n')
+            {
+                reader.Read();
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        var labelBuilder = new StringBuilder();
+        while (true)
+        {
+            int ch = reader.Peek();
+            if (ch == -1 || ch == ' ' || ch == '\r' || ch == '\n') break;
+            labelBuilder.Append((char)reader.Read());
+        }
+
+        if (reader.Peek() == ' ')
+        {
+            reader.Read();
+        }
+
+        string value = ReadString(reader);
+        return (labelBuilder.ToString(), value);
+    }
+
+    private static int ParseDbrefId(string text)
+    {
+        ReadOnlySpan<char> span = text.AsSpan().Trim();
+        if (span.StartsWith('#')) span = span.Slice(1);
+        return int.Parse(span);
+    }
+
+    private static uint ParseWarnings(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        if (uint.TryParse(text.Trim(), out uint numeric)) return numeric;
+        return WarningBits.Parse(text, null);
+    }
+
+    private static LockFlags ParseLockFlags(string text)
+    {
+        LockFlags result = LockFlags.None;
+        foreach (string token in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            result |= token.ToLowerInvariant() switch
+            {
+                "visual" => LockFlags.Visual,
+                "no_inherit" or "private" => LockFlags.Private,
+                "wizard" => LockFlags.Wizard,
+                "locked" => LockFlags.Locked,
+                "no_clone" => LockFlags.NoClone,
+                "owner" => LockFlags.Owner,
+                _ => LockFlags.None
+            };
+        }
+        return result;
+    }
+
+    private static AttributeFlags ParseAttributeFlags(string text)
+    {
+        AttributeFlags result = AttributeFlags.None;
+        foreach (string token in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            result |= token.ToLowerInvariant() switch
+            {
+                "quiet" => AttributeFlags.Quiet,
+                "internal" => AttributeFlags.Internal,
+                "wizard" => AttributeFlags.Wizard,
+                "locked" => AttributeFlags.Locked,
+                "no_command" or "noprog" => AttributeFlags.NoProg,
+                "mortal_dark" or "mdark" => AttributeFlags.MDark,
+                "no_inherit" or "private" => AttributeFlags.Private,
+                "no_clone" or "nocopy" => AttributeFlags.NoCopy,
+                "visual" => AttributeFlags.Visual,
+                "regexp" => AttributeFlags.Regexp,
+                "case" => AttributeFlags.Case,
+                "safe" => AttributeFlags.Safe,
+                "branch" or "root" => AttributeFlags.Root,
+                "rlimit" => AttributeFlags.RLimit,
+                "enum" => AttributeFlags.Enum,
+                "command" => AttributeFlags.Command,
+                "listen" => AttributeFlags.Listen,
+                "nodump" or "no_dump" => AttributeFlags.NoDump,
+                "prefixmatch" => AttributeFlags.PrefixMatch,
+                "veiled" => AttributeFlags.Veiled,
+                "debug" => AttributeFlags.Debug,
+                "no_debug" => AttributeFlags.NoDebug,
+                "nearby" => AttributeFlags.Nearby,
+                "public" => AttributeFlags.Public,
+                "anon" => AttributeFlags.Anon,
+                "noname" => AttributeFlags.NoName,
+                "nospace" => AttributeFlags.NoSpace,
+                "amhear" => AttributeFlags.MHear,
+                "aahear" => AttributeFlags.AHear,
+                _ => AttributeFlags.None
+            };
+        }
+        return result;
     }
 
     private static string ReadString(TextReader reader)

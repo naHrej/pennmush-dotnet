@@ -29,6 +29,10 @@ public class CreateCommandHandler : ICommandHandler
 
         string name = string.IsNullOrWhiteSpace(context.LeftArg) ? "Thing" : context.LeftArg;
         var obj = db.CreateObject(name, ObjectType.Thing, context.Executor);
+        if (context.Executor.IsValid)
+        {
+            db.MoveObject(obj.Id, context.Executor);
+        }
 
         if (!context.Switches.Contains("silent"))
             context.Notify(Feedback.CreatedValueValue, ("value", $"{obj.Name}"), ("value2", $"{obj.Id}"));

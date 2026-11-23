@@ -80,6 +80,12 @@ public static class LogicFunctions
     private static string Eval(FunctionRegistry registry, EvaluationContext ctx, string raw)
         => registry.Evaluator != null ? registry.Evaluator.Evaluate(raw, ctx) : raw;
 
+    private static string EvalAction(FunctionRegistry registry, EvaluationContext ctx, string raw)
+    {
+        string body = raw.Length >= 2 && raw[0] == '{' && raw[^1] == '}' ? raw[1..^1] : raw;
+        return registry.Evaluator != null ? registry.Evaluator.Evaluate(body, ctx) : body;
+    }
+
     public static string T(EvaluationContext ctx, string[] args)
         => args.Length > 0 && IsTruthy(args[0]) ? "1" : "0";
 
@@ -267,7 +273,7 @@ public static class LogicFunctions
                     if (!exact) ctx.Arguments = captures;
                     try
                     {
-                        sb.Append(Eval(registry, ctx, action));
+                        sb.Append(EvalAction(registry, ctx, action));
                     }
                     finally
                     {
@@ -324,7 +330,7 @@ public static class LogicFunctions
                     ctx.RegexCaptures = EvaluationContext.BuildRegexCaptures(match);
                     try
                     {
-                        sb.Append(Eval(registry, ctx, action));
+                        sb.Append(EvalAction(registry, ctx, action));
                     }
                     finally
                     {

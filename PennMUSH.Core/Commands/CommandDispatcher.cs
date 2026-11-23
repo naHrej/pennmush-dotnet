@@ -68,11 +68,17 @@ public class CommandDispatcher
 
     internal CommandContext DispatchQueued(Dbref executor, string input, ObjectDatabase db, Dbref enactor, string[]? args, IReadOnlyDictionary<string, string>? registers = null)
     {
-        string bound = BindQueuedCommand(executor, enactor, input, args, registers, db);
+        var evalCtx = BindQueuedCommand(executor, enactor, input, args, registers, db, out string bound);
         if (string.IsNullOrWhiteSpace(bound))
             return new CommandContext { Executor = executor, Enactor = enactor };
         var context = Parse(executor, bound, enactor);
-        if (registers != null)
+        context.PositionalArgs = args;
+        if (evalCtx != null)
+        {
+            foreach (var register in evalCtx.Registers)
+                context.Registers[register.Key] = register.Value;
+        }
+        else if (registers != null)
         {
             foreach (var register in registers)
                 context.Registers[register.Key] = register.Value;
@@ -81,10 +87,13 @@ public class CommandDispatcher
         return Run(context, db, true);
     }
 
-    private string BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, IReadOnlyDictionary<string, string>? registers, ObjectDatabase db)
+    private EvaluationContext? BindQueuedCommand(Dbref executor, Dbref enactor, string input, string[]? args, IReadOnlyDictionary<string, string>? registers, ObjectDatabase db, out string bound)
     {
         if (_evaluator == null)
-            return input;
+        {
+            bound = input;
+            return null;
+        }
         var ctx = new EvaluationContext(
             executor,
             enactor,
@@ -96,7 +105,69 @@ public class CommandDispatcher
                 ctx.SetRegister(register.Key, register.Value);
         }
 
-        return _evaluator.Evaluate(input, ctx);
+        if (IsDeferredRightArgCommand(input, out int eqIndex))
+        {
+            string head = _evaluator.Evaluate(input.Substring(0, eqIndex), ctx);
+            bound = head + input.Substring(eqIndex);
+        }
+        else if (TrySplitFirstTopLevelEquals(input, out int argEqIndex))
+        {
+            string head = _evaluator.Evaluate(input.Substring(0, argEqIndex), ctx);
+            string tail = _evaluator.Evaluate(input.Substring(argEqIndex + 1), ctx);
+            bound = head + "=" + tail;
+        }
+        else
+        {
+            bound = _evaluator.Evaluate(input, ctx);
+        }
+        return ctx;
+    }
+
+    private static bool TrySplitFirstTopLevelEquals(string input, out int eqIndex)
+    {
+        eqIndex = -1;
+        int depth = 0;
+        for (int i = 0; i < input.Length; i++)
+        {
+            char c = input[i];
+            if (c == '\\' && i + 1 < input.Length) { i++; continue; }
+            if (c is '[' or '{' or '(') depth++;
+            else if (c is ']' or '}' or ')') depth = Math.Max(0, depth - 1);
+            else if (c == '=' && depth == 0)
+            {
+                eqIndex = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool IsDeferredRightArgCommand(string input, out int eqIndex)
+    {
+        eqIndex = -1;
+        string trimmed = input.TrimStart();
+        int space = trimmed.IndexOf(' ');
+        if (space <= 0) return false;
+        string cmd = trimmed.Substring(0, space);
+        int slash = cmd.IndexOf('/');
+        if (slash > 0) cmd = cmd.Substring(0, slash);
+
+        bool isDeferred = cmd.Equals("@switch", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@sw", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@select", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@ifelse", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@skip", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@dolist", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@wait", StringComparison.OrdinalIgnoreCase)
+            || cmd.Equals("@force", StringComparison.OrdinalIgnoreCase);
+
+        if (!isDeferred) return false;
+
+        int leading = input.Length - trimmed.Length;
+        int relEq = trimmed.IndexOf('=');
+        if (relEq <= space) return false;
+        eqIndex = leading + relEq;
+        return true;
     }
 
     private CommandContext Dispatch(Dbref executor, string input, ObjectDatabase db, Dbref? enactor, bool hooks)
@@ -171,8 +242,15 @@ public class CommandDispatcher
             }
         }
 
-        // 2. Check channel prefix (+channel message or +channel/who)
-        if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1)
+        // 2. Check $command:action listeners (local room, inventory, self, Master Room)
+        if (execObj != null && TryMatchCommandListener(execObj, input, db, context))
+        {
+            return context;
+        }
+
+        // 3. Check channel prefix (+channel message or +channel/who)
+        if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1
+            && (context.Switches.Count > 0 || context.Arguments.Contains(' ') || context.Arguments.Contains('=')))
         {
             string chName = context.CommandName.Substring(1);
             var chanLookup = _commandTable.Lookup("@channel");
@@ -215,12 +293,7 @@ public class CommandDispatcher
             }
         }
 
-        // 3. Check $command:action listeners
-        if (execObj != null && TryMatchCommandListener(execObj, input, db, context))
-        {
-            return context;
-        }
-
+        // 4. Unrecognized command
         context.Notify(Feedback.HuhTypeHelpForHelp);
         return context;
     }
@@ -228,30 +301,46 @@ public class CommandDispatcher
     private bool TryMatchCommandListener(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
     {
         var candidates = new List<MUSHObject>();
+        var seen = new HashSet<Dbref>();
+
+        void AddCandidate(MUSHObject? obj)
+        {
+            if (obj != null && seen.Add(obj.Id))
+                candidates.Add(obj);
+        }
 
         // Current room
         if (executor.Location.IsValid)
         {
-            var room = db.GetObject(executor.Location);
-            if (room != null) candidates.Add(room);
+            AddCandidate(db.GetObject(executor.Location));
 
             // Objects in room
             foreach (var item in db.GetContents(executor.Location))
             {
                 if (item.Id != executor.Id)
-                    candidates.Add(item);
+                    AddCandidate(item);
             }
         }
 
         // Executor's inventory
         foreach (var item in db.GetContents(executor.Id))
-            candidates.Add(item);
+            AddCandidate(item);
 
         // Self
-        candidates.Add(executor);
+        AddCandidate(executor);
+
+        // Master Room (#2) globals
+        var masterRoom = new Dbref(2);
+        foreach (var item in db.GetContents(masterRoom))
+        {
+            AddCandidate(item);
+        }
 
         foreach (var candidate in candidates)
         {
+            if (candidate.HasFlag("NO_COMMAND") || candidate.HasFlag("HALT"))
+                continue;
+
             foreach (var listener in candidate.Listeners)
             {
                 if (!listener.Command)
@@ -269,25 +358,28 @@ public class CommandDispatcher
 
     private void ExecuteListenerAction(MUSHObject listener, MUSHObject enactor, string action, string[] captures, ObjectDatabase db, CommandContext context)
     {
-        if (_evaluator != null)
+        foreach (string piece in Handlers.IncludeCommandHandler.SplitCommands(action))
         {
-            var evalCtx = new EvaluationContext(listener.Id, enactor.Id, location: listener.Location, args: captures);
-            string evaluated = _evaluator.Evaluate(action, evalCtx);
-            if (!string.IsNullOrWhiteSpace(evaluated))
+            string trimmed = piece.TrimStart();
+            if (trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&'))
             {
-                if (evaluated.StartsWith('@') || evaluated.StartsWith('"') || evaluated.StartsWith(':') || evaluated.StartsWith(';'))
-                {
-                    Dispatch(listener.Id, evaluated, db);
-                }
-                else
+                var subCtx = DispatchQueued(listener.Id, piece, db, enactor.Id, captures);
+                foreach (var note in subCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
+                foreach (var note in subCtx.Notifications) context.Notifications.Add(note);
+            }
+            else if (_evaluator != null)
+            {
+                var evalCtx = new EvaluationContext(listener.Id, enactor.Id, location: listener.Location, args: captures);
+                string evaluated = _evaluator.Evaluate(piece, evalCtx);
+                if (!string.IsNullOrWhiteSpace(evaluated))
                 {
                     context.Notify(evaluated);
                 }
             }
-        }
-        else
-        {
-            context.Notify(action);
+            else
+            {
+                context.Notify(piece);
+            }
         }
     }
 

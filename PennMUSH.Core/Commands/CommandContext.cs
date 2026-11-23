@@ -15,6 +15,7 @@ public class CommandContext
     public string LeftArg { get; init; } = string.Empty;
     public string RightArg { get; init; } = string.Empty;
     public ActionFrame? Frame { get; set; }
+    public string[]? PositionalArgs { get; set; }
     public Dictionary<string, string> Registers { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public List<Notification> TargetedNotifications { get; } = new();
