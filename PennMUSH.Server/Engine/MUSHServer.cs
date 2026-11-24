@@ -366,197 +366,45 @@ public class MUSHServer
 
     private void RegisterCommands()
     {
-        Dispatcher.Register(new SayCommandHandler(Evaluator), "say", "\"", "'");
-        Dispatcher.Register(new PoseCommandHandler(Evaluator), "pose", ":", ";", "semipose");
-        _roomLook = new LookCommandHandler(Evaluator);
-        Dispatcher.Register(_roomLook, "look", "l", "read");
-        Func<Dbref, bool> online = id => _connections.Values.Any(conn => conn.PlayerId == id);
-        Dispatcher.Register(new GoCommandHandler(_roomLook, Evaluator, Dispatcher, online), "go", "goto", "move");
-        Dispatcher.Register(new DigCommandHandler(_roomLook, () => Config.UseQuota, () => Config.StartingQuota), "@dig");
-        Dispatcher.Register(new OpenCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@open");
-        Dispatcher.Register(new LinkCommandHandler(), "@link");
-        Dispatcher.Register(new UnlinkCommandHandler(), "@unlink");
-        Dispatcher.Register(new CreateCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@create");
-        Dispatcher.Register(new SetCommandHandler(), "@set");
-        Dispatcher.Register(new PowerCommandHandler(), "@power");
-        Dispatcher.Register(new NameCommandHandler(), "@name");
-        Dispatcher.Register(new ParentCommandHandler(), "@parent");
-        Dispatcher.Register(new ZoneCommandHandler(), "@zone");
-        Dispatcher.Register(new ChzoneCommandHandler(), "@chzone");
-        Dispatcher.Register(new ChzoneAllCommandHandler(), "@chzoneall");
-        Dispatcher.Register(new ZemitCommandHandler(), "@zemit", "@nszemit");
-        Dispatcher.Register(new ScanCommandHandler(Config.MasterRoom.Value), "@scan");
-        Dispatcher.Register(new SweepCommandHandler(), "@sweep");
-        Dispatcher.Register(new WithCommandHandler(Dispatcher, Evaluator, Config.MasterRoom.Value), "with");
-        Dispatcher.Register(new SearchCommandHandler(Evaluator), "@search");
-        Dispatcher.Register(new WaitCommandHandler(Queue), "@wait", "@notify", "@drain");
-        Dispatcher.Register(new HaltCommandHandler(Queue), "@halt");
-        Dispatcher.Register(new AllHaltCommandHandler(Queue), "@allhalt");
-        Dispatcher.Register(new PsCommandHandler(Queue), "@ps");
-        Dispatcher.Register(new KickCommandHandler(Queue, Dispatcher), "@kick");
-        Dispatcher.Register(new ThinkCommandHandler(Evaluator), "think", "th");
-        Dispatcher.Register(new TeleportCommandHandler(_roomLook), "@teleport", "@tel");
-        Dispatcher.Register(new GetCommandHandler(), "get", "take", "g");
-        Dispatcher.Register(new DropCommandHandler(), "drop", "throw", "d");
-        Dispatcher.Register(new InventoryCommandHandler(Evaluator), "inventory", "i", "inv");
-        Dispatcher.Register(new ChannelCommandHandler(Channels), "@channel");
-        Dispatcher.Register(new ClockCommandHandler(Channels), "@clock");
-        Dispatcher.Register(new ComCommandHandler(Channels), "addcom", "delcom", "comtitle", "comlist", "@clist");
-        Dispatcher.Register(new ChatCommandHandler(Channels, Evaluator), "@chat", "+c");
-        Dispatcher.Register(new CemitCommandHandler(Channels, Evaluator), "@cemit", "@nscemit");
-        Dispatcher.Register(new MailCommandHandler(Mail, MailAliases), "@mail");
-        Dispatcher.Register(new MaliasCommandHandler(MailAliases), "@malias");
-        Dispatcher.Register(new CronCommandHandler(Cron, Queue), "@cron");
-        Dispatcher.Register(new HelpCommandHandler(Help, PlayerReceivesHtml, Suggestions), "help", "?");
-        Dispatcher.Register(new EmitCommandHandler(Evaluator), "@emit", "\\", "@lemit", "@nsemit", "@nslemit");
-        Dispatcher.Register(new PemitCommandHandler(), "@pemit", "@prompt", "@nspemit", "@nsprompt");
-        Dispatcher.Register(new RemitCommandHandler(), "@remit", "@nsremit");
-        Dispatcher.Register(new OemitCommandHandler(), "@oemit", "@nsoemit");
-        Dispatcher.Register(new WallCommandHandler(), "@wall", "@wizwall", "@rwall");
-        Dispatcher.Register(new WhisperCommandHandler(), "whisper", "w");
-        Dispatcher.Register(new PageCommandHandler(Evaluator), "page", "p");
-
-        // Spatial & Interaction
-        Dispatcher.Register(new HomeCommandHandler(_roomLook), "home");
-        Dispatcher.Register(new EnterCommandHandler(_roomLook, Dispatcher, online), "enter");
-        Dispatcher.Register(new LeaveCommandHandler(_roomLook, Dispatcher, online), "leave");
-        Dispatcher.Register(new FollowCommandHandler(online), "follow");
-        Dispatcher.Register(new UnfollowCommandHandler(), "unfollow");
-        Dispatcher.Register(new DismissCommandHandler(), "dismiss");
-        Dispatcher.Register(new DesertCommandHandler(), "desert");
-        Dispatcher.Register(new GiveCommandHandler(), "give");
-        Dispatcher.Register(new UseCommandHandler(Queue, Evaluator), "use");
-        Dispatcher.Register(new EmptyCommandHandler(), "empty");
-        Dispatcher.Register(new TeachCommandHandler(Queue), "teach");
-        Dispatcher.Register(new ExamineCommandHandler(), "examine", "ex", "x", "brief");
-
-        // Scripting & Flow Control
-        Dispatcher.Register(new SwitchCommandHandler(Dispatcher, Evaluator), "@switch", "@sw", "@select");
-        Dispatcher.Register(new DolistCommandHandler(Dispatcher, Evaluator), "@dolist");
-        Dispatcher.Register(new TriggerCommandHandler(Dispatcher, Evaluator), "@trigger", "@tr");
-        Dispatcher.Register(new IncludeCommandHandler(Dispatcher, Evaluator), "@include");
-        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@assert", Evaluator, Queue), "@assert");
-        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@break", Evaluator, Queue), "@break");
-        Dispatcher.Register(new ActionListCommandHandler(Dispatcher, "@retry", Evaluator, Queue), "@retry");
-        Dispatcher.Register(new VerbCommandHandler(Dispatcher, Evaluator), "@verb");
-        Dispatcher.Register(new LogCommandHandler(Logs), "@log");
-        Dispatcher.Register(new LogWipeCommandHandler(Logs), "@logwipe");
-        Dispatcher.Register(new RestartCommandHandler(Queue), "@restart");
-        Dispatcher.Register(new SqlCommandHandler(Sql), "@sql");
-        Dispatcher.Register(new MapSqlCommandHandler(Sql, Queue), "@mapsql");
-        Dispatcher.Register(new HttpCommandHandler(Web, Queue), "@http");
-        Dispatcher.Register(new RespondCommandHandler(Http), "@respond");
-        Dispatcher.Register(new SlaveCommandHandler(), "@slave");
-        Dispatcher.Register(new FunctionCommandHandler(Functions), "@function");
-        Dispatcher.Register(new EnableCommandHandler(Config, false), "@disable");
-        Dispatcher.Register(new EnableCommandHandler(Config, true), "@enable");
-        Dispatcher.Register(new ConfigCommandHandler(Config), "@config");
-        Dispatcher.Register(new FlagCommandHandler(), "@flag");
-        Dispatcher.Register(new AttributeCommandHandler(), "@attribute");
-        Dispatcher.Register(new CommandCommandHandler(Dispatcher), "@command");
-        Dispatcher.Register(new HookCommandHandler(Dispatcher), "@hook");
-        Dispatcher.Register(new WcheckCommandHandler(), "@wcheck");
-        Dispatcher.Register(new BuyCommandHandler(Evaluator, Queue), "buy");
-        Dispatcher.Register(new DbckCommandHandler(), "@dbck");
-        Dispatcher.Register(new WarningsCommandHandler(), "@warnings");
-        Dispatcher.Register(new ForceCommandHandler(Dispatcher), "@force");
-        Dispatcher.Register(new IfElseCommandHandler(Dispatcher, Evaluator), "@ifelse", "@if", "@skip");
-        Dispatcher.Register(new CommentCommandHandler(), "@@");
-
-        // Object Lifecycle & Admin
-        Dispatcher.Register(new DestroyCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@destroy", "@recycle", "@nuke");
-        Dispatcher.Register(new PurgeCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@purge");
-        Dispatcher.Register(new CopyAttributeCommandHandler(), "@cpattr", "@mvattr");
-        Dispatcher.Register(new EditAttributeCommandHandler(), "@edit");
-        Dispatcher.Register(new GrepCommandHandler(), "@grep");
-        Dispatcher.Register(new AttributeLockCommandHandler(), "@atrlock");
-        Dispatcher.Register(new AttributeChownCommandHandler(), "@atrchown");
-        Dispatcher.Register(new LockFlagCommandHandler(), "@lset");
-        Dispatcher.Register(new DecompileCommandHandler(), "@decompile");
-        Dispatcher.Register(new MonikerCommandHandler(Evaluator), "@moniker");
-        Dispatcher.Register(new MessageCommandHandler(Evaluator), "@message");
-        Dispatcher.Register(new FindCommandHandler(), "@find");
-        Dispatcher.Register(new WhereIsCommandHandler(), "@whereis");
-        Dispatcher.Register(new EntrancesCommandHandler(), "@entrances");
-        Dispatcher.Register(new FirstExitCommandHandler(), "@firstexit");
-        Dispatcher.Register(new UptimeCommandHandler(), "@uptime");
-        Dispatcher.Register(new PoorCommandHandler(), "@poor");
-        Dispatcher.Register(new QuotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@quota");
-        Dispatcher.Register(new SquotaCommandHandler(Config.UseQuota, Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@squota");
-        Dispatcher.Register(new AllQuotaCommandHandler(Config.StartingQuota, Config.UseQuota, () => Config.UseQuota, () => Config.StartingQuota), "@allquota");
-        Dispatcher.Register(new ListCommandHandler(Dispatcher, Functions, Motd), "@list");
-        Dispatcher.Register(new MotdCommandHandler(Motd), "@motd", "@listmotd", "@wizmotd", "@rejectmotd");
-        Dispatcher.Register(new SuggestCommandHandler(Suggestions), "@suggest");
-        Dispatcher.Register(
-            new ReadCacheCommandHandler(Help, () => ScreenFileReport.Lines(GameDirectory, Config), TextCache, SyncSuggestionsFromCache),
-            "@readcache");
-        Dispatcher.Register(new DumpCommandHandler(_ => SaveAll()), "@dump");
-        Dispatcher.Register(new UndestroyCommandHandler(), "@undestroy", "@unrecycle");
-        Dispatcher.Register(new CloneCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@clone");
-        Dispatcher.Register(new ChownCommandHandler(() => Config.UseQuota, () => Config.StartingQuota), "@chown");
-        Dispatcher.Register(new ChownAllCommandHandler(Config.StartingQuota, () => Config.UseQuota, () => Config.StartingQuota), "@chownall");
-        Dispatcher.Register(new WipeCommandHandler(), "@wipe");
-        Dispatcher.Register(new LockCommandHandler(), "@lock", "@elock", "@ulock");
-        Dispatcher.Register(new UnlockCommandHandler(), "@unlock", "@eunlock", "@uunlock");
-        Dispatcher.Register(new StatsCommandHandler(), "@stats");
-        Dispatcher.Register(new ScoreCommandHandler(), "score");
-        Dispatcher.Register(new DoingCommandHandler(), "doing", "@doing");
-        Dispatcher.Register(new WhoCommandHandler(_sessions), "who", "session");
-        Dispatcher.Register(new HideCommandHandler(_sessions), "@hide");
-        Dispatcher.Register(new BootCommandHandler(_sessions), "@boot");
-        Dispatcher.Register(new SocksetCommandHandler(_sessions), "@sockset");
-        Dispatcher.Register(new PollCommandHandler(_sessions), "@poll");
-        Dispatcher.Register(new PcreateCommandHandler(Functions.Passwords, Config.DefaultHome, Config.PlayerStart, Config.StartingMoney), "@pcreate");
-        Dispatcher.Register(new PasswordCommandHandler(), "@password");
-        Dispatcher.Register(new NewPasswordCommandHandler(Logs), "@newpassword");
-        Dispatcher.Register(new VersionCommandHandler(), "@version");
-        Dispatcher.Register(new ClientCommandHandler(EditorSessions), "@client");
-        Dispatcher.Register(new PluginCommandHandler(Extensions), "@plugin", "@extension");
-        Dispatcher.Register(new RebootCommandHandler(() => OnRebootRequested?.Invoke()), "@reboot");
-        Dispatcher.Register(new ShutdownCommandHandler(
-            SaveAll,
-            () => _shutdownRequested = true,
-            () => _quietRebootRequested = true), "@shutdown");
-        Dispatcher.Register(new SiteLockCommandHandler(SiteLocks, ConnectionLog, new NameLockFile(Path.Combine(GameDirectory, "names.cnf"))), "@sitelock");
-
-        // Apply aliases & reserved aliases from configuration
-        foreach (var (alias, orig) in Config.CommandAliases)
+        var look = new LookCommandHandler(Evaluator);
+        _roomLook = look;
+        var services = new CommandServices
         {
-            Dispatcher.AddAlias(orig, alias);
-        }
-
-        foreach (var reserved in Config.ReservedAliases)
-        {
-            Dispatcher.ReserveAlias(reserved);
-        }
-
-        foreach (var (alias, orig) in Config.FunctionAliases)
-        {
-            Functions.AddAlias(orig, alias);
-        }
-
-        Dispatcher.AddRestriction("buy", "nogagged", null);
-
-        foreach (var (cmd, rules) in Config.CommandRestrictions)
-        {
-            foreach (var rule in rules)
-            {
-                Dispatcher.AddRestriction(cmd, rule.Restriction, rule.ErrorMessage);
-            }
-        }
-
-        Dispatcher.AddRestriction("@malias", "nogagged", null);
-        Dispatcher.AddRestriction("@sockset", "nogagged", null);
-        Dispatcher.AddRestriction("@log", "nogagged", null);
-        Dispatcher.AddRestriction("@password", "noguest", null);
-        Dispatcher.AddRestriction("@newpassword", "wizard", null);
-        Dispatcher.AddRestriction("@logwipe", "nogagged", null);
-        Dispatcher.AddRestriction("@restart", "nogagged", null);
-        Dispatcher.AddRestriction("@http", "nogagged", null);
-        Dispatcher.AddRestriction("@http", "noguest", null);
-        Dispatcher.AddRestriction("@respond", "nogagged", null);
-        Dispatcher.AddRestriction("@slave", "wizard", null);
-        Dispatcher.AddRestriction("@retry", "nogagged", null);
+            Dispatcher = Dispatcher,
+            Evaluator = Evaluator,
+            Queue = Queue,
+            Config = Config,
+            Channels = Channels,
+            Mail = Mail,
+            MailAliases = MailAliases,
+            Cron = Cron,
+            Help = Help,
+            Suggestions = Suggestions,
+            TextCache = TextCache,
+            Motd = Motd,
+            Logs = Logs,
+            Sql = Sql,
+            Web = Web,
+            Http = Http,
+            Functions = Functions,
+            Sessions = _sessions,
+            EditorSessions = EditorSessions,
+            Extensions = Extensions,
+            SiteLocks = SiteLocks,
+            ConnectionLog = ConnectionLog,
+            GameDirectory = GameDirectory,
+            Look = look,
+            IsOnline = id => _connections.Values.Any(conn => conn.PlayerId == id),
+            PlayerReceivesHtml = PlayerReceivesHtml,
+            SaveAll = SaveAll,
+            SyncSuggestions = SyncSuggestionsFromCache,
+            ScreenLines = () => ScreenFileReport.Lines(GameDirectory, Config),
+            Reboot = () => OnRebootRequested?.Invoke(),
+            RequestShutdown = () => _shutdownRequested = true,
+            RequestQuietReboot = () => _quietRebootRequested = true
+        };
+        foreach (var module in BuiltinCommandModules.All)
+            module.Register(services);
     }
 
     public event Action? OnRebootRequested;
