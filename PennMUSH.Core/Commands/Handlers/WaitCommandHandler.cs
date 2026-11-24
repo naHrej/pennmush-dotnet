@@ -64,7 +64,6 @@ public class WaitCommandHandler : ICommandHandler
                 context.Notify(Feedback.QueueLimitExceeded);
                 return false;
             }
-            context.Notify(Feedback.QueuedWithPid, ("value", $"{entry.Pid}"));
             return true;
         }
         else
@@ -76,7 +75,6 @@ public class WaitCommandHandler : ICommandHandler
                 context.Notify(Feedback.QueueLimitExceeded);
                 return false;
             }
-            context.Notify(Feedback.QueuedOnSemaphoreWithPid, ("value", $"{left}"), ("value2", $"{entry.Pid}"));
             return true;
         }
     }

@@ -239,9 +239,10 @@ public class CloneCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.FindInContents(context.Executor, context.Arguments.Trim()) ??
-                     db.FindInContents(execObj.Location, context.Arguments.Trim()) ??
-                     db.FindObject(context.Arguments.Trim());
+        string targetSpec = string.IsNullOrWhiteSpace(context.LeftArg) ? context.Arguments.Trim() : context.LeftArg.Trim();
+        var target = db.FindInContents(context.Executor, targetSpec) ??
+                     db.FindInContents(execObj.Location, targetSpec) ??
+                     db.MatchObject(context.Executor, targetSpec);
 
         if (target == null)
         {
@@ -261,7 +262,8 @@ public class CloneCommandHandler : ICommandHandler
             return false;
         }
 
-        var clone = db.CreateObject(target.Name, target.Type, context.Executor);
+        string cloneName = string.IsNullOrWhiteSpace(context.RightArg) ? target.Name : context.RightArg.Trim();
+        var clone = db.CreateObject(cloneName, target.Type, context.Executor);
         clone.Location = execObj.Location;
         clone.Home = target.Home.IsValid ? target.Home : execObj.Location;
 

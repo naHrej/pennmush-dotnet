@@ -225,8 +225,7 @@ public static class DbFunctions
     public static string Name(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         return obj != null ? obj.Name : MushError.NoMatch.Text();
     }
 
@@ -236,8 +235,7 @@ public static class DbFunctions
         if (args.Length == 0 || reg.Database == null || plain == MushError.NoMatch.Text())
             return plain;
 
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null)
             return plain;
 
@@ -257,11 +255,11 @@ public static class DbFunctions
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         int slash = args[0].IndexOf('/');
-        Dbref dbref;
+        MUSHObject? obj;
         string attrName;
         if (slash == -1)
         {
-            dbref = ctx.Executor;
+            obj = reg.Database.GetObject(ctx.Executor);
             attrName = args[0].Trim();
             if (attrName.Length == 0) return MushError.NoMatch.Text();
         }
@@ -271,11 +269,10 @@ public static class DbFunctions
         }
         else
         {
-            dbref = ParseDbref(args[0].Substring(0, slash), ctx);
+            obj = ResolveObj(reg, ctx, args[0].Substring(0, slash));
             attrName = args[0].Substring(slash + 1).Trim();
         }
 
-        var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
 
         var looker = reg.Database.GetObject(ctx.Executor);
@@ -291,22 +288,21 @@ public static class DbFunctions
     public static string HasAttrCore(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents, bool requireValue)
     {
         if (args.Length == 0 || reg.Database == null) return "0";
-        Dbref dbref;
+        MUSHObject? obj;
         string attrName;
         if (args.Length == 1)
         {
             int slash = args[0].IndexOf('/');
             if (slash <= 0 || slash >= args[0].Length - 1) return "0";
-            dbref = ParseDbref(args[0].Substring(0, slash), ctx);
+            obj = ResolveObj(reg, ctx, args[0].Substring(0, slash));
             attrName = args[0].Substring(slash + 1).Trim();
         }
         else
         {
-            dbref = ParseDbref(args[0], ctx);
+            obj = ResolveObj(reg, ctx, args[0]);
             attrName = args[1].Trim();
         }
 
-        var obj = reg.Database.GetObject(dbref);
         if (obj == null) return "0";
 
         var looker = reg.Database.GetObject(ctx.Executor);
@@ -320,8 +316,7 @@ public static class DbFunctions
     public static string Loc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
         if (!AttributePermissions.CanLocate(looker, obj)) return MushError.Nothing.Text();
@@ -331,16 +326,14 @@ public static class DbFunctions
     public static string Owner(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         return obj != null ? obj.Owner.ToString() : MushError.NoMatch.Text();
     }
 
     public static string Type(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         return obj != null ? obj.Type.ToString().ToUpperInvariant() : MushError.NoMatch.Text();
     }
 
@@ -358,11 +351,11 @@ public static class DbFunctions
         }
 
         int slash = args[0].IndexOf('/');
-        Dbref dbref;
+        MUSHObject? obj;
         string attrName;
         if (slash == -1)
         {
-            dbref = ctx.Executor;
+            obj = reg.Database.GetObject(ctx.Executor);
             attrName = args[0].Trim();
             if (attrName.Length == 0) return MushError.NoMatch.Text();
         }
@@ -372,11 +365,10 @@ public static class DbFunctions
         }
         else
         {
-            dbref = ParseDbref(args[0].Substring(0, slash), ctx);
+            obj = ResolveObj(reg, ctx, args[0].Substring(0, slash));
             attrName = args[0].Substring(slash + 1).Trim();
         }
 
-        var obj = reg.Database.GetObject(dbref);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 

@@ -27,7 +27,9 @@ public class WhisperCommandHandler : ICommandHandler
         }
 
         string targetName = context.LeftArg.Trim();
-        var target = db.FindInContents(execObj.Location, targetName);
+        var target = targetName.Equals("me", StringComparison.OrdinalIgnoreCase)
+            ? execObj
+            : db.FindInContents(execObj.Location, targetName);
         if (target == null || target.Type != ObjectType.Player)
         {
             context.Notify(Feedback.YouCannotWhisperToSomeoneWhoIsntHere);
@@ -82,7 +84,9 @@ public class PageCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         string senderName = execObj != null ? execObj.Name : context.Executor.ToString();
 
-        var target = db.FindPlayer(targetName);
+        var target = targetName.Equals("me", StringComparison.OrdinalIgnoreCase)
+            ? execObj
+            : db.FindPlayer(targetName);
         if (target == null)
         {
             context.Notify(Feedback.ICannotFindPlayer, ("player", $"{targetName}"));

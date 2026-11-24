@@ -139,13 +139,7 @@ public class RemitCommandHandler : ICommandHandler
         }
 
         string roomStr = context.LeftArg.Trim();
-        Dbref roomRef = Dbref.Nothing;
-        if (roomStr.StartsWith('#') && int.TryParse(roomStr.Substring(1), out int id))
-        {
-            roomRef = new Dbref(id);
-        }
-
-        var room = db.GetObject(roomRef);
+        var room = db.MatchObject(context.Executor, roomStr);
         if (room == null || room.Type != ObjectType.Room)
         {
             context.Notify(Feedback.ThatsNotAValidRoom);
