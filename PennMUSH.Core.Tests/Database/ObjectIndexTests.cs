@@ -112,4 +112,34 @@ public class ObjectIndexTests
             }
         }
     }
+
+    [Fact]
+    public void PlayerAliasLookupsTrackChangesAndPreferExactNames()
+    {
+        var db = new ObjectDatabase();
+        var god = db.CreateObject("One", ObjectType.Player, new Dbref(1));
+        var alice = db.CreateObject("Alice", ObjectType.Player, god.Id);
+        alice.Owner = alice.Id;
+        var al = db.CreateObject("Al", ObjectType.Player, god.Id);
+        al.Owner = al.Id;
+
+        alice.SetAttribute("ALIAS", "Ali;Al", alice.Id);
+
+        Assert.Equal(alice.Id, db.FindPlayer("ali")!.Id);
+        Assert.Equal(al.Id, db.FindPlayer("Al")!.Id);
+
+        alice.SetAttribute("ALIAS", "Allie", alice.Id);
+        Assert.Null(db.FindPlayer("ali"));
+        Assert.Equal(alice.Id, db.FindPlayer("ALLIE")!.Id);
+
+        db.RebuildIndexes();
+        Assert.Equal(alice.Id, db.FindPlayer("allie")!.Id);
+
+        alice.RemoveAttribute("ALIAS");
+        Assert.Null(db.FindPlayer("allie"));
+
+        alice.SetAttribute("ALIAS", "Allie", alice.Id);
+        alice.Type = ObjectType.Garbage;
+        Assert.Null(db.FindPlayer("allie"));
+    }
 }

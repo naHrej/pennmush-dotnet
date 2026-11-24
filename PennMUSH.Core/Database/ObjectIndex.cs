@@ -11,6 +11,7 @@ public sealed class ObjectIndex
 {
     private readonly Dictionary<string, List<int>> _names = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<int>> _players = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<int>> _playerAliases = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<ObjectType, List<int>> _types = new();
     private readonly Dictionary<int, List<int>> _owners = new();
     private readonly Dictionary<int, List<int>> _zones = new();
@@ -22,6 +23,7 @@ public sealed class ObjectIndex
     {
         _names.Clear();
         _players.Clear();
+        _playerAliases.Clear();
         _types.Clear();
         _owners.Clear();
         _zones.Clear();
@@ -67,7 +69,7 @@ public sealed class ObjectIndex
     }
 
     public MUSHObject? FindPlayer(string name, Func<int, MUSHObject?> get)
-        => First(_players, name, get);
+        => First(_players, name, get) ?? First(_playerAliases, name, get);
 
     public MUSHObject? FindByName(string name, Func<int, MUSHObject?> get)
         => First(_names, name, get);
@@ -99,7 +101,11 @@ public sealed class ObjectIndex
         {
             Remove(_names, previous.Name, id);
             if (previous.Type == ObjectType.Player)
+            {
                 Remove(_players, previous.Name, id);
+                foreach (string alias in SplitAliases(previous.Alias))
+                    Remove(_playerAliases, alias, id);
+            }
             Remove(_types, previous.Type, id);
             if (previous.Type != ObjectType.Garbage)
             {
@@ -114,7 +120,11 @@ public sealed class ObjectIndex
         Add(_names, next.Name, id);
         Add(_types, next.Type, id);
         if (next.Type == ObjectType.Player)
+        {
             Add(_players, next.Name, id);
+            foreach (string alias in SplitAliases(next.Alias))
+                Add(_playerAliases, alias, id);
+        }
         if (next.Type != ObjectType.Garbage)
         {
             if (next.Owner >= 0)
@@ -167,13 +177,10 @@ public sealed class ObjectIndex
             }
 
             string? aliasAttr = exit.GetAttribute("ALIAS")?.Value;
-            if (!string.IsNullOrWhiteSpace(aliasAttr))
+            foreach (string part in SplitAliases(aliasAttr))
             {
-                foreach (string part in aliasAttr.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                {
-                    if (!map.ContainsKey(part))
-                        map[part] = exit.Id.Value;
-                }
+                if (!map.ContainsKey(part))
+                    map[part] = exit.Id.Value;
             }
         }
 
@@ -182,6 +189,11 @@ public sealed class ObjectIndex
         else
             _exitAliases[roomId] = map;
     }
+
+    private static IEnumerable<string> SplitAliases(string? aliasAttr)
+        => string.IsNullOrWhiteSpace(aliasAttr)
+            ? Array.Empty<string>()
+            : aliasAttr.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static MUSHObject? First(Dictionary<string, List<int>> map, string name, Func<int, MUSHObject?> get)
     {
@@ -245,7 +257,9 @@ public sealed class ObjectIndex
         public static Keys From(MUSHObject obj) => new()
         {
             Name = obj.Name ?? string.Empty,
-            Alias = obj.Type == ObjectType.Exit ? (obj.GetAttribute("ALIAS")?.Value ?? string.Empty) : string.Empty,
+            Alias = (obj.Type == ObjectType.Exit || obj.Type == ObjectType.Player)
+                ? (obj.GetAttribute("ALIAS")?.Value ?? string.Empty)
+                : string.Empty,
             Type = obj.Type,
             Owner = obj.Owner.IsValid ? obj.Owner.Value : -1,
             Location = obj.Location.IsValid ? obj.Location.Value : -1,

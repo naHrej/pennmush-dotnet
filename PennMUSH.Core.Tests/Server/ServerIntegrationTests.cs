@@ -366,4 +366,40 @@ public class ServerIntegrationTests
             }
         }
     }
+
+    [Fact]
+    public async Task ConnectScreen_AllowsLoginByPlayerAlias()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"server_alias_{Guid.NewGuid():N}.db");
+        try
+        {
+            var server = new MUSHServer(dbPath);
+            var god = server.Database.FindPlayer("One")!;
+            god.SetAttribute("ALIAS", "God;G", god.Id);
+
+            var outputs = new List<string>();
+            var conn = new MUSHConnection(line =>
+            {
+                outputs.Add(line);
+                return Task.CompletedTask;
+            });
+
+            server.RegisterConnection(conn);
+            outputs.Clear();
+
+            await server.HandleInputAsync(conn, "connect God one");
+
+            Assert.Equal(god.Id, conn.PlayerId);
+            Assert.Contains(outputs, line => line.Contains("Welcome back to PennMUSH, One!"));
+            server.Stop();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+            {
+                try { File.Delete(dbPath); } catch { }
+            }
+        }
+    }
 }
