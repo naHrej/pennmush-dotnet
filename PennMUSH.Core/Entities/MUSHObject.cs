@@ -470,6 +470,7 @@ public class MUSHObject
         if (_attributes.TryGetValue(name, out var existing))
         {
             existing.Flags |= flags;
+            NoteAttributeValue();
             Touch();
         }
     }
@@ -479,6 +480,7 @@ public class MUSHObject
         if (_attributes.TryGetValue(name, out var existing))
         {
             existing.Flags &= ~flags;
+            NoteAttributeValue();
             Touch();
         }
     }
@@ -499,6 +501,7 @@ public class MUSHObject
         if (string.IsNullOrWhiteSpace(name) || !_attributes.TryGetValue(name, out var existing))
             return AttributeErrorCode.NotFound;
         existing.Flags = flags;
+        NoteAttributeValue();
         Touch();
         return AttributeErrorCode.Okay;
     }

@@ -29,6 +29,7 @@ public class CreateCommandHandler : ICommandHandler
 
         string name = string.IsNullOrWhiteSpace(context.LeftArg) ? "Thing" : context.LeftArg;
         var obj = db.CreateObject(name, ObjectType.Thing, context.Executor);
+        obj.AddFlag("NO_COMMAND");
         if (context.Executor.IsValid)
         {
             db.MoveObject(obj.Id, context.Executor);

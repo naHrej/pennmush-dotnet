@@ -32,9 +32,11 @@ internal static class ListenerSearch
     public static List<string> MatchingAttributes(MUSHObject obj, string input)
     {
         var names = new List<string>();
+        if (obj.HasFlag("NO_COMMAND") || obj.HasFlag("HALT"))
+            return names;
         foreach (var listener in obj.Listeners)
         {
-            if (listener.Command && PatternMatcher.Match(listener.Pattern, input, out _))
+            if (listener.Command && CommandDispatcher.TryMatchListenerPattern(listener, input, out _))
                 names.Add(listener.AttributeName);
         }
         return names;
@@ -42,13 +44,16 @@ internal static class ListenerSearch
 
     public static bool TryFirst(MUSHObject obj, string input, out string action, out string[] captures)
     {
-        foreach (var listener in obj.Listeners)
+        if (!obj.HasFlag("NO_COMMAND") && !obj.HasFlag("HALT"))
         {
-            if (!listener.Command)
-                continue;
-            action = listener.Action;
-            if (PatternMatcher.Match(listener.Pattern, input, out captures))
-                return true;
+            foreach (var listener in obj.Listeners)
+            {
+                if (!listener.Command)
+                    continue;
+                action = listener.Action;
+                if (CommandDispatcher.TryMatchListenerPattern(listener, input, out captures))
+                    return true;
+            }
         }
         action = string.Empty;
         captures = Array.Empty<string>();
@@ -384,7 +389,7 @@ public class WithCommandHandler : ICommandHandler
                 context.Notify(Feedback.NoMatchingCommand);
                 return false;
             }
-            Run(context, db, target, action, captures);
+            Run(context, db, actor, target, action, captures);
             return true;
         }
 
@@ -400,33 +405,16 @@ public class WithCommandHandler : ICommandHandler
             if (!ListenerSearch.TryFirst(item, command, out string action, out var captures))
                 continue;
             any = true;
-            Run(context, db, item, action, captures);
+            Run(context, db, actor, item, action, captures);
         }
         if (!any)
             context.Notify(Feedback.NoMatchingCommand);
         return any;
     }
 
-    private void Run(CommandContext context, ObjectDatabase db, MUSHObject listener, string action, string[] captures)
+    private void Run(CommandContext context, ObjectDatabase db, MUSHObject actor, MUSHObject listener, string action, string[] captures)
     {
-        string evaluated = action;
-        if (_evaluator != null)
-        {
-            var evalCtx = new EvaluationContext(listener.Id, context.Executor, location: listener.Location, args: captures);
-            evaluated = _evaluator.Evaluate(action, evalCtx);
-        }
-        if (string.IsNullOrWhiteSpace(evaluated))
-            return;
-        if (evaluated.StartsWith('@') || evaluated.StartsWith('"') || evaluated.StartsWith(':') || evaluated.StartsWith(';'))
-        {
-            var result = _dispatcher.Dispatch(listener.Id, evaluated, db);
-            foreach (var note in result.TargetedNotifications)
-                context.TargetedNotifications.Add(note);
-            foreach (var note in result.Notifications)
-                context.Notifications.Add(note);
-            return;
-        }
-        context.Notify(evaluated);
+        _dispatcher.ExecuteListenerAction(listener, actor, action, captures, db, context);
     }
 
     private static MUSHObject? Find(ObjectDatabase db, MUSHObject actor, string name)
