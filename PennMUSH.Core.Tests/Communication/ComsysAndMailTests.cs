@@ -96,6 +96,32 @@ public class ComsysAndMailTests
     }
 
     [Fact]
+    public void Channel_PlusPrefix_MatchesJoinedChannels()
+    {
+        _channels.CreateChannel("Public", _wizard.Id);
+        _channels.CreateChannel("Private", _wizard.Id);
+        _channels.GetChannel("Public")!.AddMember(_alice.Id);
+
+        var onlyPublic = _dispatcher.Dispatch(_alice.Id, "+p test", _db);
+        Assert.Contains("[Public] Alice: test", onlyPublic.Notifications);
+
+        _channels.GetChannel("Private")!.AddMember(_alice.Id);
+
+        var ambiguous = _dispatcher.Dispatch(_alice.Id, "+p test", _db);
+        Assert.Contains("I don't know which channel you mean.", ambiguous.Notifications);
+        Assert.DoesNotContain(ambiguous.Notifications, note => note.Contains("Alice: test"));
+
+        var publicChat = _dispatcher.Dispatch(_alice.Id, "+pu test", _db);
+        Assert.Contains("[Public] Alice: test", publicChat.Notifications);
+
+        var privateChat = _dispatcher.Dispatch(_alice.Id, "+pr test", _db);
+        Assert.Contains("[Private] Alice: test", privateChat.Notifications);
+
+        var fullName = _dispatcher.Dispatch(_alice.Id, "+Public test", _db);
+        Assert.Contains("[Public] Alice: test", fullName.Notifications);
+    }
+
+    [Fact]
     public void Channel_Cemit_WorkCorrectly()
     {
         _channels.CreateChannel("News", _wizard.Id);
@@ -121,6 +147,10 @@ public class ComsysAndMailTests
         // +General Hello
         var ctx = _dispatcher.Dispatch(_alice.Id, "+General Hello from shortcut!", _db);
         Assert.Contains("[General] Alice: Hello from shortcut!", ctx.Notifications);
+
+        // A one-word message has no space inside the argument.
+        var oneWord = _dispatcher.Dispatch(_alice.Id, "+General test", _db);
+        Assert.Contains("[General] Alice: test", oneWord.Notifications);
 
         // +General/who
         var ctxWho = _dispatcher.Dispatch(_alice.Id, "+General/who", _db);

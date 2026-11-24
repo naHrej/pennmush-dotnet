@@ -125,6 +125,38 @@ public class ChannelRegistry
         return null;
     }
 
+    /// <summary>
+    /// Match a channel the player has joined. An exact joined name wins.
+    /// Otherwise a unique prefix of a joined name wins. Several joined prefixes
+    /// are ambiguous. No joined match falls through to <see cref="MatchChannel"/>.
+    /// </summary>
+    public Channel? MatchJoinedChannel(Dbref player, string name, out bool ambiguous)
+    {
+        ambiguous = false;
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        string trimmed = name.Trim();
+        var joined = GetChannelsForPlayer(player);
+        var exact = joined.FirstOrDefault(channel =>
+            channel.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        if (exact != null)
+            return exact;
+
+        var matches = joined
+            .Where(channel => channel.Name.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matches.Count == 1)
+            return matches[0];
+        if (matches.Count > 1)
+        {
+            ambiguous = true;
+            return null;
+        }
+
+        return MatchChannel(trimmed, out ambiguous);
+    }
+
     private readonly ConcurrentDictionary<Dbref, ConcurrentDictionary<string, string>> _aliases = new();
 
     private ConcurrentDictionary<string, string> AliasesFor(Dbref player) =>
