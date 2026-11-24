@@ -3,12 +3,17 @@ namespace PennMUSH.Core.MUSHcode.Functions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using PennMUSH.Core.MUSHcode;
 
 public static class JsonFunctions
 {
+    private static readonly JsonSerializerOptions RelaxedJson = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
     public static void Register(FunctionRegistry registry)
     {
         registry.Register("ISJSON", IsJson);
@@ -82,7 +87,7 @@ public static class JsonFunctions
             }
             case "string":
                 if (args.Length != 2) return MushError.WrongNumberOfArguments.Text();
-                return JsonSerializer.Serialize(args[1]);
+                return JsonSerializer.Serialize(args[1], RelaxedJson);
             case "array":
             {
                 var arr = new JsonArray();
@@ -91,7 +96,7 @@ public static class JsonFunctions
                     try { arr.Add(JsonNode.Parse(StringFunctions.Strip(ctx, [args[i]]))); }
                     catch { return MushError.InvalidValue.Text(); }
                 }
-                return arr.ToJsonString();
+                return arr.ToJsonString(RelaxedJson);
             }
             case "object":
             {
@@ -103,7 +108,7 @@ public static class JsonFunctions
                     try { obj[args[i]] = JsonNode.Parse(StringFunctions.Strip(ctx, [args[i + 1]])); }
                     catch { return MushError.InvalidValue.Text(); }
                 }
-                return obj.ToJsonString();
+                return obj.ToJsonString(RelaxedJson);
             }
             default:
                 return MushError.InvalidType.Text();
@@ -200,11 +205,19 @@ public static class JsonFunctions
                 if (root is JsonArray a) return a.Count.ToString();
                 return root == null ? "0" : "1";
             case "exists":
+                if (root is not JsonObject && root is not JsonArray)
+                    return MushError.Nothing.Text();
                 return TryNavigate(root, ParsePathSegments(rest), out _) ? "1" : "0";
             case "get":
+                if (root is not JsonObject && root is not JsonArray)
+                    return MushError.Nothing.Text();
                 return TryNavigate(root, ParsePathSegments(rest), out var found)
-                    ? (found?.ToJsonString() ?? "null")
-                    : MushError.Nothing.Text();
+                    ? (found?.ToJsonString(RelaxedJson) ?? "null")
+                    : string.Empty;
+            case "extract":
+                return TryNavigate(root, ParsePathSegments(rest), out var extracted)
+                    ? NodeToMushString(extracted)
+                    : string.Empty;
             case "unescape":
                 return root is JsonValue sv && sv.TryGetValue<string>(out var str)
                     ? str
@@ -229,6 +242,29 @@ public static class JsonFunctions
         if (root == null) return MushError.Nothing.Text();
 
         string op = args[1].Trim().ToLowerInvariant();
+        if (op == "patch")
+        {
+            JsonNode? patchNode;
+            try { patchNode = JsonNode.Parse(args[2]); }
+            catch { return MushError.InvalidValue.Text(); }
+            var patched = ApplyMergePatch(root, patchNode);
+            return patched?.ToJsonString(RelaxedJson) ?? "null";
+        }
+        if (op == "sort")
+        {
+            if (root is not JsonArray sortArr)
+                return MushError.InvalidType.Text();
+            string sortPath = args[2].Trim();
+            var items = sortArr.Select(el =>
+            {
+                TryNavigate(el, ParsePathSegments(new[] { sortPath }), out var keyNode);
+                return (Element: el, Key: keyNode);
+            }).ToList();
+            items.Sort((a, b) => CompareJsonNodes(a.Key, b.Key));
+            var sortedArr = new JsonArray(items.Select(x => x.Element?.DeepClone()).ToArray());
+            return sortedArr.ToJsonString(RelaxedJson);
+        }
+
         var segments = ParsePathSegments(new[] { args[2] }).ToArray();
         if (segments.Length == 0) return root.ToJsonString();
 
@@ -258,7 +294,7 @@ public static class JsonFunctions
                 {
                     return MushError.Nothing.Text();
                 }
-                return root.ToJsonString();
+                return root.ToJsonString(RelaxedJson);
             }
             case "remove":
             {
@@ -266,11 +302,50 @@ public static class JsonFunctions
                     obj.Remove(leaf);
                 else if (parent is JsonArray arr && int.TryParse(leaf, out int idx) && idx >= 0 && idx < arr.Count)
                     arr.RemoveAt(idx);
-                return root.ToJsonString();
+                return root.ToJsonString(RelaxedJson);
             }
             default:
                 return MushError.UnknownOperation.Text();
         }
+    }
+
+    private static int CompareJsonNodes(JsonNode? a, JsonNode? b)
+    {
+        if (a is JsonValue va && b is JsonValue vb &&
+            TryGetJsonDouble(va, out double da) && TryGetJsonDouble(vb, out double db))
+        {
+            return da.CompareTo(db);
+        }
+        return string.CompareOrdinal(NodeToMushString(a), NodeToMushString(b));
+    }
+
+    private static bool TryGetJsonDouble(JsonValue v, out double d)
+    {
+        if (v.TryGetValue<double>(out d)) return true;
+        if (v.TryGetValue<long>(out long l)) { d = l; return true; }
+        d = 0;
+        return false;
+    }
+
+    private static JsonNode? ApplyMergePatch(JsonNode? target, JsonNode? patch)
+    {
+        if (patch is not JsonObject patchObj)
+            return patch?.DeepClone();
+
+        var targetObj = target as JsonObject ?? new JsonObject();
+        foreach (var kv in patchObj)
+        {
+            if (kv.Value == null)
+            {
+                targetObj.Remove(kv.Key);
+            }
+            else
+            {
+                targetObj.TryGetPropertyValue(kv.Key, out var existing);
+                targetObj[kv.Key] = ApplyMergePatch(existing?.DeepClone(), kv.Value);
+            }
+        }
+        return targetObj;
     }
 
     public static string JsonMap(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -295,7 +370,9 @@ public static class JsonFunctions
             var uargs = new string[4 + extraArgs.Length];
             uargs[0] = args[0];
             uargs[1] = GetJsonType(node);
-            uargs[2] = NodeToMushString(node);
+            uargs[2] = node == null
+                ? "null"
+                : (node is JsonValue v && v.TryGetValue<string>(out var s) ? s : node.ToJsonString(RelaxedJson));
             uargs[3] = key;
             Array.Copy(extraArgs, 0, uargs, 4, extraArgs.Length);
             return DbFunctions.Ufun(reg, ctx, uargs);

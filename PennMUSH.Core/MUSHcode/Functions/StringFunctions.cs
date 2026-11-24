@@ -734,29 +734,22 @@ public static class StringFunctions
         string w = Regex.Replace(input.ToUpperInvariant(), @"[^A-Z]", "");
         if (string.IsNullOrEmpty(w)) return string.Empty;
 
-        w = w.Replace("PH", "F", StringComparison.Ordinal)
-             .Replace("KN", "N", StringComparison.Ordinal)
-             .Replace("WR", "R", StringComparison.Ordinal)
-             .Replace("QU", "KW", StringComparison.Ordinal)
-             .Replace('X', 'S');
-
         var sb = new StringBuilder();
         char last = '\0';
         for (int i = 0; i < w.Length; i++)
         {
             char c = w[i] switch
             {
-                'A' or 'E' or 'I' or 'O' or 'U' or 'Y' => 'A',
-                'B' or 'P' => 'B',
-                'C' or 'K' or 'Q' => 'K',
-                'D' or 'T' => 'T',
-                'F' or 'V' => 'F',
-                'G' or 'J' => 'J',
-                'S' or 'Z' => 'S',
+                'A' or 'E' or 'I' or 'O' or 'U' or 'Y' or 'H' or 'W' => i == 0 ? 'A' : '\0',
+                'B' or 'F' or 'P' or 'V' => 'B',
+                'C' or 'G' or 'J' or 'K' or 'Q' or 'S' or 'X' or 'Z' => 'C',
+                'D' or 'T' => 'D',
+                'L' => 'L',
                 'M' or 'N' => 'M',
-                _ => w[i]
+                'R' => 'R',
+                _ => '\0'
             };
-            if (i > 0 && c == 'A') continue;
+            if (c == '\0') continue;
             if (c != last)
             {
                 sb.Append(c);

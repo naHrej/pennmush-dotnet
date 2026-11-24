@@ -344,7 +344,8 @@ public static class MathFunctions
         if (args.Length == 0) return MushError.TooFewArguments.Text();
         if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
             return MushError.ArgumentsMustBeNumbers.Text();
-        if (val <= 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val == 0) return "-inf";
         if (args.Length > 1 && args[1].Trim().Equals("e", StringComparison.OrdinalIgnoreCase))
             return FormatNumber(Math.Log(val));
 
@@ -362,7 +363,8 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val <= 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val == 0) return "-inf";
         return FormatNumber(Math.Log(val));
     }
 
@@ -448,6 +450,8 @@ public static class MathFunctions
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
         if (args.Length > 1 && !TryConvertAngleToRadians(val, args[1], out val))
             return MushError.InvalidAngleType.Text();
+        if (Math.Abs(Math.Cos(val)) < 1e-12)
+            return MushError.OutOfRange.Text();
         return FormatNumber(Math.Tan(val));
     }
 
@@ -527,13 +531,13 @@ public static class MathFunctions
             long a = (long)Math.Floor(b);
             long nextH = a * h1 + h2;
             long nextK = a * k1 + k2;
-            if (nextK > 100000)
+            if (nextK > 1000000)
                 break;
             h2 = h1;
             h1 = nextH;
             k2 = k1;
             k1 = nextK;
-            if (Math.Abs(val - (double)h1 / k1) < 1e-7 || b - a < 1e-9)
+            if (Math.Abs(val - (double)h1 / k1) < 1e-10 || b - a < 1e-12)
                 break;
             b = 1.0 / (b - a);
         }
@@ -1054,8 +1058,15 @@ public static class MathFunctions
 
     private static string FormatNumber(double val)
     {
-        if (val == Math.Floor(val) && !double.IsInfinity(val) && !double.IsNaN(val) && val >= -9e18 && val <= 9e18)
-            return ((long)val).ToString(CultureInfo.InvariantCulture);
-        return val.ToString("G", CultureInfo.InvariantCulture);
+        if (double.IsNaN(val) || double.IsInfinity(val))
+            return val.ToString(CultureInfo.InvariantCulture);
+        if (Math.Abs(val) < 1e-12)
+            return "0";
+        double rounded = Math.Round(val, 6, MidpointRounding.AwayFromZero);
+        if (Math.Abs(rounded) < 1e-12)
+            return "0";
+        if (rounded == Math.Floor(rounded) && rounded >= -9e18 && rounded <= 9e18)
+            return ((long)rounded).ToString(CultureInfo.InvariantCulture);
+        return rounded.ToString("0.######", CultureInfo.InvariantCulture);
     }
 }

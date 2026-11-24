@@ -247,9 +247,9 @@ public static class RegexFunctions
         {
             return MushError.RegexTimeout.Text();
         }
-        catch
+        catch (ArgumentException ex)
         {
-            return string.Empty;
+            return $"#-1 REGEXP ERROR: {ex.Message}";
         }
     }
 
@@ -290,9 +290,9 @@ public static class RegexFunctions
         {
             return MushError.RegexTimeout.Text();
         }
-        catch
+        catch (ArgumentException ex)
         {
-            return string.Empty;
+            return $"#-1 REGEXP ERROR: {ex.Message}";
         }
     }
 
