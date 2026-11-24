@@ -1,6 +1,7 @@
 <Project>
   <Target Name="GenerateServerVersion" BeforeTargets="GetAssemblyVersion">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)build\Write-ServerVersion.ps1&quot; -RepoRoot &quot;$([System.IO.Path]::TrimEndingDirectorySeparator('$(MSBuildThisFileDirectory)'))&quot; -SourcePath &quot;$(IntermediateOutputPath)ServerVersion.Generated.cs&quot; -ProductPath &quot;$(IntermediateOutputPath)ServerProductVersion.txt&quot; -InformationalPath &quot;$(IntermediateOutputPath)ServerInformationalVersion.txt&quot;" />
+    <Exec Condition="'$(OS)' == 'Windows_NT'" Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)build\Write-ServerVersion.ps1&quot; -RepoRoot &quot;$([System.IO.Path]::TrimEndingDirectorySeparator('$(MSBuildThisFileDirectory)'))&quot; -SourcePath &quot;$(IntermediateOutputPath)ServerVersion.Generated.cs&quot; -ProductPath &quot;$(IntermediateOutputPath)ServerProductVersion.txt&quot; -InformationalPath &quot;$(IntermediateOutputPath)ServerInformationalVersion.txt&quot;" />
+    <Exec Condition="'$(OS)' != 'Windows_NT'" Command="bash &quot;$(MSBuildThisFileDirectory)build/write-server-version.sh&quot; &quot;$([System.IO.Path]::TrimEndingDirectorySeparator('$(MSBuildThisFileDirectory)'))&quot; &quot;$(IntermediateOutputPath)ServerVersion.Generated.cs&quot; &quot;$(IntermediateOutputPath)ServerProductVersion.txt&quot; &quot;$(IntermediateOutputPath)ServerInformationalVersion.txt&quot;" />
     <ReadLinesFromFile File="$(IntermediateOutputPath)ServerProductVersion.txt">
       <Output TaskParameter="Lines" PropertyName="Version" />
     </ReadLinesFromFile>
