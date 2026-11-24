@@ -1,0 +1,77 @@
+{
+    "group":  "testsidefx",
+    "category":  "function",
+    "source":  "pennmush/test/testsidefx.t",
+    "cases":  [
+                  {
+                      "id":  "clone.1",
+                      "input":  "@create Original",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.2",
+                      "input":  "@set Original=Wizard",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.3",
+                      "input":  "\u0026FOO Original=blah",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.4",
+                      "input":  "@clone Original=Copy1",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.5",
+                      "input":  "think hasflag(Copy1, WIZARD)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.6",
+                      "input":  "think hasattr(Copy1, FOO)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.7",
+                      "input":  "@clone/preserve Original=Copy2",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.8",
+                      "input":  "think hasflag(Copy2, WIZARD)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.9",
+                      "input":  "think clone(Original, Copy3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.10",
+                      "input":  "think hasflag(Copy3, WIZARD)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.11",
+                      "input":  "think clone(Original, Copy4, , preserve)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.12",
+                      "input":  "think hasflag(Copy4, WIZARD)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.13",
+                      "input":  "@clone NoSuchObject",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "clone.14",
+                      "input":  "think clone(NoSuchObject)",
+                      "compare":  "exact"
+                  }
+              ]
+}

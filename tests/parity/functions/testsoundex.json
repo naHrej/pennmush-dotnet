@@ -1,0 +1,102 @@
+{
+    "group":  "testsoundex",
+    "category":  "function",
+    "source":  "pennmush/test/testsoundex.t",
+    "cases":  [
+                  {
+                      "id":  "soundex.1",
+                      "input":  "think soundex(a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.2",
+                      "input":  "think soundex(fred)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.3",
+                      "input":  "think soundex(phred, soundex)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.4",
+                      "input":  "think soundex(afford)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.5",
+                      "input":  "think soundex(fred, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.6",
+                      "input":  "think soundex(phred, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.7",
+                      "input":  "think soundex(afford, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundex.8",
+                      "input":  "think soundex(foo, bad hash)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.1",
+                      "input":  "think soundslike(robin, robbyn)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.2",
+                      "input":  "think soundslike(robin, roebuck)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.3",
+                      "input":  "think soundslike(frick, frack)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.4",
+                      "input":  "think soundslike(glacier, glazier)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.5",
+                      "input":  "think soundslike(rutabega, rototiller, soundex)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.6",
+                      "input":  "think soundslike(robin, robbyn, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.7",
+                      "input":  "think soundslike(robin, roebuck, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.8",
+                      "input":  "think soundslike(frick, frack, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.9",
+                      "input":  "think soundslike(glacier, glazier, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.10",
+                      "input":  "think soundslike(rutabega, rototiller, phone)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "soundslike.11",
+                      "input":  "think soundslike(foo, bar, bad hash)",
+                      "compare":  "exact"
+                  }
+              ]
+}

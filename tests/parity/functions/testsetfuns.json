@@ -1,0 +1,877 @@
+{
+    "group":  "testsetfuns",
+    "category":  "function",
+    "source":  "pennmush/test/testsetfuns.t",
+    "cases":  [
+                  {
+                      "id":  "setunion.null",
+                      "input":  "think setunion(!,,!)-",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.null",
+                      "input":  "think setdiff(!,,!)-",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.null",
+                      "input":  "think setinter(!,!,!)-",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.00",
+                      "input":  "think setunion(,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.01",
+                      "input":  "think setunion(!,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.02",
+                      "input":  "think setunion(,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.1",
+                      "input":  "think setunion(a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.2",
+                      "input":  "think setunion(,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.3",
+                      "input":  "think setunion(a!a!a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.4",
+                      "input":  "think setunion(,a!a!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.5",
+                      "input":  "think setunion(a!a!a,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.6",
+                      "input":  "think setunion(a!a!a,!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.7",
+                      "input":  "think setunion(a,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.8",
+                      "input":  "think setunion(a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.9",
+                      "input":  "think setunion(a!b,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.10",
+                      "input":  "think setunion(b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.11",
+                      "input":  "think setunion(b!a,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.12",
+                      "input":  "think setunion(!b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.13",
+                      "input":  "think setunion(b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.14",
+                      "input":  "think setunion(!b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.15",
+                      "input":  "think setunion(!b!a!,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.16",
+                      "input":  "think setunion(c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.17",
+                      "input":  "think setunion(!c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.00s",
+                      "input":  "think setunion(,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.01s",
+                      "input":  "think setunion( ,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.02s",
+                      "input":  "think setunion(, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.1s",
+                      "input":  "think setunion(a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.2s",
+                      "input":  "think setunion(,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.3s",
+                      "input":  "think setunion(a a a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.4s",
+                      "input":  "think setunion(,a a a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.5s",
+                      "input":  "think setunion(a a a, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.6s",
+                      "input":  "think setunion(a a a, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.7s",
+                      "input":  "think setunion(a,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.8s",
+                      "input":  "think setunion(a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.9s",
+                      "input":  "think setunion(a b,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.10s",
+                      "input":  "think setunion(b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.11s",
+                      "input":  "think setunion(b a, b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.12s",
+                      "input":  "think setunion( b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.13s",
+                      "input":  "think setunion(b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.14s",
+                      "input":  "think setunion( b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.15s",
+                      "input":  "think setunion( b a , b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.16s",
+                      "input":  "think setunion(c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.17s",
+                      "input":  "think setunion( c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.00",
+                      "input":  "think setinter(,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.01",
+                      "input":  "think setinter(!,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.02",
+                      "input":  "think setinter(,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.1",
+                      "input":  "think setinter(a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.2",
+                      "input":  "think setinter(,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.3",
+                      "input":  "think setinter(a!a!a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.4",
+                      "input":  "think setinter(,a!a!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.5",
+                      "input":  "think setinter(a!a!a,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.6",
+                      "input":  "think setinter(a!a!a,!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.7",
+                      "input":  "think setinter(a,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.8",
+                      "input":  "think setinter(a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.9",
+                      "input":  "think setinter(a!b,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.10",
+                      "input":  "think setinter(b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.11",
+                      "input":  "think setinter(b!a,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.12",
+                      "input":  "think setinter(!b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.13",
+                      "input":  "think setinter(b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.14",
+                      "input":  "think setinter(!b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.15",
+                      "input":  "think setinter(!b!a!,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.16",
+                      "input":  "think setinter(c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.17",
+                      "input":  "think setinter(!c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.00s",
+                      "input":  "think setinter(,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.01s",
+                      "input":  "think setinter( ,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.02s",
+                      "input":  "think setinter(, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.1s",
+                      "input":  "think setinter(a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.2s",
+                      "input":  "think setinter(,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.3s",
+                      "input":  "think setinter(a a a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.4s",
+                      "input":  "think setinter(,a a a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.5s",
+                      "input":  "think setinter(a a a, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.6s",
+                      "input":  "think setinter(a a a, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.7s",
+                      "input":  "think setinter(a,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.8s",
+                      "input":  "think setinter(a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.9s",
+                      "input":  "think setinter(a b,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.10s",
+                      "input":  "think setinter(b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.11s",
+                      "input":  "think setinter(b a, b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.12s",
+                      "input":  "think setinter( b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.13s",
+                      "input":  "think setinter(b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.14s",
+                      "input":  "think setinter( b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.15s",
+                      "input":  "think setinter( b a , b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.16s",
+                      "input":  "think setinter(c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setinter.17s",
+                      "input":  "think setinter( c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.00",
+                      "input":  "think setdiff(,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.01",
+                      "input":  "think setdiff(!,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.02",
+                      "input":  "think setdiff(,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.1",
+                      "input":  "think setdiff(a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.2",
+                      "input":  "think setdiff(,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.3",
+                      "input":  "think setdiff(a!a!a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.4",
+                      "input":  "think setdiff(,a!a!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.5",
+                      "input":  "think setdiff(a!a!a,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.6",
+                      "input":  "think setdiff(a!a!a,!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.7",
+                      "input":  "think setdiff(a,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.8",
+                      "input":  "think setdiff(a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.9",
+                      "input":  "think setdiff(a!b,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.10",
+                      "input":  "think setdiff(b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.11",
+                      "input":  "think setdiff(b!a,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.12",
+                      "input":  "think setdiff(!b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.13",
+                      "input":  "think setdiff(b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.14",
+                      "input":  "think setdiff(!b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.15",
+                      "input":  "think setdiff(!b!a!,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.16",
+                      "input":  "think setdiff(c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.17",
+                      "input":  "think setdiff(!c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.00s",
+                      "input":  "think setdiff(,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.01s",
+                      "input":  "think setdiff( ,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.02s",
+                      "input":  "think setdiff(, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.1s",
+                      "input":  "think setdiff(a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.2s",
+                      "input":  "think setdiff(,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.3s",
+                      "input":  "think setdiff(a a a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.4s",
+                      "input":  "think setdiff(,a a a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.5s",
+                      "input":  "think setdiff(a a a, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.6s",
+                      "input":  "think setdiff(a a a, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.7s",
+                      "input":  "think setdiff(a,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.8s",
+                      "input":  "think setdiff(a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.9s",
+                      "input":  "think setdiff(a b,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.10s",
+                      "input":  "think setdiff(b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.11s",
+                      "input":  "think setdiff(b a, b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.12s",
+                      "input":  "think setdiff( b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.13s",
+                      "input":  "think setdiff(b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.14s",
+                      "input":  "think setdiff( b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.15s",
+                      "input":  "think setdiff( b a , b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.16s",
+                      "input":  "think setdiff(c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setdiff.17s",
+                      "input":  "think setdiff( c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.00",
+                      "input":  "think setsymdiff(,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.01",
+                      "input":  "think setsymdiff(!,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.02",
+                      "input":  "think setsymdiff(,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.1",
+                      "input":  "think setsymdiff(a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.2",
+                      "input":  "think setsymdiff(,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.3",
+                      "input":  "think setsymdiff(a!a!a,,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.4",
+                      "input":  "think setsymdiff(,a!a!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.5",
+                      "input":  "think setsymdiff(a!a!a,!,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.6",
+                      "input":  "think setsymdiff(a!a!a,!a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.7",
+                      "input":  "think setsymdiff(a,a,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.8",
+                      "input":  "think setsymdiff(a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.9",
+                      "input":  "think setsymdiff(a!b,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.10",
+                      "input":  "think setsymdiff(b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.11",
+                      "input":  "think setsymdiff(b!a,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.12",
+                      "input":  "think setsymdiff(!b!a,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.13",
+                      "input":  "think setsymdiff(b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.14",
+                      "input":  "think setsymdiff(!b!a!,b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.15",
+                      "input":  "think setsymdiff(!b!a!,!b,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.16",
+                      "input":  "think setsymdiff(c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.17",
+                      "input":  "think setsymdiff(!c!a!b!a,a!b!c!c,!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.00s",
+                      "input":  "think setsymdiff(,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.01s",
+                      "input":  "think setsymdiff( ,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.02s",
+                      "input":  "think setsymdiff(, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.1s",
+                      "input":  "think setsymdiff(a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.2s",
+                      "input":  "think setsymdiff(,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.3s",
+                      "input":  "think setsymdiff(a a a,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.4s",
+                      "input":  "think setsymdiff(,a a a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.5s",
+                      "input":  "think setsymdiff(a a a, )",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.6s",
+                      "input":  "think setsymdiff(a a a, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.7s",
+                      "input":  "think setsymdiff(a,a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.8s",
+                      "input":  "think setsymdiff(a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.9s",
+                      "input":  "think setsymdiff(a b,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.10s",
+                      "input":  "think setsymdiff(b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.11s",
+                      "input":  "think setsymdiff(b a, b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.12s",
+                      "input":  "think setsymdiff( b a,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.13s",
+                      "input":  "think setsymdiff(b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.14s",
+                      "input":  "think setsymdiff( b a ,b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.15s",
+                      "input":  "think setsymdiff( b a , b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.16s",
+                      "input":  "think setsymdiff(c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.17s",
+                      "input":  "think setsymdiff( c a b a,a b c c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.18s",
+                      "input":  "think setsymdiff(a b, c d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setsymdiff.19s",
+                      "input":  "think setsymdiff(a b c, c d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.1",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2.0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.2",
+                      "input":  "think setunion(0.0 1.0 2.0, 0 1 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.3",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2,,i)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.4",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2,,n)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.5",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2,,f)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.6",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2.3,,n)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.7",
+                      "input":  "think setunion(0 1 2, 0.0 1.0 2.3,,f)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.8",
+                      "input":  "think setunion(5 [ansi(h,5.0)], [ansi(h,5)] 5.0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "setunion.nums.9",
+                      "input":  "think setunion(5 [ansi(h,5.0)], [ansi(h,5)] 5.0,,f)",
+                      "compare":  "exact"
+                  }
+              ]
+}

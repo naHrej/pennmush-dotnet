@@ -1,0 +1,39 @@
+{
+    "group":  "testhastype",
+    "category":  "function",
+    "source":  "pennmush/test/testhastype.t",
+    "cases":  [
+                  {
+                      "id":  "hastype.1",
+                      "input":  "think hastype(#0, room)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "hastype.2",
+                      "input":  "think hastype(#1, player)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "hastype.3",
+                      "input":  "think hastype($foo_dbref, thing)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "hastype.4",
+                      "input":  "think hastype($foo_dbref, garbage)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\\@recycle $foo_dbref",
+                                    "\\@recycle $foo_dbref"
+                                ]
+                  },
+                  {
+                      "id":  "hastype.5",
+                      "input":  "think hastype($foo_dbref, exit)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@open foo"
+                                ]
+                  }
+              ]
+}

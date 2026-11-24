@@ -1,0 +1,67 @@
+{
+    "group":  "testdigest",
+    "category":  "function",
+    "source":  "pennmush/test/testdigest.t",
+    "cases":  [
+                  {
+                      "id":  "digest.1",
+                      "input":  "think digest(md5,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.2",
+                      "input":  "think digest(sha,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.3",
+                      "input":  "think digest(sha1,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.4",
+                      "input":  "think digest(dss1,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.5",
+                      "input":  "think digest(ripemd160,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.6",
+                      "input":  "think digest(md4,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.7",
+                      "input":  "think digest(mdc2, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.8",
+                      "input":  "think digest(sha224, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.9",
+                      "input":  "think digest(sha512, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "digest.10",
+                      "input":  "think digest(whirlpool, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "base64.1",
+                      "input":  "think encode64(test string)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "base64.2",
+                      "input":  "think decode64(encode64(this is another fine mess you\u0027ve gotten us into))",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,421 @@
+{
+    "group":  "testjson",
+    "category":  "function",
+    "source":  "pennmush/test/testjson.t",
+    "cases":  [
+                  {
+                      "id":  "json.isjson.1",
+                      "input":  "think isjson(v(json))",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\u0026json me={ \"a\": 1, \"b\": 2, \"c\": [1,2,3] }"
+                                ]
+                  },
+                  {
+                      "id":  "json.isjson.2",
+                      "input":  "think isjson(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.null.1",
+                      "input":  "think json(null)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.null.2",
+                      "input":  "think json(null,null)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.null.3",
+                      "input":  "think json(null,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.boolean.1",
+                      "input":  "think json(boolean, true)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.boolean.2",
+                      "input":  "think json(boolean, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.boolean.3",
+                      "input":  "think json(boolean, false)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.boolean.4",
+                      "input":  "think json(boolean, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.boolean.5",
+                      "input":  "think json(boolean, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.1",
+                      "input":  "think json(string, foobar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.2",
+                      "input":  "think json(string, foo bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.3",
+                      "input":  "think json(string, foo \"bar\" baz)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.4",
+                      "input":  "think json(string, foo\\\\\\\\bar\\\\\\\\baz)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.5",
+                      "input":  "think json(string, accent(foo, f:o))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.string.6",
+                      "input":  "think json_query(json(string,accent(foo,f:o)), unescape)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.number.1",
+                      "input":  "think json(number, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.number.2",
+                      "input":  "think json(number, 5.555)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.number.3",
+                      "input":  "think json(number, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.array.1",
+                      "input":  "think json(array, \"foo\", 5, true)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.array.2",
+                      "input":  "think json(array, \"foo\", 5, json(array, \"bar\", 10))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.object.1",
+                      "input":  "think json(object, foo, 1, bar, \"baz\", boing, true)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.object.2",
+                      "input":  "think json(object, foo, 1, bar, \"baz\", boing, json(array, \"nested\", \"test\", 1)))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.1",
+                      "input":  "think json_query(\"foo\", type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.2",
+                      "input":  "think json_query(1, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.3",
+                      "input":  "think json_query(3.14, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.4",
+                      "input":  "think json_query(null, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.5",
+                      "input":  "think json_query(true, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.6",
+                      "input":  "think json_query(false, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.7",
+                      "input":  "think json_query(v(json), type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.8",
+                      "input":  "think json_query(json(array, 1), type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.type.9",
+                      "input":  "think json_query(foo, type)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.1",
+                      "input":  "think json_query(null, size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.2",
+                      "input":  "think json_query(true, size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.3",
+                      "input":  "think json_query(1, size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.4",
+                      "input":  "think json_query(1.1, size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.5",
+                      "input":  "think json_query(\"foo\", size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.6",
+                      "input":  "think json_query(\\[\\], size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.7",
+                      "input":  "think json_query(json(array, 1, 2), size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.8",
+                      "input":  "think json_query(\\{\\}, size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.size.9",
+                      "input":  "think json_query(v(json), size)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.1",
+                      "input":  "think json_query(v(json), exists, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.2",
+                      "input":  "think json_query(v(json), exists, d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.3",
+                      "input":  "think json_query(v(json), exists, c, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.4",
+                      "input":  "think json_query(v(json), exists, c, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.5",
+                      "input":  "think json_query(\"foo\", exists, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.exists.6",
+                      "input":  "think json_query(foo, exists, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.1",
+                      "input":  "think json_query(v(json), get, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.2",
+                      "input":  "think json_query(v(json), get, d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.3",
+                      "input":  "think json_query(v(json), get, c, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.4",
+                      "input":  "think json_query(v(json), get, c, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.5",
+                      "input":  "think json_query(\"foo\", get, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.get.6",
+                      "input":  "think json_query(foo, get, a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.1",
+                      "input":  "think json_query(v(json), extract, $.a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.2",
+                      "input":  "think json_query(v(json), extract, $.d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.3",
+                      "input":  "think json_query(v(json), extract, $.c\\[1\\])",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.4",
+                      "input":  "think json_query(v(json), extract, $.c\\[3\\])",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.5",
+                      "input":  "think json_query(\"foo\", extract, $)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.extract.6",
+                      "input":  "think json_query(foo, extract, $.a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.set.1",
+                      "input":  "think json_mod(v(json), set, $.c, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.set.2",
+                      "input":  "think json_mod(v(json), set, $.d, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.insert.1",
+                      "input":  "think json_mod(v(json), insert, $.b, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.insert.2",
+                      "input":  "think json_mod(v(json), insert, $.d, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.replace.1",
+                      "input":  "think json_mod(v(json), replace, $.b, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.replace.2",
+                      "input":  "think json_mod(v(json), replace, $.d, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.remove.1",
+                      "input":  "think json_mod(v(json), remove, $.c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.remove.2",
+                      "input":  "think json_mod(v(json), remove, $.d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.patch.1",
+                      "input":  "think json_mod(json(object,a,1,b,2),patch,json(object,c,3,d,4))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.patch.2",
+                      "input":  "think json_mod(json(object,a,json(array,1,2),b,2), patch, json(object,a,9))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.patch.3",
+                      "input":  "think json_mod(json(object,a,json(array,1,2),b,2), patch, json(object, a, null))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.patch.4",
+                      "input":  "think json_mod(json(object,a,1,b,2), patch, json(object,a,9,b,null,c,8))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.patch.5",
+                      "input":  "think json_mod(json(object,a,json(object,x,1,y,2),b,3), patch, json(object,a,json(object,y,9),c,8))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.sort.1",
+                      "input":  "think json_mod(json(array, json(object, id, 5), json(object, id, 4)), sort, $.id)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.sort.2",
+                      "input":  "think json_mod(json(array, json(object, id, \"dog\"), json(object, id, \"cat\")), sort, $.id)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.sort.3",
+                      "input":  "think json_mod(json(array, 5, 3, 1, 2), sort, $)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.sort.4",
+                      "input":  "think json_mod(json(array, \"e\",\"m\",\"a\",\"z\"), sort, $)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.map.1",
+                      "input":  "think json_map(me/json_fn, \"foo\")",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\u0026json_fn me=We got [art(%0)] %0: %1",
+                                    "\u0026json2_fn me=%0:%1:%2",
+                                    "\u0026json3_fn me=json_map(me/json4_fn, %1, @)",
+                                    "\u0026json4_fn me=%1"
+                                ]
+                  },
+                  {
+                      "id":  "json.map.2",
+                      "input":  "think json_map(me/json_fn, \\[\"foo\"\\, 5\\], @)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.map.3",
+                      "input":  "think json_map(me/json_fn, \\[\"foo\"\\, \\[\"bar\"\\, 10\\]\\], @)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.map.4",
+                      "input":  "think json_map(me/json2_fn, json(object, a, 1, b, true, c, null), @)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "json.map.5",
+                      "input":  "think json_map(me/json3_fn, v(json), #)",
+                      "compare":  "exact"
+                  }
+              ]
+}

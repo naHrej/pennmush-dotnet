@@ -1,0 +1,22 @@
+{
+    "group":  "testsort",
+    "category":  "function",
+    "source":  "pennmush/test/testsort.t",
+    "cases":  [
+                  {
+                      "id":  "sort.2",
+                      "input":  "think sort(0.0 0 0.3 *foo*,f)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sort.3",
+                      "input":  "think sort(a [ansi(h,a)] b [ansi(h,b)] c d [ansi(h,e)] f)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sort.4",
+                      "input":  "think sort(3 [ansi(h,1)] [ansi(y,7)] 5)",
+                      "compare":  "exact"
+                  }
+              ]
+}

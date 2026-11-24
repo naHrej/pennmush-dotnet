@@ -1,0 +1,68 @@
+{
+    "group":  "testtrim",
+    "category":  "function",
+    "source":  "pennmush/test/testtrim.t",
+    "cases":  [
+                  {
+                      "id":  "trimpenn.1",
+                      "input":  "think trimpenn(XXXfooXXX, X, l)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimpenn.2",
+                      "input":  "think trimpenn(XXXfooXXX, X, r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimpenn.3",
+                      "input":  "think trimpenn(XXXfooXXX, X, b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimpenn.4",
+                      "input":  "think trimpenn(XXXfooXXX, Y, l)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimtiny.1",
+                      "input":  "think trimtiny(XXXfooXXX, L, X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimtiny.2",
+                      "input":  "think trimtiny(XXXfooXXX, R, X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimtiny.3",
+                      "input":  "think trimtiny(XXXfooXXX, B, X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trimtiny.4",
+                      "input":  "think trimtiny(XXXfooXXX, l, Y)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "trim.1",
+                      "input":  "think trim(XXXfooXXX, l, X)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@config/set tiny_trim_fun=yes"
+                                ]
+                  },
+                  {
+                      "id":  "trim.2",
+                      "input":  "think trim(XXXfooXXX, X, l)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@config/set tiny_trim_fun=no"
+                                ]
+                  },
+                  {
+                      "id":  "trim.3",
+                      "input":  "think @[trim(%b%bfoo%b%b)]@",
+                      "compare":  "exact"
+                  }
+              ]
+}

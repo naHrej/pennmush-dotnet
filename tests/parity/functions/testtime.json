@@ -1,0 +1,167 @@
+{
+    "group":  "testtime",
+    "category":  "function",
+    "source":  "pennmush/test/testtime.t",
+    "cases":  [
+                  {
+                      "id":  "etimefmt.1",
+                      "input":  "think etimefmt($w $d $h $m $s, 59)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.2",
+                      "input":  "think etimefmt($w $d $h $m $s, 75)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.3",
+                      "input":  "think etimefmt($w $d $h $m $s, 3665)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.4",
+                      "input":  "think etimefmt($w $d $h $m $s, add(mul(60, 60, 24, 8), 50))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.5",
+                      "input":  "think etimefmt($d $h $m $s, add(mul(60, 60, 24, 8), 50))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.6",
+                      "input":  "think etimefmt($ts, 75)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.7",
+                      "input":  "think etimefmt($xm$xs, 75)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.8",
+                      "input":  "think etimefmt(test $2S, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.9",
+                      "input":  "think etimefmt($2s test, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.10",
+                      "input":  "think etimefmt($zm $zs, 45)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.11",
+                      "input":  "think etimefmt($zxm $zxs, 45)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.12",
+                      "input":  "think etimefmt($xzd $xth, 86405)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.13",
+                      "input":  "think etimefmt($h, -200)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.14",
+                      "input":  "think etimefmt($h, twelve)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.15",
+                      "input":  "think etimefmt($2h:$2M, 3700)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.16",
+                      "input":  "think etimefmt(You have $m minutes and $s seconds to go, 78)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.17",
+                      "input":  "think etimefmt($y $d, mul(60, 60, 24, 367))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etimefmt.18",
+                      "input":  "think etimefmt($y $td, mul(60, 60, 24, 367))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "timestring.1",
+                      "input":  "think timestring(301)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "timestring.2",
+                      "input":  "think timestring(301, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "timestring.3",
+                      "input":  "think timestring(301, 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "timestring.4",
+                      "input":  "think timestring(-50)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "timestring.5",
+                      "input":  "think timestring(four)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.1",
+                      "input":  "think stringsecs(5m 1s)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.2",
+                      "input":  "think stringsecs(3y 2m 7d 5h 23m)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.3",
+                      "input":  "think stringsecs(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.1",
+                      "input":  "think etime(59)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.2",
+                      "input":  "think etime(60)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.3",
+                      "input":  "think etime(61)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.4",
+                      "input":  "think etime(61, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.5",
+                      "input":  "think etime(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "etime.6",
+                      "input":  "think etime(50, foo)",
+                      "compare":  "exact"
+                  }
+              ]
+}

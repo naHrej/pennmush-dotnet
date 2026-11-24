@@ -1,0 +1,40 @@
+{
+  "group": "flow-control-queue",
+  "category": "command",
+  "cases": [
+    {
+      "id": "switch-first-match",
+      "input": "@switch/first 2=1,think one,2,think two,2,think two-again,think default",
+      "compare": "exact"
+    },
+    {
+      "id": "switch-all-matches",
+      "input": "@switch/all 2=1,think one,2,think two,2,think two-again,think default",
+      "compare": "exact"
+    },
+    {
+      "id": "switch-wildcard",
+      "input": "@switch foo*=foo*,think matched,think missed",
+      "compare": "exact"
+    },
+    {
+      "id": "dolist-basic",
+      "input": "@dolist a b c={think ##:#@}",
+      "compare": "exact"
+    },
+    {
+      "id": "force-self",
+      "input": "@force me=think forced-ok",
+      "compare": "exact"
+    },
+    {
+      "id": "trigger-attr",
+      "setup": [
+        "@create TrigBox",
+        "&DOIT TrigBox=think triggered:%0:%1"
+      ],
+      "input": "@trigger TrigBox/DOIT=alpha,beta",
+      "compare": "exact"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+    "group":  "testdecompose",
+    "category":  "function",
+    "source":  "pennmush/test/testdecompose.t",
+    "cases":  [
+                  {
+                      "id":  "decompose.1",
+                      "input":  "think decompose([ansi(hr,b[ansi(f,la)]h)])",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "decompose.2",
+                      "input":  "think decompose(a\\ \\ \\ \\ b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "decompose.3",
+                      "input":  "think decompose(s(tab%treturn%r))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "decompose.4",
+                      "input":  "think decompose(before(ansi(h,x),x)hello)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "decompose.5",
+                      "input":  "think decompose([before(ansi(h,blah),\\[)])",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,45 @@
+{
+  "group": "objects-attributes",
+  "category": "command",
+  "cases": [
+    {
+      "id": "create-and-get",
+      "setup": [
+        "@create ParityBox",
+        "&TESTATTR ParityBox=hello world"
+      ],
+      "input": "think [get(ParityBox/TESTATTR)]",
+      "compare": "exact"
+    },
+    {
+      "id": "edit-wildcard",
+      "setup": [
+        "@create EditBox",
+        "&MSG EditBox=hello world"
+      ],
+      "input": "@edit EditBox/MSG=world,pennmush; think [get(EditBox/MSG)]",
+      "compare": "exact"
+    },
+    {
+      "id": "wipe-attr",
+      "setup": [
+        "@create WipeBox",
+        "&A1 WipeBox=one",
+        "@wipe WipeBox/A1"
+      ],
+      "input": "think [hasattr(WipeBox,A1)]",
+      "compare": "exact"
+    },
+    {
+      "id": "parent-inheritance",
+      "setup": [
+        "@create ParentObj",
+        "@create ChildObj",
+        "&INHERITED ParentObj=from-parent",
+        "@parent ChildObj=ParentObj"
+      ],
+      "input": "think [get(ChildObj/INHERITED)]",
+      "compare": "exact"
+    }
+  ]
+}

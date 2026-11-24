@@ -1,0 +1,35 @@
+{
+  "group": "listeners-master-room",
+  "category": "command",
+  "cases": [
+    {
+      "id": "dollar-command-local",
+      "setup": [
+        "@create CmdWidget",
+        "&CMD_PING CmdWidget=$+ping *:think pong:%0"
+      ],
+      "input": "+ping hello",
+      "compare": "exact"
+    },
+    {
+      "id": "dollar-command-regexp",
+      "setup": [
+        "@create RegexWidget",
+        "&CMD_RE RegexWidget=$^\\+re (\\d+)$:think num:%1",
+        "@set RegexWidget/CMD_RE=regexp"
+      ],
+      "input": "+re 42",
+      "compare": "exact"
+    },
+    {
+      "id": "master-room-command",
+      "setup": [
+        "@create GlobalWidget",
+        "@tel GlobalWidget=#2",
+        "&CMD_GLOBAL GlobalWidget=$+ghello:think global-ok"
+      ],
+      "input": "+ghello",
+      "compare": "exact"
+    }
+  ]
+}

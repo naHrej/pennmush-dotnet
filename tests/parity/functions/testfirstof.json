@@ -1,0 +1,132 @@
+{
+    "group":  "testfirstof",
+    "category":  "function",
+    "source":  "pennmush/test/testfirstof.t",
+    "cases":  [
+                  {
+                      "id":  "firstof.1",
+                      "input":  "think firstof(0,0,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "firstof.2",
+                      "input":  "think firstof(2,0,0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "firstof.3",
+                      "input":  "think firstof(0,0,0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "firstof.4",
+                      "input":  "think firstof(1,2,3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strfirstof.1",
+                      "input":  "think strfirstof(,,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strfirstof.2",
+                      "input":  "think strfirstof(,bar,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strfirstof.3",
+                      "input":  "think strfirstof(bar,,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strfirstof.4",
+                      "input":  "think strfirstof(bar,baz,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.1",
+                      "input":  "think allof(0,0,2,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.2",
+                      "input":  "think allof(2,0,0,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.3",
+                      "input":  "think allof(0,0,0,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.4",
+                      "input":  "think allof(1,2,3,%b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.5",
+                      "input":  "think allof(1,2,3,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.6",
+                      "input":  "think allof(0,0,2,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.7",
+                      "input":  "think allof(2,0,0,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.8",
+                      "input":  "think allof(0,0,0,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "allof.9",
+                      "input":  "think allof(1,2,3,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.1",
+                      "input":  "think strallof(,,,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.2",
+                      "input":  "think strallof(foo,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.3",
+                      "input":  "think strallof(,foo,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.4",
+                      "input":  "think strallof(foo,,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.5",
+                      "input":  "think strallof(foo,bar,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.6",
+                      "input":  "think strallof(,foo,bar,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.7",
+                      "input":  "think strallof(foo,,bar,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strallof.8",
+                      "input":  "think strallof(foo,bar,,@)",
+                      "compare":  "exact"
+                  }
+              ]
+}

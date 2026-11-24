@@ -1,0 +1,142 @@
+{
+    "group":  "testgrep",
+    "category":  "function",
+    "source":  "pennmush/test/testgrep.t",
+    "cases":  [
+                  {
+                      "id":  "grep.1",
+                      "input":  "think grep(me,*,d)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\u0026FIRST me=first",
+                                    "\u0026SECOND me=second",
+                                    "\u0026THIRD me=third"
+                                ]
+                  },
+                  {
+                      "id":  "grep.2",
+                      "input":  "think grep(me,S*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.3",
+                      "input":  "think grep(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.4",
+                      "input":  "think grep(me,*,D)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.5",
+                      "input":  "think wildgrep(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.6",
+                      "input":  "think wildgrep(me,*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.7",
+                      "input":  "think wildgrep(me,*,first)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.8",
+                      "input":  "think wildgrep(me,*,FIRST)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.9",
+                      "input":  "think regrep(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.10",
+                      "input":  "think regrep(me,*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.11",
+                      "input":  "think regrep(me,*,d$)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.12",
+                      "input":  "think regrep(me,*,first)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.13",
+                      "input":  "think regrep(me,*,FIRST)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.14",
+                      "input":  "think grepi(me,*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.15",
+                      "input":  "think grepi(me,S*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.16",
+                      "input":  "think grepi(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.17",
+                      "input":  "think grepi(me,*,D)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.18",
+                      "input":  "think wildgrepi(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.19",
+                      "input":  "think wildgrepi(me,*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.20",
+                      "input":  "think wildgrepi(me,*,first)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.21",
+                      "input":  "think wildgrepi(me,*,FIRST)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.22",
+                      "input":  "think regrepi(me,*,*d*)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.23",
+                      "input":  "think regrepi(me,*,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.24",
+                      "input":  "think regrepi(me,*,d$)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.25",
+                      "input":  "think regrepi(me,*,first)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "grep.26",
+                      "input":  "think regrepi(me,*,FIRST)",
+                      "compare":  "exact"
+                  }
+              ]
+}

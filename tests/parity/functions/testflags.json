@@ -1,0 +1,172 @@
+{
+    "group":  "testflags",
+    "category":  "function",
+    "source":  "pennmush/test/testflags.t",
+    "cases":  [
+                  {
+                      "id":  "hasflag.1",
+                      "input":  "think hasflag(me, wizard)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "hasflag.2",
+                      "input":  "think hasflag(me, flunky)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "hasflag.3",
+                      "input":  "think hasflag(me, puppet)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.1",
+                      "input":  "think andlflags(me, wizard connected)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.2",
+                      "input":  "think andlflags(me, wizard flunky)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.3",
+                      "input":  "think andlflags(me, wizard !noaccents)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.4",
+                      "input":  "think andlflags(me, wizard !puppet)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.5",
+                      "input":  "think andlflags(me, puppet wizard)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.6",
+                      "input":  "think andlflags(me, noaccents wizard)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.7",
+                      "input":  "think andlflags(#1234, myopic)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.8",
+                      "input":  "think andlflags(me, player connected)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andlflags.9",
+                      "input":  "think andlflags(me, connected ! myopic)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.1",
+                      "input":  "think andflags(me, Wc)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.2",
+                      "input":  "think andflags(me, W_)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.3",
+                      "input":  "think andflags(me, W~)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.4",
+                      "input":  "think andflags(me, W!~)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.5",
+                      "input":  "think andflags(me, W!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.6",
+                      "input":  "think andflags(me, WP)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "andflags.7",
+                      "input":  "think andflags(me, WT)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.1",
+                      "input":  "think orlflags(me, wizard connected)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.2",
+                      "input":  "think orlflags(me, wizard flunky)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.3",
+                      "input":  "think orlflags(me, flunky wizard)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.4",
+                      "input":  "think orlflags(me, myopic noaccents)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.5",
+                      "input":  "think orlflags(me, myopic !noaccents)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.6",
+                      "input":  "think orlflags(#1234, myopic)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.7",
+                      "input":  "think orlflags(me, thing player)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orlflags.8",
+                      "input":  "think orlflags(me, noaccents ! myopic)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.1",
+                      "input":  "think orflags(me, ~W)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.2",
+                      "input":  "think orflags(me, ~_)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.3",
+                      "input":  "think orflags(me, v!~)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.4",
+                      "input":  "think orflags(me, v!)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.5",
+                      "input":  "think orflags(me, ET)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "orflags.6",
+                      "input":  "think orflags(me, EP)",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,809 @@
+{
+    "group":  "testatree",
+    "category":  "function",
+    "source":  "pennmush/test/testatree.t",
+    "cases":  [
+                  {
+                      "id":  "atree.basic.1",
+                      "input":  "\u0026foo` me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.2",
+                      "input":  "\u0026`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.3",
+                      "input":  "\u0026foo me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.4",
+                      "input":  "\u0026foo` me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.5",
+                      "input":  "\u0026foo``bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.6",
+                      "input":  "\u0026foo me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.7",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.8",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.9",
+                      "input":  "\u0026foo me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.10",
+                      "input":  "\u0026foo`bar me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.11",
+                      "input":  "\u0026foo`bar`baz me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.12",
+                      "input":  "\u0026foo`bar me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.13",
+                      "input":  "\u0026foo me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.14",
+                      "input":  "\u0026foo me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.15",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.16",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.basic.17",
+                      "input":  "@wipe me/foo",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.branch.1",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.branch.2",
+                      "input":  "think hasattr(me, foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.branch.3",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.branch.4",
+                      "input":  "think get(me/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.branch.5",
+                      "input":  "@wipe me/foo",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.1",
+                      "input":  "\u0026foo me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.2",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.3",
+                      "input":  "\u0026foo`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.4",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.5",
+                      "input":  "examine me/foo",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.6",
+                      "input":  "examine me/foo`bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.7",
+                      "input":  "examine me/foo`bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.8",
+                      "input":  "examine me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.9",
+                      "input":  "examine me/**",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.10",
+                      "input":  "examine me/FOO",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.11",
+                      "input":  "examine me/FOO`",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.12",
+                      "input":  "examine me/FOO`BAR`",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.13",
+                      "input":  "examine me/FOO`*",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.14",
+                      "input":  "examine me/FOO*Z",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.15",
+                      "input":  "examine me/FOO**Z",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.16",
+                      "input":  "@decompile me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.17",
+                      "input":  "@decompile me/*",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.18",
+                      "input":  "think lattr(me)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.19",
+                      "input":  "think lattr(me/**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.matching.20",
+                      "input":  "think flags(me/foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.2",
+                      "input":  "\u0026foo mortal=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.3",
+                      "input":  "\u0026foo`bar mortal=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.4",
+                      "input":  "@decompile me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.5",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.6",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.7",
+                      "input":  "@set mortal/foo`bar=wiz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.8",
+                      "input":  "@decompile me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.9",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.10",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.11",
+                      "input":  "\u0026foo`bar`qux me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.12",
+                      "input":  "@set mortal/foo`bar=mortal_dark",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.13",
+                      "input":  "@decompile me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.14",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.15",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.16",
+                      "input":  "\u0026foo`bar`qux me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.17",
+                      "input":  "@set mortal/foo`bar=!wiz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.18",
+                      "input":  "@decompile me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.19",
+                      "input":  "\u0026foo`bar me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.20",
+                      "input":  "\u0026foo`bar`baz me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.perms.21",
+                      "input":  "\u0026foo`bar`qux me=baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.1",
+                      "input":  "@create ancestor",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.2",
+                      "input":  "@create parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.3",
+                      "input":  "@create child",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.4",
+                      "input":  "drop child",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.5",
+                      "input":  "drop parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.6",
+                      "input":  "drop ancestor",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.7",
+                      "input":  "@parent child=parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.9",
+                      "input":  "\u0026foo ancestor=urk",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.10",
+                      "input":  "\u0026foo`bar ancestor=urk",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.11",
+                      "input":  "\u0026foo`bar`baz ancestor=urk",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.12",
+                      "input":  "think get(child/foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.13",
+                      "input":  "think get(child/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.14",
+                      "input":  "\u0026foo parent=wibble",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.15",
+                      "input":  "\u0026foo`bar parent=gleep",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.16",
+                      "input":  "think get(child/foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.17",
+                      "input":  "think get(child/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.18",
+                      "input":  "\u0026foo`bar`baz child=boom",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.19",
+                      "input":  "think -[get(child/foo)]-",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.20",
+                      "input":  "think -[get(child/foo`bar)]-",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.21",
+                      "input":  "@wipe child/foo",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.22",
+                      "input":  "@set parent/foo`bar=no_inherit",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.23",
+                      "input":  "think get(child/foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.24",
+                      "input":  "think get(child/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.25",
+                      "input":  "think get(child/foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parent.26",
+                      "input":  "think get(child/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattr.1",
+                      "input":  "think lattr(child/tree**)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\u0026tree`leaf parent=X",
+                                    "\u0026tree child=Y"
+                                ]
+                  },
+                  {
+                      "id":  "atree.lattr.2",
+                      "input":  "think lattr(child/tree`)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattr.3",
+                      "input":  "think lattr(parent/tree`)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattr.4",
+                      "input":  "think lattr(parent/tree`**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattr.5",
+                      "input":  "think lattr(parent/tree**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattrp.1",
+                      "input":  "think lattrp(child/tree`)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattrp.2",
+                      "input":  "think lattrp(child/tree`**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattrp.3",
+                      "input":  "think lattrp(child/tree**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattrp.4",
+                      "input":  "think lattrp(child/tree`)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "\u0026tree`leaf child=Z"
+                                ]
+                  },
+                  {
+                      "id":  "atree.lattrp.5",
+                      "input":  "think lattrp(child/tree`**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.lattrp.6",
+                      "input":  "think lattrp(child/tree**)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parentperms.1",
+                      "input":  "@set parent/foo`bar=!no_inherit",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parentperms.2",
+                      "input":  "@set parent/foo`bar=mortal_dark",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parentperms.3",
+                      "input":  "think get(child/foo`bar`baz)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parentperms.4",
+                      "input":  "think get(child/foo`bar)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.parentperms.5",
+                      "input":  "@set parent/foo=no_inherit",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.1",
+                      "input":  "@create grand",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.2",
+                      "input":  "drop grand",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.3",
+                      "input":  "@parent parent=grand",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.4",
+                      "input":  "\u0026bar grand=$bar:say Grand Bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.5",
+                      "input":  "\u0026bar`baz grand=$bar`baz:say Grand Baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.6",
+                      "input":  "\u0026bar parent=$bar:say Parent Bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.7",
+                      "input":  "\u0026bar`baz parent=$bar`baz:say Parent Baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.8",
+                      "input":  "@set child=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.9",
+                      "input":  "bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.11",
+                      "input":  "bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.13",
+                      "input":  "\u0026bar child=$bar:say Child!",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.14",
+                      "input":  "bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.16",
+                      "input":  "@set child/bar=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.17",
+                      "input":  "bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.19",
+                      "input":  "@set child/bar=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.20",
+                      "input":  "@set parent/bar=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.21",
+                      "input":  "bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.23",
+                      "input":  "@set parent/bar=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.24",
+                      "input":  "@set parent/bar`baz=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.25",
+                      "input":  "bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.27",
+                      "input":  "@set parent/bar=no_inherit",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.28",
+                      "input":  "@set parent/bar`baz=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.29",
+                      "input":  "bar`baz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.31",
+                      "input":  "@set parent/bar=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.32",
+                      "input":  "\u0026bar child",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.command.33",
+                      "input":  "bar",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.1",
+                      "input":  "\u0026abc grand=$abc:say Grand ABC",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.2",
+                      "input":  "\u0026abcd grand=$abcd:say Grand D",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.3",
+                      "input":  "\u0026abc`xyz grand=$abc`xyz:say Grand XYZ",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.4",
+                      "input":  "\u0026abc parent=$abc:say Parent ABC",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.5",
+                      "input":  "\u0026abcd parent=$abcd:say Parent D",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.6",
+                      "input":  "\u0026abc`xyz parent=$abc`xyz:say Parent XYZ",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.7",
+                      "input":  "examine parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.8",
+                      "input":  "\u0026abc parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.9",
+                      "input":  "@set child=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.10",
+                      "input":  "abc",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.12",
+                      "input":  "abc`xyz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.14",
+                      "input":  "\u0026abc child=$abc:say Child!",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.15",
+                      "input":  "abc",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.17",
+                      "input":  "@set child/abc=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.18",
+                      "input":  "abc`xyz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.20",
+                      "input":  "@set child/abc=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.21",
+                      "input":  "@set parent/abc=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.22",
+                      "input":  "abc`xyz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.24",
+                      "input":  "@set parent/abc=!no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.25",
+                      "input":  "@set parent/abc`xyz=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.26",
+                      "input":  "abc`xyz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.28",
+                      "input":  "@set parent/abc=no_inherit",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.29",
+                      "input":  "@set parent/abc`xyz=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.30",
+                      "input":  "abc`xyz",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.32",
+                      "input":  "@set parent/abc=no_command",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.33",
+                      "input":  "\u0026abc child",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.34",
+                      "input":  "abc",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.36",
+                      "input":  "@wipe parent",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.37",
+                      "input":  "@wipe grand/abc",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atree.sortorder.38",
+                      "input":  "examine grand/**",
+                      "compare":  "exact"
+                  }
+              ]
+}

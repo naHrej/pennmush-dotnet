@@ -1,0 +1,31 @@
+{
+  "group": "communication-channels",
+  "category": "command",
+  "cases": [
+    {
+      "id": "say-basic",
+      "input": "say hello parity",
+      "compare": "exact"
+    },
+    {
+      "id": "pose-basic",
+      "input": ":waves.",
+      "compare": "exact"
+    },
+    {
+      "id": "semipose-basic",
+      "input": ";'s test.",
+      "compare": "exact"
+    },
+    {
+      "id": "pemit-self",
+      "input": "@pemit me=direct pemit",
+      "compare": "exact"
+    },
+    {
+      "id": "remit-here",
+      "input": "@remit here=room emit",
+      "compare": "exact"
+    }
+  ]
+}
