@@ -248,9 +248,10 @@ public class CommandDispatcher
             return context;
         }
 
-        // 3. Check channel prefix (+channel message or +channel/who)
+        // 3. Check channel prefix (+channel message or +channel/who).
+        // A one-word message has no space or '=' inside the argument, so any argument counts.
         if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1
-            && (context.Switches.Count > 0 || context.Arguments.Contains(' ') || context.Arguments.Contains('=')))
+            && (context.Switches.Count > 0 || context.Arguments.Length > 0))
         {
             string chName = context.CommandName.Substring(1);
             var chanLookup = _commandTable.Lookup("@channel");
