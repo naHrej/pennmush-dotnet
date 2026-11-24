@@ -167,7 +167,7 @@ public class ObjectReadWriteCommandTests
         var found = _dispatcher.Dispatch(_owner, "@find brass", _db);
         var where = _dispatcher.Dispatch(_owner, $"@whereis #{other.Id.Value}", _db);
 
-        Assert.Contains($"Brass Lamp ({lamp.Id})", found.Notifications.Single());
+        Assert.Contains($"Brass Lamp({lamp.Id}", found.Notifications.Single());
         Assert.Contains("Hall", where.Notifications.Single());
         Assert.Contains("looking for you", where.TargetedNotifications.Single(n => n.Target == other.Id).Message);
     }

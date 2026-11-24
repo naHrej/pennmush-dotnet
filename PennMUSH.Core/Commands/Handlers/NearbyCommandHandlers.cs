@@ -517,10 +517,17 @@ public class SearchCommandHandler : ICommandHandler
             return true;
         }
 
-        ReportGroup(context, "ROOMS:", hits.Where(obj => obj.Type == ObjectType.Room));
-        ReportGroup(context, "EXITS:", hits.Where(obj => obj.Type == ObjectType.Exit));
-        ReportGroup(context, "THINGS:", hits.Where(obj => obj.Type == ObjectType.Thing));
-        ReportGroup(context, "PLAYERS:", hits.Where(obj => obj.Type == ObjectType.Player));
+        var rooms = hits.Where(obj => obj.Type == ObjectType.Room).ToList();
+        var exits = hits.Where(obj => obj.Type == ObjectType.Exit).ToList();
+        var things = hits.Where(obj => obj.Type == ObjectType.Thing).ToList();
+        var players = hits.Where(obj => obj.Type == ObjectType.Player).ToList();
+
+        ReportGroup(context, "ROOMS:", rooms, db);
+        ReportGroup(context, "EXITS:", exits, db);
+        ReportGroup(context, "THINGS:", things, db);
+        ReportGroup(context, "PLAYERS:", players, db);
+        context.Notify("----------  Search Done  ----------");
+        context.Notify($"Totals: Rooms...{rooms.Count}  Exits...{exits.Count}  Things...{things.Count}  Players...{players.Count}");
         return true;
     }
 
@@ -786,13 +793,22 @@ public class SearchCommandHandler : ICommandHandler
         return null;
     }
 
-    private static void ReportGroup(CommandContext context, string header, IEnumerable<MUSHObject> objects)
+    private static void ReportGroup(CommandContext context, string header, IReadOnlyList<MUSHObject> list, ObjectDatabase db)
     {
-        var list = objects.ToList();
         if (list.Count == 0)
             return;
         context.Notify(header);
         foreach (var obj in list)
-            context.Notify(Feedback.ValueValue3, ("value", $"{obj.Name}"), ("value2", $"{obj.Id.Value}"));
+        {
+            string flags = FindCommandHandler.FlagLetters(obj);
+            string line = $"{obj.Name}({obj.Id}{flags})";
+            if (obj.Type == ObjectType.Player && obj.Location.IsValid)
+            {
+                var loc = db.GetObject(obj.Location);
+                if (loc != null)
+                    line += $" [location: {loc.Name}({loc.Id}{FindCommandHandler.FlagLetters(loc)})]";
+            }
+            context.Notify(line);
+        }
     }
 }

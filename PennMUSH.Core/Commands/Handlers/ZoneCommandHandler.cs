@@ -203,10 +203,19 @@ public class ChzoneAllCommandHandler : ICommandHandler
             return false;
         }
 
-        var owner = db.FindPlayer(context.LeftArg.Trim()) ?? ZoneOperations.Find(db, context.Executor, context.LeftArg);
+        string ownerArg = context.LeftArg.Trim();
+        MUSHObject? owner = null;
+        if (ownerArg.StartsWith('#') && int.TryParse(ownerArg.AsSpan(1), out int ownerId))
+        {
+            owner = db.GetObject(new Dbref(ownerId));
+        }
+        else if (!ownerArg.Equals("me", StringComparison.OrdinalIgnoreCase))
+        {
+            owner = db.FindPlayer(ownerArg);
+        }
         if (owner == null || owner.Type != ObjectType.Player)
         {
-            context.Notify(Feedback.ICantFindThatPlayer);
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 
@@ -260,10 +269,19 @@ public class ZemitCommandHandler : ICommandHandler
             return false;
         }
 
-        var zone = ZoneOperations.Find(db, context.Executor, context.LeftArg);
+        // PennMUSH C do_zemit uses MAT_ABSOLUTE (#dbref, me, here)
+        string zoneArg = context.LeftArg.Trim();
+        MUSHObject? zone = null;
+        if (zoneArg.Equals("me", StringComparison.OrdinalIgnoreCase))
+            zone = actor;
+        else if (zoneArg.Equals("here", StringComparison.OrdinalIgnoreCase))
+            zone = actor.Location.IsValid ? db.GetObject(actor.Location) : null;
+        else if (zoneArg.StartsWith('#') && int.TryParse(zoneArg.AsSpan(1), out int zoneId))
+            zone = db.GetObject(new Dbref(zoneId));
+
         if (zone == null)
         {
-            context.Notify(Feedback.ICantSeeThatZone);
+            context.Notify("Invalid zone.");
             return false;
         }
         if (!ZoneOperations.Controls(actor, zone))

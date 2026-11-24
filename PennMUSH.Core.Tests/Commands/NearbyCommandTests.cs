@@ -153,29 +153,29 @@ public class NearbyCommandTests
         lamp.AddFlag("VISUAL");
 
         var mine = _dispatcher.Dispatch(_owner, "@search type=thing", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", mine.Notifications);
+        Assert.Contains(mine.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(mine.Notifications, line => line.Contains("Statue"));
 
         var all = _dispatcher.Dispatch(_owner, "@search all type=thing", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", all.Notifications);
+        Assert.Contains(all.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(all.Notifications, line => line.Contains("Statue"));
 
         var wizard = _dispatcher.Dispatch(_god, "@search all type=thing", _db);
-        Assert.Contains($"Statue (#{statue.Id.Value})", wizard.Notifications);
+        Assert.Contains(wizard.Notifications, line => line.StartsWith($"Statue(#{statue.Id.Value}"));
 
         var players = _dispatcher.Dispatch(_owner, "@search all type=player", _db);
-        Assert.Contains("Owner (#2)", players.Notifications);
-        Assert.Contains("One (#1)", players.Notifications);
+        Assert.Contains(players.Notifications, line => line.StartsWith("Owner(#2"));
+        Assert.Contains(players.Notifications, line => line.StartsWith("One(#1"));
 
         var named = _dispatcher.Dispatch(_owner, "@search name=La", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", named.Notifications);
+        Assert.Contains(named.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(named.Notifications, line => line.Contains("Study"));
 
         var flagged = _dispatcher.Dispatch(_owner, "@search lflags=VISUAL", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", flagged.Notifications);
+        Assert.Contains(flagged.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
 
         var rooms = _dispatcher.Dispatch(_owner, "@search type=room", _db);
-        Assert.Contains($"Study (#{study.Id.Value})", rooms.Notifications);
+        Assert.Contains(rooms.Notifications, line => line.StartsWith($"Study(#{study.Id.Value}"));
         Assert.DoesNotContain(rooms.Notifications, line => line.Contains("Limbo"));
 
         var unavailable = _dispatcher.Dispatch(_owner, "@search eval=1", _db);
