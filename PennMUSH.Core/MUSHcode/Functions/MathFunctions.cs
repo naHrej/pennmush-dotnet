@@ -344,7 +344,8 @@ public static class MathFunctions
         if (args.Length == 0) return MushError.TooFewArguments.Text();
         if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
             return MushError.ArgumentsMustBeNumbers.Text();
-        if (val <= 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val == 0) return "-inf";
         if (args.Length > 1 && args[1].Trim().Equals("e", StringComparison.OrdinalIgnoreCase))
             return FormatNumber(Math.Log(val));
 
@@ -362,7 +363,8 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val <= 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val == 0) return "-inf";
         return FormatNumber(Math.Log(val));
     }
 
@@ -535,7 +537,7 @@ public static class MathFunctions
             h1 = nextH;
             k2 = k1;
             k1 = nextK;
-            if (Math.Abs(val - (double)h1 / k1) < 1e-7 || b - a < 1e-9)
+            if (Math.Abs(val - (double)h1 / k1) < 1e-10 || b - a < 1e-12)
                 break;
             b = 1.0 / (b - a);
         }
