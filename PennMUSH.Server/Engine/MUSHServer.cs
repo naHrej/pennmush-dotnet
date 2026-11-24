@@ -214,6 +214,9 @@ public class MUSHServer
         Functions.TextCache = TextCache;
         Functions.Suggestions = Suggestions;
         Functions.ConnectionsProvider = BuildConnectionSnapshots;
+        Functions.ConfigProvider = key =>
+            PennMUSH.Core.Configuration.ConfigCatalog.Find(key)?.Read(Config)
+            ?? (Config.Directives.TryGetValue(key, out var val) ? val : null);
 
         Dispatcher = new CommandDispatcher(Evaluator);
         Extensions = new ExtensionManager(this);

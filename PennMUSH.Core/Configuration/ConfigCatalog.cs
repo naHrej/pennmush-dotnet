@@ -74,6 +74,7 @@ public static class ConfigCatalog
         [
             Text("money_singular", "cosmetic", c => c.MoneySingular, (c, v) => c.MoneySingular = v),
             Text("money_plural", "cosmetic", c => c.MoneyPlural, (c, v) => c.MoneyPlural = v),
+            YesNo("tiny_trim_fun", "cosmetic", c => c.TinyTrimFun, (c, v) => c.TinyTrimFun = v),
             Db("base_room", "db", c => c.BaseRoom, (c, v) => c.BaseRoom = v),
             Db("default_home", "db", c => c.DefaultHome, (c, v) => c.DefaultHome = v),
             Db("master_room", "db", c => c.MasterRoom, (c, v) => c.MasterRoom = v),

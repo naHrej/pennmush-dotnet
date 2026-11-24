@@ -20,7 +20,10 @@ public static class StringFunctions
         registry.Register("STRCAT", Strcat);
         registry.Register("STRLEN", Strlen);
         registry.Register("MID", Mid);
-        registry.Register("TRIM", Trim);
+        registry.Register("TRIM", (ctx, args) =>
+            string.Equals(registry.ConfigProvider?.Invoke("tiny_trim_fun"), "yes", StringComparison.OrdinalIgnoreCase)
+                ? TrimTiny(ctx, args)
+                : TrimPenn(ctx, args));
         registry.Register("TRIMPENN", TrimPenn);
         registry.Register("TRIMTINY", TrimTiny);
         registry.Register("UCSTR", Ucstr);

@@ -55,6 +55,7 @@ public class MushConfiguration
     public string MoneyPlural { get; set; } = "Pennies";
     public int StartingMoney { get; set; } = 100;
     public bool UseQuota { get; set; } = true;
+    public bool TinyTrimFun { get; set; } = false;
     public int StartingQuota { get; set; } = 20;
     public int Paycheck { get; set; } = 50;
 
