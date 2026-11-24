@@ -892,10 +892,7 @@ public static class StringFunctions
         if (args.Length < 4 || !int.TryParse(args[1].Trim(), out int pos) || !int.TryParse(args[2].Trim(), out int len))
             return MushError.ArgumentsMustBeIntegers.Text();
         if (pos < 0 || len < 0) return MushError.OutOfRange.Text();
-        if (pos > args[0].Length) return args[0];
-
-        int rem = Math.Min(len, args[0].Length - pos);
-        return args[0].Remove(pos, rem).Insert(pos, args[3]);
+        return AnsiString.Splice(args[0], pos, len, args[3]);
     }
 
     public static string Tr(EvaluationContext ctx, string[] args)
@@ -967,31 +964,155 @@ public static class StringFunctions
     public static string Decompose(EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return string.Empty;
+
+        var glyphs = AnsiString.Parse(args[0], out _);
+        if (glyphs.Count == 0) return string.Empty;
+
         var sb = new StringBuilder(args[0].Length * 2);
-        foreach (char c in args[0])
+        var state = new AnsiSgrState();
+        string? openCodes = null;
+        bool lastWasSpace = false;
+
+        for (int i = 0; i < glyphs.Count; i++)
         {
-            switch (c)
+            var g = glyphs[i];
+            if (g.Prefix.Length > 0)
+                state.ApplyEscapes(g.Prefix);
+
+            string active = state.ToCodeString();
+            if (active != (openCodes ?? ""))
             {
-                case '\\': sb.Append(@"\\"); break;
-                case '%': sb.Append("%%"); break;
-                case '\r': break;
-                case '\n': sb.Append("%r"); break;
-                case '\t': sb.Append("%t"); break;
-                case ' ': sb.Append("%b"); break;
-                case '[': sb.Append(@"\["); break;
-                case ']': sb.Append(@"\]"); break;
-                case '{': sb.Append(@"\{"); break;
-                case '}': sb.Append(@"\}"); break;
-                case '(': sb.Append(@"\("); break;
-                case ')': sb.Append(@"\)"); break;
-                case ',': sb.Append(@"\,"); break;
-                case ';': sb.Append(@"\;"); break;
-                case '$': sb.Append(@"\$"); break;
-                case '^': sb.Append(@"\^"); break;
-                default: sb.Append(c); break;
+                if (openCodes != null)
+                {
+                    sb.Append(")]");
+                    openCodes = null;
+                }
+                if (active.Length > 0)
+                {
+                    sb.Append("[ansi(").Append(active).Append(',');
+                    openCodes = active;
+                }
+            }
+
+            AppendDecomposedChar(sb, g.Char, i == 0 || i == glyphs.Count - 1, ref lastWasSpace);
+        }
+
+        if (openCodes != null)
+            sb.Append(")]");
+
+        return sb.ToString();
+    }
+
+    private static void AppendDecomposedChar(StringBuilder sb, char c, bool atEdge, ref bool lastWasSpace)
+    {
+        if (c == ' ')
+        {
+            if (atEdge || lastWasSpace)
+            {
+                sb.Append("%b");
+                lastWasSpace = false;
+            }
+            else
+            {
+                sb.Append(' ');
+                lastWasSpace = true;
+            }
+            return;
+        }
+
+        lastWasSpace = false;
+        switch (c)
+        {
+            case '\\': sb.Append(@"\\"); break;
+            case '%': sb.Append("%%"); break;
+            case '\r': break;
+            case '\n': sb.Append("%r"); break;
+            case '\t': sb.Append("%t"); break;
+            case '[': sb.Append(@"\["); break;
+            case ']': sb.Append(@"\]"); break;
+            case '{': sb.Append(@"\{"); break;
+            case '}': sb.Append(@"\}"); break;
+            case '(': sb.Append(@"\("); break;
+            case ')': sb.Append(@"\)"); break;
+            case ',': sb.Append(@"\,"); break;
+            case ';': sb.Append(@"\;"); break;
+            case '$': sb.Append(@"\$"); break;
+            case '^': sb.Append(@"\^"); break;
+            default: sb.Append(c); break;
+        }
+    }
+
+    private sealed class AnsiSgrState
+    {
+        private bool _flash;
+        private bool _hilite;
+        private bool _invert;
+        private bool _under;
+        private char _fg;
+        private char _bg;
+
+        public void ApplyEscapes(string escapes)
+        {
+            int idx = 0;
+            while (idx < escapes.Length)
+            {
+                int esc = escapes.IndexOf("\x1B[", idx, StringComparison.Ordinal);
+                if (esc < 0) break;
+                int m = escapes.IndexOf('m', esc + 2);
+                if (m < 0) break;
+
+                string body = escapes.Substring(esc + 2, m - (esc + 2));
+                if (string.IsNullOrEmpty(body))
+                {
+                    Reset();
+                }
+                else
+                {
+                    foreach (string part in body.Split(';'))
+                    {
+                        if (!int.TryParse(part, out int code)) continue;
+                        switch (code)
+                        {
+                            case 0: Reset(); break;
+                            case 1: _hilite = true; break;
+                            case 4: _under = true; break;
+                            case 5: _flash = true; break;
+                            case 7: _invert = true; break;
+                            case 22: _hilite = false; break;
+                            case 24: _under = false; break;
+                            case 25: _flash = false; break;
+                            case 27: _invert = false; break;
+                            case >= 30 and <= 37: _fg = "xrgybmcw"[code - 30]; break;
+                            case 39: _fg = '\0'; break;
+                            case >= 40 and <= 47: _bg = "XRGYBMCW"[code - 40]; break;
+                            case 49: _bg = '\0'; break;
+                        }
+                    }
+                }
+                idx = m + 1;
             }
         }
-        return sb.ToString();
+
+        private void Reset()
+        {
+            _flash = _hilite = _invert = _under = false;
+            _fg = _bg = '\0';
+        }
+
+        public string ToCodeString()
+        {
+            if (!_flash && !_hilite && !_invert && !_under && _fg == '\0' && _bg == '\0')
+                return string.Empty;
+
+            var sb = new StringBuilder(6);
+            if (_flash) sb.Append('f');
+            if (_hilite) sb.Append('h');
+            if (_invert) sb.Append('i');
+            if (_under) sb.Append('u');
+            if (_fg != '\0') sb.Append(_fg);
+            if (_bg != '\0') sb.Append(_bg);
+            return sb.ToString();
+        }
     }
 
     public static string StrMatch(EvaluationContext ctx, string[] args)
