@@ -19,9 +19,10 @@ public sealed class ParityTools
         [Description("Optional setup commands to run on both servers before input")] string[]? setup = null,
         [Description("Comparison mode: exact (default), ansi_stripped, regex, lines_unordered, error_equivalent")] string compareMode = "exact",
         [Description("Regex pattern when compareMode is regex")] string? pattern = null,
+        [Description("Set true for queued commands (@switch, @dolist, @force, @trigger) so the sentinel waits on the queue")] bool queued = false,
         CancellationToken ct = default)
     {
-        var result = await runner.EvalSingleAsync(input, setup, compareMode, pattern, ct);
+        var result = await runner.EvalSingleAsync(input, setup, compareMode, pattern, queued, ct);
         return JsonSerializer.Serialize(result, JsonOpts);
     }
 

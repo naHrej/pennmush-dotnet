@@ -1,0 +1,16 @@
+{
+  "group": "locks-movement-interaction",
+  "category": "command",
+  "cases": [
+    { "id": "lock-and-unlock", "setup": [ "@create LockBox", "@lock LockBox=me", "@unlock LockBox" ], "input": "think [elock(LockBox,me)]", "compare": "exact" },
+    { "id": "elock-eunlock", "setup": [ "@create ELockBox", "@elock ELockBox=me", "@eunlock ELockBox" ], "input": "think [elock(ELockBox/Enter,me)]", "compare": "exact" },
+    { "id": "ulock-uunlock", "setup": [ "@create ULockBox", "@ulock ULockBox=me", "@uunlock ULockBox" ], "input": "think [elock(ULockBox/Use,me)]", "compare": "exact" },
+    { "id": "lset-basic", "setup": [ "@create LsetBox", "@lock LsetBox=me" ], "input": "@lset LsetBox/Basic=visual", "compare": "exact" },
+    { "id": "get-drop-give", "setup": [ "@create Ball", "drop Ball", "get Ball" ], "input": "think [loc(Ball)]", "compare": "exact" },
+    { "id": "enter-leave-empty", "setup": [ "@create Bag", "@set Bag=ENTER_OK", "drop Bag", "@create Coin", "drop Coin" ], "input": "empty Bag", "compare": "regex", "pattern": "Bag|empty|nothing" },
+    { "id": "use-object", "setup": [ "@create Lever", "&USE Lever=You pull the lever.", "&AUSE Lever=think lever-used" ], "input": "use Lever", "queued": true, "compare": "exact" },
+    { "id": "teach-basic", "input": "teach think taught-ok", "queued": true, "compare": "exact" },
+    { "id": "home-and-teleport", "setup": [ "@create TeleBox", "@tel TeleBox=#2" ], "input": "think [loc(TeleBox)]", "compare": "exact" },
+    { "id": "follow-unfollow-dismiss-desert", "input": "follow", "compare": "regex", "pattern": "Following|follow|Nobody" }
+  ]
+}

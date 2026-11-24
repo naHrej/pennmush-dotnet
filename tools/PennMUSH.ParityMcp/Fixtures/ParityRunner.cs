@@ -45,6 +45,7 @@ public sealed class ParityRunner
         IReadOnlyList<string>? setup = null,
         string compareMode = "exact",
         string? pattern = null,
+        bool queued = false,
         CancellationToken ct = default)
     {
         if (setup != null)
@@ -52,13 +53,13 @@ public sealed class ParityRunner
             foreach (string cmd in setup)
             {
                 if (string.IsNullOrWhiteSpace(cmd)) continue;
-                await _sandboxes.EvalCAsync(cmd, ct: ct);
-                await _sandboxes.EvalDotnetAsync(cmd, ct: ct);
+                await _sandboxes.EvalCAsync(cmd, queued: false, ct: ct);
+                await _sandboxes.EvalDotnetAsync(cmd, queued: false, ct: ct);
             }
         }
 
-        string cOut = await _sandboxes.EvalCAsync(input, ct: ct);
-        string dOut = await _sandboxes.EvalDotnetAsync(input, ct: ct);
+        string cOut = await _sandboxes.EvalCAsync(input, queued, ct: ct);
+        string dOut = await _sandboxes.EvalDotnetAsync(input, queued, ct: ct);
 
         return EvaluateOutputs("ad-hoc", input, cOut, dOut, compareMode, pattern);
     }
@@ -97,7 +98,7 @@ public sealed class ParityRunner
             ParityCaseResult res;
             try
             {
-                res = await EvalSingleAsync(c.Input, c.Setup, c.Compare, c.Pattern, ct);
+                res = await EvalSingleAsync(c.Input, c.Setup, c.Compare, c.Pattern, c.Queued, ct);
                 res = res with { Id = c.Id };
             }
             catch (Exception ex)

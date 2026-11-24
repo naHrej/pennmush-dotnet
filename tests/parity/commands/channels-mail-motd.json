@@ -1,0 +1,15 @@
+{
+  "group": "channels-mail-motd",
+  "category": "command",
+  "cases": [
+    { "id": "channel-add-join-say", "setup": [ "@channel/add ParityChan", "@channel/on ParityChan" ], "input": "@cemit ParityChan=chan hello", "compare": "regex", "pattern": "ParityChan|chan hello" },
+    { "id": "nscemit-basic", "setup": [ "@channel/add NsChan", "@channel/on NsChan" ], "input": "@nscemit NsChan=clean chan", "compare": "regex", "pattern": "NsChan|clean chan" },
+    { "id": "addcom-comlist-delcom", "setup": [ "@channel/add ComChan", "addcom cc=ComChan" ], "input": "comlist", "compare": "regex", "pattern": "cc|ComChan" },
+    { "id": "comtitle-basic", "setup": [ "@channel/add TitleChan", "addcom tc=TitleChan" ], "input": "comtitle tc=Captain", "compare": "regex", "pattern": "Title|Captain|tc" },
+    { "id": "clist-basic", "input": "@clist", "compare": "regex", "pattern": "Public|Channel" },
+    { "id": "mail-send-check", "setup": [ "@mail me=TestSubj/Mail body" ], "input": "@mail", "compare": "regex", "pattern": "TestSubj|Mail" },
+    { "id": "malias-list", "input": "@malias", "compare": "regex", "pattern": "Alias|None|malias" },
+    { "id": "motd-and-listmotd", "setup": [ "@motd/connect Parity MOTD" ], "input": "@listmotd", "compare": "regex", "pattern": "Parity MOTD" },
+    { "id": "wizmotd-and-rejectmotd", "setup": [ "@wizmotd Wiz MOTD", "@rejectmotd Reject MOTD" ], "input": "@listmotd", "compare": "regex", "pattern": "Wiz MOTD" }
+  ]
+}

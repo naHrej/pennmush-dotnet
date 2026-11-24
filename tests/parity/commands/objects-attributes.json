@@ -2,44 +2,23 @@
   "group": "objects-attributes",
   "category": "command",
   "cases": [
-    {
-      "id": "create-and-get",
-      "setup": [
-        "@create ParityBox",
-        "&TESTATTR ParityBox=hello world"
-      ],
-      "input": "think [get(ParityBox/TESTATTR)]",
-      "compare": "exact"
-    },
-    {
-      "id": "edit-wildcard",
-      "setup": [
-        "@create EditBox",
-        "&MSG EditBox=hello world"
-      ],
-      "input": "@edit EditBox/MSG=world,pennmush; think [get(EditBox/MSG)]",
-      "compare": "exact"
-    },
-    {
-      "id": "wipe-attr",
-      "setup": [
-        "@create WipeBox",
-        "&A1 WipeBox=one",
-        "@wipe WipeBox/A1"
-      ],
-      "input": "think [hasattr(WipeBox,A1)]",
-      "compare": "exact"
-    },
-    {
-      "id": "parent-inheritance",
-      "setup": [
-        "@create ParentObj",
-        "@create ChildObj",
-        "&INHERITED ParentObj=from-parent",
-        "@parent ChildObj=ParentObj"
-      ],
-      "input": "think [get(ChildObj/INHERITED)]",
-      "compare": "exact"
-    }
+    { "id": "create-and-get", "setup": [ "@create ParityBox", "&TESTATTR ParityBox=hello world" ], "input": "think [get(ParityBox/TESTATTR)]", "compare": "exact" },
+    { "id": "at-underscore-attr", "setup": [ "@_CUSTOM me=val123" ], "input": "think [get(me/CUSTOM)]", "compare": "exact" },
+    { "id": "at-desc-standard-attr", "setup": [ "@create DescBox", "@desc DescBox=A wooden box." ], "input": "think [get(DescBox/DESCRIBE)]", "compare": "exact" },
+    { "id": "at-va-attr", "setup": [ "@va me=v-alpha" ], "input": "think [get(me/VA)]", "compare": "exact" },
+    { "id": "cpattr-basic", "setup": [ "@create CpSrc", "@create CpDst", "&SRC CpSrc=copied-val", "@cpattr CpSrc/SRC=CpDst/DST" ], "input": "think [get(CpDst/DST)]", "compare": "exact" },
+    { "id": "mvattr-basic", "setup": [ "@create MvBox", "&OLD MvBox=moved-val", "@mvattr MvBox/OLD=MvBox/NEW" ], "input": "think [hasattr(MvBox,OLD)]:[get(MvBox/NEW)]", "compare": "exact" },
+    { "id": "edit-wildcard", "setup": [ "@create EditBox", "&MSG EditBox=hello world", "@edit EditBox/MSG=world,pennmush" ], "input": "think [get(EditBox/MSG)]", "compare": "exact" },
+    { "id": "grep-command", "setup": [ "@create GrepBox", "&A GrepBox=needle one", "&B GrepBox=haystack" ], "input": "@grep GrepBox/*=needle", "compare": "exact" },
+    { "id": "atrlock-and-atrchown", "setup": [ "@create AtrBox", "&LOCKME AtrBox=val" ], "input": "@atrlock AtrBox/LOCKME=on", "compare": "exact" },
+    { "id": "wipe-attr", "setup": [ "@create WipeBox", "&A1 WipeBox=one", "@wipe WipeBox/A1" ], "input": "think [hasattr(WipeBox,A1)]", "compare": "exact" },
+    { "id": "parent-inheritance", "setup": [ "@create ParentObj", "@create ChildObj", "&INHERITED ParentObj=from-parent", "@parent ChildObj=ParentObj" ], "input": "think [get(ChildObj/INHERITED)]", "compare": "exact" },
+    { "id": "name-and-chown", "setup": [ "@create OldName", "@name OldName=NewName", "@chown NewName=me" ], "input": "think [name(NewName)]", "compare": "exact" },
+    { "id": "dig-open-link-unlink", "setup": [ "@dig TestRoom" ], "input": "@open North;n", "compare": "regex", "pattern": "Opened" },
+    { "id": "clone-basic", "setup": [ "@create CloneSrc", "&TAG CloneSrc=cloned" ], "input": "@clone CloneSrc=CloneDst", "compare": "regex", "pattern": "Cloned" },
+    { "id": "destroy-undestroy-purge", "setup": [ "@create TrashBox", "@destroy TrashBox", "@undestroy TrashBox", "@destroy TrashBox" ], "input": "@purge", "compare": "regex", "pattern": "Purged|destroyed" },
+    { "id": "nuke-basic", "setup": [ "@create NukeBox", "@destroy NukeBox" ], "input": "@nuke NukeBox", "compare": "regex", "pattern": "Destroyed|destroyed|Nuked" },
+    { "id": "examine-and-brief", "setup": [ "@create ExamBox", "&E1 ExamBox=data" ], "input": "brief ExamBox", "compare": "regex", "pattern": "ExamBox" },
+    { "id": "decompile-basic", "setup": [ "@create DecBox", "&D1 DecBox=val" ], "input": "@decompile DecBox", "compare": "regex", "pattern": "@create DecBox" }
   ]
 }

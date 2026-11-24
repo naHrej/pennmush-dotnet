@@ -23,13 +23,17 @@ if (args.Length >= 3 && args[0].Equals("--run", StringComparison.OrdinalIgnoreCa
     return 0;
 }
 
-if (args.Length >= 1 && args[0].Equals("--run-all", StringComparison.OrdinalIgnoreCase))
+if (args.Length >= 1 && (args[0].Equals("--run-all", StringComparison.OrdinalIgnoreCase) || args[0].Equals("--run-category", StringComparison.OrdinalIgnoreCase)))
 {
-    string outPath = args.Length >= 2 ? args[1] : Path.Combine(Path.GetTempPath(), "parity-report.json");
+    bool byCat = args[0].Equals("--run-category", StringComparison.OrdinalIgnoreCase);
+    string? catFilter = byCat && args.Length >= 2 ? args[1] : null;
+    string outPath = byCat
+        ? (args.Length >= 3 ? args[2] : Path.Combine(Path.GetTempPath(), "parity-report.json"))
+        : (args.Length >= 2 ? args[1] : Path.Combine(Path.GetTempPath(), "parity-report.json"));
     await using var sandboxes = new ParitySandboxManager();
     var runner = new ParityRunner(sandboxes);
     var results = new List<PennMUSH.ParityMcp.Fixtures.ParitySuiteSummary>();
-    foreach (var suite in runner.ListSuites())
+    foreach (var suite in runner.ListSuites(catFilter))
     {
         await sandboxes.ResetAsync();
         var summary = await runner.RunSuiteAsync(suite.Category, suite.Group);

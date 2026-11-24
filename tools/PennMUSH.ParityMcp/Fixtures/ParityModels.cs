@@ -31,6 +31,9 @@ public sealed class ParityCase
     [JsonPropertyName("compare")]
     public string Compare { get; set; } = "exact";
 
+    [JsonPropertyName("queued")]
+    public bool Queued { get; set; }
+
     [JsonPropertyName("pattern")]
     public string? Pattern { get; set; }
 

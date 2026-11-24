@@ -34,7 +34,7 @@ public sealed class TelnetSession : IAsyncDisposable
         await ReadUntilSentinelAsync(sentinel, cts.Token);
     }
 
-    public async Task<string> ExecuteAsync(string command, TimeSpan? timeout = null, CancellationToken ct = default)
+    public async Task<string> ExecuteAsync(string command, bool queued = false, TimeSpan? timeout = null, CancellationToken ct = default)
     {
         if (_stream == null || !_client.Connected)
             throw new InvalidOperationException("Telnet session is not connected.");
@@ -45,7 +45,8 @@ public sealed class TelnetSession : IAsyncDisposable
 
         string sentinel = $"__PARITY_END_{Guid.NewGuid():N}__";
         await SendRawLineAsync(command, cts.Token);
-        await SendRawLineAsync($"think {sentinel}", cts.Token);
+        string sentinelCmd = queued ? $"@wait 0={{think {sentinel}}}" : $"think {sentinel}";
+        await SendRawLineAsync(sentinelCmd, cts.Token);
 
         var lines = await ReadUntilSentinelAsync(sentinel, cts.Token);
         return string.Join("\n", lines);

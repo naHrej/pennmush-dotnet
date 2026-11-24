@@ -61,16 +61,16 @@ public sealed class ParitySandboxManager : IAsyncDisposable
         }
     }
 
-    public async Task<string> EvalCAsync(string command, TimeSpan? timeout = null, CancellationToken ct = default)
+    public async Task<string> EvalCAsync(string command, bool queued = false, TimeSpan? timeout = null, CancellationToken ct = default)
     {
         await EnsureStartedAsync(ct);
-        return await _cSession!.ExecuteAsync(command, timeout, ct);
+        return await _cSession!.ExecuteAsync(command, queued, timeout, ct);
     }
 
-    public async Task<string> EvalDotnetAsync(string command, TimeSpan? timeout = null, CancellationToken ct = default)
+    public async Task<string> EvalDotnetAsync(string command, bool queued = false, TimeSpan? timeout = null, CancellationToken ct = default)
     {
         await EnsureStartedAsync(ct);
-        return await _dotnetSession!.ExecuteAsync(command, timeout, ct);
+        return await _dotnetSession!.ExecuteAsync(command, queued, timeout, ct);
     }
 
     private async Task StartInternalAsync(CancellationToken ct)
