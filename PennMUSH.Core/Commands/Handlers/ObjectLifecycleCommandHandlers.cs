@@ -309,7 +309,7 @@ public class ChownCommandHandler : ICommandHandler
         }
 
         var execObj = db.GetObject(context.Executor);
-        var target = db.FindObject(context.LeftArg.Trim());
+        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatObject);
@@ -415,7 +415,7 @@ public class LockCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.FindObject(context.LeftArg.Trim());
+        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatObject);
@@ -443,7 +443,7 @@ public class UnlockCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.FindObject(context.Arguments.Trim());
+        var target = db.MatchObject(context.Executor, context.Arguments.Trim());
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatObject);
@@ -620,6 +620,6 @@ internal static class LockCommands
         if (context.CommandName.Equals("@ulock", StringComparison.OrdinalIgnoreCase)
             || context.CommandName.Equals("@uunlock", StringComparison.OrdinalIgnoreCase))
             return LockType.Use;
-        return context.Switches.FirstOrDefault() ?? "Default";
+        return context.Switches.FirstOrDefault() ?? LockType.Basic;
     }
 }

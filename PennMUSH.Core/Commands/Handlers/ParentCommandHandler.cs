@@ -18,8 +18,7 @@ public class ParentCommandHandler : ICommandHandler
             return false;
         }
 
-        Dbref targetRef = ResolveDbref(context.LeftArg, context.Executor);
-        var targetObj = db.GetObject(targetRef);
+        var targetObj = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (targetObj == null)
         {
             context.Notify(Feedback.ICantSeeThatHere);
@@ -45,21 +44,20 @@ public class ParentCommandHandler : ICommandHandler
 
         foreach (var token in tokens)
         {
-            Dbref pRef = ResolveDbref(token, context.Executor);
-            var pObj = db.GetObject(pRef);
+            var pObj = db.MatchObject(context.Executor, token);
             if (pObj == null)
             {
                 context.Notify(Feedback.ICantSeeParentObject, ("object", $"{token}"));
                 return false;
             }
 
-            if (MUSHObject.WouldCauseParentCycle(targetObj.Id, pRef, db))
+            if (MUSHObject.WouldCauseParentCycle(targetObj.Id, pObj.Id, db))
             {
                 context.Notify(Feedback.YouWouldCreateALoopInTheParentTree);
                 return false;
             }
 
-            validParents.Add(pRef);
+            validParents.Add(pObj.Id);
         }
 
         targetObj.SetParents(validParents, db);
