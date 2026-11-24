@@ -312,6 +312,8 @@ public static class TimeFunctions
     {
         if (args.Length == 0 || !long.TryParse(args[0].Trim(), out long secs))
             return MushError.ArgumentMustBeInteger.Text();
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) && !int.TryParse(args[1].Trim(), out _))
+            return MushError.ArgumentMustBeInteger.Text();
         if (secs < 0) return MushError.OutOfRange.Text();
         if (secs == 0) return "0s";
 
@@ -322,12 +324,17 @@ public static class TimeFunctions
         long mins = secs / 60; secs %= 60;
 
         var parts = new List<string>();
-        if (years > 0) parts.Add($"{years}y");
-        if (weeks > 0) parts.Add($"{weeks}w");
-        if (days > 0) parts.Add($"{days}d");
-        if (hours > 0) parts.Add($"{hours}h");
-        if (mins > 0) parts.Add($"{mins}m");
-        if (secs > 0) parts.Add($"{secs}s");
+        void AddUnit(long val, char unit)
+        {
+            if (val <= 0) return;
+            parts.Add(parts.Count > 0 ? $"{val,2}{unit}" : $"{val}{unit}");
+        }
+        AddUnit(years, 'y');
+        AddUnit(weeks, 'w');
+        AddUnit(days, 'd');
+        AddUnit(hours, 'h');
+        AddUnit(mins, 'm');
+        AddUnit(secs, 's');
 
         if (args.Length > 1 && int.TryParse(args[1].Trim(), out int maxWidth) && maxWidth > 0)
         {

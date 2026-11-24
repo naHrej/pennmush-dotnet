@@ -209,6 +209,8 @@ public static class JsonFunctions
                     return MushError.Nothing.Text();
                 return TryNavigate(root, ParsePathSegments(rest), out _) ? "1" : "0";
             case "get":
+                if (root is not JsonObject && root is not JsonArray)
+                    return MushError.Nothing.Text();
                 return TryNavigate(root, ParsePathSegments(rest), out var found)
                     ? (found?.ToJsonString(RelaxedJson) ?? "null")
                     : string.Empty;
@@ -247,6 +249,20 @@ public static class JsonFunctions
             catch { return MushError.InvalidValue.Text(); }
             var patched = ApplyMergePatch(root, patchNode);
             return patched?.ToJsonString(RelaxedJson) ?? "null";
+        }
+        if (op == "sort")
+        {
+            if (root is not JsonArray sortArr)
+                return MushError.InvalidType.Text();
+            string sortPath = args[2].Trim();
+            var items = sortArr.Select(el =>
+            {
+                TryNavigate(el, ParsePathSegments(new[] { sortPath }), out var keyNode);
+                return (Element: el, Key: keyNode);
+            }).ToList();
+            items.Sort((a, b) => CompareJsonNodes(a.Key, b.Key));
+            var sortedArr = new JsonArray(items.Select(x => x.Element?.DeepClone()).ToArray());
+            return sortedArr.ToJsonString(RelaxedJson);
         }
 
         var segments = ParsePathSegments(new[] { args[2] }).ToArray();
@@ -293,6 +309,24 @@ public static class JsonFunctions
         }
     }
 
+    private static int CompareJsonNodes(JsonNode? a, JsonNode? b)
+    {
+        if (a is JsonValue va && b is JsonValue vb &&
+            TryGetJsonDouble(va, out double da) && TryGetJsonDouble(vb, out double db))
+        {
+            return da.CompareTo(db);
+        }
+        return string.CompareOrdinal(NodeToMushString(a), NodeToMushString(b));
+    }
+
+    private static bool TryGetJsonDouble(JsonValue v, out double d)
+    {
+        if (v.TryGetValue<double>(out d)) return true;
+        if (v.TryGetValue<long>(out long l)) { d = l; return true; }
+        d = 0;
+        return false;
+    }
+
     private static JsonNode? ApplyMergePatch(JsonNode? target, JsonNode? patch)
     {
         if (patch is not JsonObject patchObj)
@@ -336,7 +370,9 @@ public static class JsonFunctions
             var uargs = new string[4 + extraArgs.Length];
             uargs[0] = args[0];
             uargs[1] = GetJsonType(node);
-            uargs[2] = NodeToMushString(node);
+            uargs[2] = node == null
+                ? "null"
+                : (node is JsonValue v && v.TryGetValue<string>(out var s) ? s : node.ToJsonString(RelaxedJson));
             uargs[3] = key;
             Array.Copy(extraArgs, 0, uargs, 4, extraArgs.Length);
             return DbFunctions.Ufun(reg, ctx, uargs);
