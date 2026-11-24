@@ -23,6 +23,26 @@ if (args.Length >= 3 && args[0].Equals("--run", StringComparison.OrdinalIgnoreCa
     return 0;
 }
 
+if (args.Length >= 1 && args[0].Equals("--run-all", StringComparison.OrdinalIgnoreCase))
+{
+    string outPath = args.Length >= 2 ? args[1] : Path.Combine(Path.GetTempPath(), "parity-report.json");
+    await using var sandboxes = new ParitySandboxManager();
+    var runner = new ParityRunner(sandboxes);
+    var results = new List<PennMUSH.ParityMcp.Fixtures.ParitySuiteSummary>();
+    foreach (var suite in runner.ListSuites())
+    {
+        await sandboxes.ResetAsync();
+        var summary = await runner.RunSuiteAsync(suite.Category, suite.Group);
+        results.Add(summary);
+        Console.WriteLine($"[{summary.Category}/{summary.Group}] total={summary.Total} pass={summary.Passed} mismatch={summary.Mismatched} missing={summary.MissingInDotnet} skip={summary.Skipped}");
+    }
+    var dir = Path.GetDirectoryName(outPath);
+    if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+    File.WriteAllText(outPath, System.Text.Json.JsonSerializer.Serialize(results, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine($"Wrote full report to {outPath}");
+    return 0;
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.AddConsole(opts => opts.LogToStandardErrorThreshold = LogLevel.Trace);
 builder.Services.AddSingleton<ParitySandboxManager>();

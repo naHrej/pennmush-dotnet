@@ -94,8 +94,17 @@ public sealed class ParityRunner
                 continue;
             }
 
-            var res = await EvalSingleAsync(c.Input, c.Setup, c.Compare, c.Pattern, ct);
-            res = res with { Id = c.Id };
+            ParityCaseResult res;
+            try
+            {
+                res = await EvalSingleAsync(c.Input, c.Setup, c.Compare, c.Pattern, ct);
+                res = res with { Id = c.Id };
+            }
+            catch (Exception ex)
+            {
+                res = new ParityCaseResult(c.Id, c.Input, "error", "", "", ex.Message);
+                try { await _sandboxes.ResetAsync(ct); } catch { }
+            }
 
             switch (res.Status)
             {
