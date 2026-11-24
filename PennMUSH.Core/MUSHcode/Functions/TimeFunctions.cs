@@ -126,32 +126,115 @@ public static class TimeFunctions
         if (!ulong.TryParse(args[1].Trim(), out ulong totalSeconds))
             return MushError.ArgumentMustBeUnsignedInteger.Text();
 
-        ulong years = totalSeconds / 31536000;
-        ulong rem = totalSeconds % 31536000;
-        ulong weeks = rem / 604800;
-        rem %= 604800;
-        ulong days = rem / 86400;
-        rem %= 86400;
-        ulong hours = rem / 3600;
-        rem %= 3600;
-        ulong minutes = rem / 60;
-        ulong seconds = rem % 60;
+        // Scan format once to see which large units are actually requested
+        var tokens = new List<(int Start, int Length, int Width, bool Total, bool OmitZero, bool UnitSuffix, char Unit)>();
+        bool hasYears = false, hasWeeks = false, hasDays = false, hasHours = false, hasMinutes = false;
 
-        return format
-            .Replace("$$", "\u0001")
-            .Replace("$Y", years.ToString("D2"))
-            .Replace("$y", years.ToString())
-            .Replace("$W", weeks.ToString("D2"))
-            .Replace("$w", weeks.ToString())
-            .Replace("$D", days.ToString("D2"))
-            .Replace("$d", days.ToString())
-            .Replace("$H", hours.ToString("D2"))
-            .Replace("$h", hours.ToString())
-            .Replace("$M", minutes.ToString("D2"))
-            .Replace("$m", minutes.ToString())
-            .Replace("$S", seconds.ToString("D2"))
-            .Replace("$s", seconds.ToString())
-            .Replace("\u0001", "$");
+        for (int i = 0; i < format.Length; i++)
+        {
+            if (format[i] != '$' || i + 1 >= format.Length) continue;
+            if (format[i + 1] == '$')
+            {
+                tokens.Add((i, 2, 0, false, false, false, '$'));
+                i++;
+                continue;
+            }
+
+            int j = i + 1;
+            int width = 0;
+            while (j < format.Length && char.IsDigit(format[j]))
+            {
+                width = width * 10 + (format[j] - '0');
+                j++;
+            }
+
+            bool total = false, omitZero = false, unitSuffix = false;
+            while (j < format.Length && format[j] is 't' or 'T' or 'x' or 'X' or 'z' or 'Z')
+            {
+                switch (char.ToLowerInvariant(format[j]))
+                {
+                    case 't': total = true; break;
+                    case 'x': unitSuffix = true; omitZero = format[j] == 'x'; break;
+                    case 'z': omitZero = true; break;
+                }
+                j++;
+            }
+
+            if (j < format.Length && format[j] is 'y' or 'Y' or 'w' or 'W' or 'd' or 'D' or 'h' or 'H' or 'm' or 'M' or 's' or 'S')
+            {
+                char unit = format[j];
+                if (width == 0 && char.IsUpper(unit)) width = 2;
+                char lower = char.ToLowerInvariant(unit);
+                if (!total)
+                {
+                    if (lower == 'y') hasYears = true;
+                    else if (lower == 'w') hasWeeks = true;
+                    else if (lower == 'd') hasDays = true;
+                    else if (lower == 'h') hasHours = true;
+                    else if (lower == 'm') hasMinutes = true;
+                }
+                tokens.Add((i, j - i + 1, width, total, omitZero, unitSuffix, unit));
+                i = j;
+            }
+        }
+
+        ulong rem = totalSeconds;
+        ulong years = hasYears ? rem / 31536000 : 0; if (hasYears) rem %= 31536000;
+        ulong weeks = hasWeeks ? rem / 604800 : 0; if (hasWeeks) rem %= 604800;
+        ulong days = hasDays ? rem / 86400 : 0; if (hasDays) rem %= 86400;
+        ulong hours = hasHours ? rem / 3600 : 0; if (hasHours) rem %= 3600;
+        ulong minutes = hasMinutes ? rem / 60 : 0; if (hasMinutes) rem %= 60;
+        ulong seconds = rem;
+
+        var sb = new System.Text.StringBuilder(format.Length + 16);
+        int cursor = 0;
+        foreach (var tok in tokens)
+        {
+            if (tok.Start > cursor)
+                sb.Append(format, cursor, tok.Start - cursor);
+
+            if (tok.Unit == '$')
+            {
+                sb.Append('$');
+            }
+            else
+            {
+                char lower = char.ToLowerInvariant(tok.Unit);
+                ulong val = tok.Total
+                    ? lower switch
+                    {
+                        'y' => totalSeconds / 31536000,
+                        'w' => totalSeconds / 604800,
+                        'd' => totalSeconds / 86400,
+                        'h' => totalSeconds / 3600,
+                        'm' => totalSeconds / 60,
+                        _ => totalSeconds
+                    }
+                    : lower switch
+                    {
+                        'y' => years,
+                        'w' => weeks,
+                        'd' => days,
+                        'h' => hours,
+                        'm' => minutes,
+                        _ => seconds
+                    };
+
+                if (!(tok.OmitZero && val == 0))
+                {
+                    string num = tok.Width > 0 ? val.ToString($"D{tok.Width}") : val.ToString();
+                    sb.Append(num);
+                    if (tok.UnitSuffix)
+                        sb.Append(lower);
+                }
+            }
+
+            cursor = tok.Start + tok.Length;
+        }
+        if (cursor < format.Length)
+            sb.Append(format, cursor, format.Length - cursor);
+
+        return sb.ToString();
     }
 
     public static string IsDaylight(EvaluationContext ctx, string[] args)

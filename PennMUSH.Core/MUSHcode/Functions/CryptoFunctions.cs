@@ -95,7 +95,7 @@ public static class CryptoFunctions
         byte[]? hash = algo switch
         {
             "md5" => MD5.HashData(data),
-            "sha1" or "sha0" or "sha" => SHA1.HashData(data),
+            "sha1" or "sha0" => SHA1.HashData(data),
             "sha256" => SHA256.HashData(data),
             "sha384" => SHA384.HashData(data),
             "sha512" => SHA512.HashData(data),

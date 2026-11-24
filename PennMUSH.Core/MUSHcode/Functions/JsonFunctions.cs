@@ -3,12 +3,17 @@ namespace PennMUSH.Core.MUSHcode.Functions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using PennMUSH.Core.MUSHcode;
 
 public static class JsonFunctions
 {
+    private static readonly JsonSerializerOptions RelaxedJson = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
     public static void Register(FunctionRegistry registry)
     {
         registry.Register("ISJSON", IsJson);
@@ -82,7 +87,7 @@ public static class JsonFunctions
             }
             case "string":
                 if (args.Length != 2) return MushError.WrongNumberOfArguments.Text();
-                return JsonSerializer.Serialize(args[1]);
+                return JsonSerializer.Serialize(args[1], RelaxedJson);
             case "array":
             {
                 var arr = new JsonArray();
@@ -91,7 +96,7 @@ public static class JsonFunctions
                     try { arr.Add(JsonNode.Parse(StringFunctions.Strip(ctx, [args[i]]))); }
                     catch { return MushError.InvalidValue.Text(); }
                 }
-                return arr.ToJsonString();
+                return arr.ToJsonString(RelaxedJson);
             }
             case "object":
             {
@@ -103,7 +108,7 @@ public static class JsonFunctions
                     try { obj[args[i]] = JsonNode.Parse(StringFunctions.Strip(ctx, [args[i + 1]])); }
                     catch { return MushError.InvalidValue.Text(); }
                 }
-                return obj.ToJsonString();
+                return obj.ToJsonString(RelaxedJson);
             }
             default:
                 return MushError.InvalidType.Text();
@@ -200,10 +205,12 @@ public static class JsonFunctions
                 if (root is JsonArray a) return a.Count.ToString();
                 return root == null ? "0" : "1";
             case "exists":
+                if (root is not JsonObject && root is not JsonArray)
+                    return MushError.Nothing.Text();
                 return TryNavigate(root, ParsePathSegments(rest), out _) ? "1" : "0";
             case "get":
                 return TryNavigate(root, ParsePathSegments(rest), out var found)
-                    ? (found?.ToJsonString() ?? "null")
+                    ? (found?.ToJsonString(RelaxedJson) ?? "null")
                     : MushError.Nothing.Text();
             case "unescape":
                 return root is JsonValue sv && sv.TryGetValue<string>(out var str)

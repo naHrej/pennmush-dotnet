@@ -1054,8 +1054,15 @@ public static class MathFunctions
 
     private static string FormatNumber(double val)
     {
-        if (val == Math.Floor(val) && !double.IsInfinity(val) && !double.IsNaN(val) && val >= -9e18 && val <= 9e18)
-            return ((long)val).ToString(CultureInfo.InvariantCulture);
-        return val.ToString("G", CultureInfo.InvariantCulture);
+        if (double.IsNaN(val) || double.IsInfinity(val))
+            return val.ToString(CultureInfo.InvariantCulture);
+        if (Math.Abs(val) < 1e-12)
+            return "0";
+        double rounded = Math.Round(val, 6, MidpointRounding.AwayFromZero);
+        if (Math.Abs(rounded) < 1e-12)
+            return "0";
+        if (rounded == Math.Floor(rounded) && rounded >= -9e18 && rounded <= 9e18)
+            return ((long)rounded).ToString(CultureInfo.InvariantCulture);
+        return rounded.ToString("0.######", CultureInfo.InvariantCulture);
     }
 }
