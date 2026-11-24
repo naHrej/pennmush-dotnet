@@ -211,7 +211,11 @@ public static class JsonFunctions
             case "get":
                 return TryNavigate(root, ParsePathSegments(rest), out var found)
                     ? (found?.ToJsonString(RelaxedJson) ?? "null")
-                    : MushError.Nothing.Text();
+                    : string.Empty;
+            case "extract":
+                return TryNavigate(root, ParsePathSegments(rest), out var extracted)
+                    ? NodeToMushString(extracted)
+                    : string.Empty;
             case "unescape":
                 return root is JsonValue sv && sv.TryGetValue<string>(out var str)
                     ? str
@@ -236,6 +240,15 @@ public static class JsonFunctions
         if (root == null) return MushError.Nothing.Text();
 
         string op = args[1].Trim().ToLowerInvariant();
+        if (op == "patch")
+        {
+            JsonNode? patchNode;
+            try { patchNode = JsonNode.Parse(args[2]); }
+            catch { return MushError.InvalidValue.Text(); }
+            var patched = ApplyMergePatch(root, patchNode);
+            return patched?.ToJsonString(RelaxedJson) ?? "null";
+        }
+
         var segments = ParsePathSegments(new[] { args[2] }).ToArray();
         if (segments.Length == 0) return root.ToJsonString();
 
@@ -265,7 +278,7 @@ public static class JsonFunctions
                 {
                     return MushError.Nothing.Text();
                 }
-                return root.ToJsonString();
+                return root.ToJsonString(RelaxedJson);
             }
             case "remove":
             {
@@ -273,11 +286,32 @@ public static class JsonFunctions
                     obj.Remove(leaf);
                 else if (parent is JsonArray arr && int.TryParse(leaf, out int idx) && idx >= 0 && idx < arr.Count)
                     arr.RemoveAt(idx);
-                return root.ToJsonString();
+                return root.ToJsonString(RelaxedJson);
             }
             default:
                 return MushError.UnknownOperation.Text();
         }
+    }
+
+    private static JsonNode? ApplyMergePatch(JsonNode? target, JsonNode? patch)
+    {
+        if (patch is not JsonObject patchObj)
+            return patch?.DeepClone();
+
+        var targetObj = target as JsonObject ?? new JsonObject();
+        foreach (var kv in patchObj)
+        {
+            if (kv.Value == null)
+            {
+                targetObj.Remove(kv.Key);
+            }
+            else
+            {
+                targetObj.TryGetPropertyValue(kv.Key, out var existing);
+                targetObj[kv.Key] = ApplyMergePatch(existing?.DeepClone(), kv.Value);
+            }
+        }
+        return targetObj;
     }
 
     public static string JsonMap(FunctionRegistry reg, EvaluationContext ctx, string[] args)

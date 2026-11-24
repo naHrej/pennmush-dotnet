@@ -222,7 +222,11 @@ public static class TimeFunctions
 
                 if (!(tok.OmitZero && val == 0))
                 {
-                    string num = tok.Width > 0 ? val.ToString($"D{tok.Width}") : val.ToString();
+                    string num = tok.Width > 0
+                        ? (char.IsUpper(tok.Unit)
+                            ? val.ToString($"D{tok.Width}")
+                            : val.ToString().PadLeft(tok.Width, ' '))
+                        : val.ToString();
                     sb.Append(num);
                     if (tok.UnitSuffix)
                         sb.Append(lower);
@@ -380,7 +384,7 @@ public static class TimeFunctions
     {
         if (args.Length == 0 || !long.TryParse(args[0].Trim(), out long secs))
             return MushError.ArgumentMustBeInteger.Text();
-        if (secs < 0) secs = 0;
+        if (secs < 0) return MushError.ArgumentMustBePositiveInteger.Text();
 
         int pad = args.Length > 1 && int.TryParse(args[1].Trim(), out int p) ? p : 0;
         long days = secs / 86400;
@@ -389,10 +393,16 @@ public static class TimeFunctions
         long seconds = secs % 60;
 
         if (pad >= 2)
-            return $"{days}d {hours:D2}h {minutes:D2}m {seconds:D2}s";
+            return $"{days:D2}d {hours:D2}h {minutes:D2}m {seconds:D2}s";
         if (pad == 1)
-            return $"{days}d {hours}h {minutes}m {seconds}s";
-        return Secs2Time(ctx, args);
+            return $"{days}d {hours,2}h {minutes,2}m {seconds,2}s";
+
+        var parts = new List<string>();
+        if (days > 0) parts.Add($"{days}d");
+        if (hours > 0 || parts.Count > 0) parts.Add(parts.Count > 0 ? $"{hours,2}h" : $"{hours}h");
+        if (minutes > 0 || parts.Count > 0) parts.Add(parts.Count > 0 ? $"{minutes,2}m" : $"{minutes}m");
+        parts.Add(parts.Count > 0 ? $"{seconds,2}s" : $"{seconds}s");
+        return string.Join(" ", parts);
     }
 
     private static bool TryComputeSecsCalc(string[] args, out long result)

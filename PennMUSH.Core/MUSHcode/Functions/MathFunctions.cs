@@ -448,6 +448,8 @@ public static class MathFunctions
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
         if (args.Length > 1 && !TryConvertAngleToRadians(val, args[1], out val))
             return MushError.InvalidAngleType.Text();
+        if (Math.Abs(Math.Cos(val)) < 1e-12)
+            return MushError.OutOfRange.Text();
         return FormatNumber(Math.Tan(val));
     }
 
