@@ -17,8 +17,7 @@ public class NameCommandHandler : ICommandHandler
             return false;
         }
 
-        Dbref targetRef = ResolveDbref(context.LeftArg, context.Executor);
-        var target = db.GetObject(targetRef);
+        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
         if (target == null)
         {
             context.Notify(Feedback.ICantSeeThatHere);
@@ -28,13 +27,5 @@ public class NameCommandHandler : ICommandHandler
         target.Name = context.RightArg.Trim();
         context.Notify(Feedback.NameSet);
         return true;
-    }
-
-    private static Dbref ResolveDbref(string s, Dbref executor)
-    {
-        if (s.Equals("me", StringComparison.OrdinalIgnoreCase)) return executor;
-        if (s.StartsWith('#') && int.TryParse(s.Substring(1), out int id)) return new Dbref(id);
-        if (int.TryParse(s, out int plainId)) return new Dbref(plainId);
-        return Dbref.Nothing;
     }
 }

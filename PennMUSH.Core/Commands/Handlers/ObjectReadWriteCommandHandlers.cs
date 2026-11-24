@@ -306,7 +306,10 @@ public class GrepCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
+        string leftSpec = context.LeftArg.Trim();
+        int slash = leftSpec.IndexOf('/');
+        string objSpec = slash >= 0 ? leftSpec.Substring(0, slash).Trim() : leftSpec;
+        var target = db.MatchObject(context.Executor, objSpec);
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatObject);
@@ -658,7 +661,10 @@ public class MessageCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.MatchObject(context.Executor, context.LeftArg.Trim());
+        string leftSpec = context.LeftArg.Trim();
+        int slash = leftSpec.IndexOf('/');
+        string objSpec = slash >= 0 ? leftSpec.Substring(0, slash).Trim() : leftSpec;
+        var target = db.MatchObject(context.Executor, objSpec);
         var holder = db.MatchObject(context.Executor, objectName);
         if (target == null || holder == null)
         {

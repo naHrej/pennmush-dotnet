@@ -38,11 +38,8 @@ public class TeleportCommandHandler : ICommandHandler
             return false;
         }
 
-        var targetRef = ResolveDbref(targetStr, context.Executor);
-        var destRef = ResolveDbref(destStr, context.Executor);
-
-        var target = db.GetObject(targetRef);
-        var dest = db.GetObject(destRef);
+        var target = db.MatchObject(context.Executor, targetStr.Trim());
+        var dest = db.MatchObject(context.Executor, destStr.Trim());
 
         if (target == null || dest == null)
         {
