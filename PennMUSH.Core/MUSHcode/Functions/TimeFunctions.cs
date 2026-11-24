@@ -405,10 +405,10 @@ public static class TimeFunctions
             return $"{days}d {hours,2}h {minutes,2}m {seconds,2}s";
 
         var parts = new List<string>();
-        if (days > 0) parts.Add($"{days}d");
-        if (hours > 0 || parts.Count > 0) parts.Add(parts.Count > 0 ? $"{hours,2}h" : $"{hours}h");
-        if (minutes > 0 || parts.Count > 0) parts.Add(parts.Count > 0 ? $"{minutes,2}m" : $"{minutes}m");
-        parts.Add(parts.Count > 0 ? $"{seconds,2}s" : $"{seconds}s");
+        if (days > 0) parts.Add($"{days,2}d");
+        if (hours > 0 || parts.Count > 0) parts.Add($"{hours,2}h");
+        if (minutes > 0 || parts.Count > 0) parts.Add($"{minutes,2}m");
+        parts.Add($"{seconds,2}s");
         return string.Join(" ", parts);
     }
 

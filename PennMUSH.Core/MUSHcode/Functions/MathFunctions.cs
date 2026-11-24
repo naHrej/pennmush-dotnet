@@ -529,7 +529,7 @@ public static class MathFunctions
             long a = (long)Math.Floor(b);
             long nextH = a * h1 + h2;
             long nextK = a * k1 + k2;
-            if (nextK > 100000)
+            if (nextK > 1000000)
                 break;
             h2 = h1;
             h1 = nextH;

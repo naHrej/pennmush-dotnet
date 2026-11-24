@@ -485,10 +485,17 @@ public static class LateSubsystemFunctions
         {
             if (n % 2 == 0) return MushError.ImaginaryNumber.Text();
             double res = -Math.Pow(-x, 1.0 / n);
-            return Math.Abs(res - Math.Round(res)) < 1e-12 ? ((long)Math.Round(res)).ToString() : res.ToString("G", CultureInfo.InvariantCulture);
+            return FormatRoot(res);
         }
 
         double val = Math.Pow(x, 1.0 / n);
-        return Math.Abs(val - Math.Round(val)) < 1e-12 ? ((long)Math.Round(val)).ToString() : val.ToString("G", CultureInfo.InvariantCulture);
+        return FormatRoot(val);
+    }
+
+    private static string FormatRoot(double val)
+    {
+        if (Math.Abs(val - Math.Round(val)) < 1e-12)
+            return ((long)Math.Round(val)).ToString(CultureInfo.InvariantCulture);
+        return Math.Round(val, 10, MidpointRounding.AwayFromZero).ToString("0.##########", CultureInfo.InvariantCulture);
     }
 }

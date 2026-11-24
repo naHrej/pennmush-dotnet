@@ -88,20 +88,32 @@ public static class CryptoFunctions
         if (args.Length == 1)
         {
             return algo == "list"
-                ? "md5 sha1 sha256 sha384 sha512"
+                ? "md5 md4 sha1 sha224 sha256 sha384 sha512 ripemd160 whirlpool"
                 : MushError.TooFewArguments.Text();
         }
         byte[] data = Encoding.UTF8.GetBytes(args[1]);
         byte[]? hash = algo switch
         {
             "md5" => MD5.HashData(data),
+            "md4" => ComputeBcDigest(new Org.BouncyCastle.Crypto.Digests.MD4Digest(), data),
             "sha1" or "sha0" => SHA1.HashData(data),
+            "sha224" => ComputeBcDigest(new Org.BouncyCastle.Crypto.Digests.Sha224Digest(), data),
             "sha256" => SHA256.HashData(data),
             "sha384" => SHA384.HashData(data),
             "sha512" => SHA512.HashData(data),
+            "ripemd160" => ComputeBcDigest(new Org.BouncyCastle.Crypto.Digests.RipeMD160Digest(), data),
+            "whirlpool" => ComputeBcDigest(new Org.BouncyCastle.Crypto.Digests.WhirlpoolDigest(), data),
             _ => null
         };
         return hash != null ? Convert.ToHexStringLower(hash) : MushError.UnsupportedDigestType.Text();
+    }
+
+    private static byte[] ComputeBcDigest(Org.BouncyCastle.Crypto.IDigest digest, byte[] data)
+    {
+        digest.BlockUpdate(data, 0, data.Length);
+        byte[] output = new byte[digest.GetDigestSize()];
+        digest.DoFinal(output, 0);
+        return output;
     }
 
     public static string Sha0(EvaluationContext ctx, string[] args)
