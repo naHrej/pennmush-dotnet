@@ -1,0 +1,23 @@
+{
+  "group": "flow-control-queue",
+  "category": "command",
+  "cases": [
+    { "id": "if-true", "input": "@if 1=think if-yes,think if-no", "queued": true, "compare": "exact" },
+    { "id": "if-false", "input": "@if 0=think if-yes,think if-no", "queued": true, "compare": "exact" },
+    { "id": "ifelse-false", "input": "@ifelse 0=think yes,think no", "queued": true, "compare": "exact" },
+    { "id": "skip-false", "input": "@skip 0=think skipped-in", "queued": true, "compare": "exact" },
+    { "id": "switch-first-match", "input": "@switch/first 2=1,think one,2,think two,2,think two-again,think default", "queued": true, "compare": "exact" },
+    { "id": "switch-all-matches", "input": "@switch/all 2=1,think one,2,think two,2,think two-again,think default", "queued": true, "compare": "exact" },
+    { "id": "switch-wildcard", "input": "@switch foo*=foo*,think matched,think missed", "queued": true, "compare": "exact" },
+    { "id": "select-first-only", "input": "@select 2=1,think one,2,think two,2,think two-again,think default", "queued": true, "compare": "exact" },
+    { "id": "dolist-basic", "input": "@dolist a b c={think ##:#@}", "queued": true, "compare": "exact" },
+    { "id": "force-self", "input": "@force me=think forced-ok", "queued": true, "compare": "exact" },
+    { "id": "trigger-attr", "setup": [ "@create TrigBox", "&DOIT TrigBox=think triggered:%0:%1" ], "input": "@trigger TrigBox/DOIT=alpha,beta", "queued": true, "compare": "exact" },
+    { "id": "wait-semaphore-notify", "setup": [ "@create SemObj", "@wait SemObj=think sem-woke" ], "input": "@notify SemObj", "queued": true, "compare": "exact" },
+    { "id": "wait-semaphore-drain", "setup": [ "@create DrainObj", "@wait DrainObj=think should-not-run" ], "input": "@drain DrainObj", "compare": "exact" },
+    { "id": "ps-basic", "input": "@ps", "compare": "regex", "pattern": "Queue" },
+    { "id": "kick-zero", "input": "@kick 0", "compare": "exact" },
+    { "id": "halt-self", "input": "@halt me", "compare": "exact" },
+    { "id": "allhalt", "input": "@allhalt", "compare": "exact" }
+  ]
+}

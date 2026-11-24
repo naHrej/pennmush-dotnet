@@ -1,0 +1,23 @@
+{
+  "group": "communication-nospoof",
+  "category": "command",
+  "cases": [
+    { "id": "say-basic", "input": "say hello parity", "compare": "exact" },
+    { "id": "pose-basic", "input": ":waves.", "compare": "exact" },
+    { "id": "semipose-basic", "input": ";'s test.", "compare": "exact" },
+    { "id": "emit-basic", "input": "@emit raw room emit", "compare": "exact" },
+    { "id": "lemit-basic", "input": "@lemit local room emit", "compare": "exact" },
+    { "id": "pemit-self", "input": "@pemit me=direct pemit", "compare": "exact" },
+    { "id": "remit-here", "input": "@remit here=room emit", "compare": "exact" },
+    { "id": "oemit-self", "input": "@oemit me=other emit", "compare": "exact" },
+    { "id": "nsemit-wizard", "input": "@nsemit clean emit", "compare": "exact" },
+    { "id": "nspemit-wizard", "input": "@nspemit me=clean pemit", "compare": "exact" },
+    { "id": "nsremit-wizard", "input": "@nsremit here=clean remit", "compare": "exact" },
+    { "id": "nslemit-wizard", "input": "@nslemit clean lemit", "compare": "exact" },
+    { "id": "nsoemit-wizard", "input": "@nsoemit me=clean oemit", "compare": "exact" },
+    { "id": "message-basic", "setup": [ "@create MsgBox", "&HELLO MsgBox=msg-%0" ], "input": "@message me=MsgBox/HELLO,world", "compare": "exact" },
+    { "id": "whisper-self", "input": "whisper me=psst", "compare": "exact" },
+    { "id": "page-self", "input": "page me=ping", "compare": "exact" },
+    { "id": "moniker-set", "setup": [ "@moniker me=TheOne" ], "input": "think [moniker(me)]", "compare": "exact" }
+  ]
+}

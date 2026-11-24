@@ -1,0 +1,47 @@
+{
+    "group":  "teststringsecs",
+    "category":  "function",
+    "source":  "pennmush/test/teststringsecs.t",
+    "cases":  [
+                  {
+                      "id":  "stringsecs.1",
+                      "input":  "think stringsecs(a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.2",
+                      "input":  "think stringsecs(10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.3",
+                      "input":  "think stringsecs(10s)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.4",
+                      "input":  "think stringsecs(5m)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.5",
+                      "input":  "think stringsecs(5m 10s)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.6",
+                      "input":  "think stringsecs(1h)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.7",
+                      "input":  "think stringsecs(10s 5m)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stringsecs.8",
+                      "input":  "think stringsecs(1d 2h 3m 4s)",
+                      "compare":  "exact"
+                  }
+              ]
+}

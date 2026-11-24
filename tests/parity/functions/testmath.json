@@ -1,0 +1,563 @@
+{
+    "group":  "testmath",
+    "category":  "function",
+    "source":  "pennmush/test/testmath.t",
+    "cases":  [
+                  {
+                      "id":  "abs.1",
+                      "input":  "think abs(-1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.2",
+                      "input":  "think abs(-1.5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.3",
+                      "input":  "think abs(1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.4",
+                      "input":  "think abs(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.5",
+                      "input":  "think abs(-0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.6",
+                      "input":  "think abs(99999999999)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "abs.7",
+                      "input":  "think abs(-99999999999)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.1",
+                      "input":  "think baseconv(10,10,36)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.2",
+                      "input":  "think baseconv(-10,10,36)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.3",
+                      "input":  "think baseconv(9,36,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.4",
+                      "input":  "think baseconv(-9,36,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.5",
+                      "input":  "think baseconv(abc,36,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.6",
+                      "input":  "think baseconv(-abc,36,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.7",
+                      "input":  "think baseconv(13368,10,36)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.8",
+                      "input":  "think baseconv(-13368,10,36)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.9",
+                      "input":  "think baseconv(100,10,64)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.10",
+                      "input":  "think baseconv(Bk,64,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.11",
+                      "input":  "think baseconv(-Bk,64,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.12",
+                      "input":  "think baseconv(-_,64,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.13",
+                      "input":  "think baseconv(+/,64,10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "baseconv.14",
+                      "input":  "think baseconv(4031,10,64)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "cos.1",
+                      "input":  "think cos(90,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "cos.2",
+                      "input":  "think cos(pi(),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "cos.3",
+                      "input":  "think cos(pi())",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "acos.1",
+                      "input":  "think acos(cos(90,d),d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "acos.2",
+                      "input":  "think acos(cos(1,r))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "acos.3",
+                      "input":  "think acos(cos(1,r),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sin.1",
+                      "input":  "think sin(90,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sin.2",
+                      "input":  "think sin(pi(),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sin.3",
+                      "input":  "think sin(pi())",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "asin.1",
+                      "input":  "think asin(sin(90,d),d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "asin.2",
+                      "input":  "think asin(sin(1,r))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "asin.3",
+                      "input":  "think asin(sin(1,r),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tan.1",
+                      "input":  "think tan(45,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tan.2",
+                      "input":  "think tan(pi(),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tan.3",
+                      "input":  "think tan(pi())",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tan.4",
+                      "input":  "think tan(90, d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan.1",
+                      "input":  "think atan(tan(45,d),d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan.2",
+                      "input":  "think atan(tan(1,r))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan.3",
+                      "input":  "think atan(tan(1,r),r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan2.1",
+                      "input":  "think atan2(0, -1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan2.2",
+                      "input":  "think atan2(0, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan2.3",
+                      "input":  "think atan2(-0.0001, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "atan2.4",
+                      "input":  "think atan2(0.0001, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ctu.1",
+                      "input":  "think ctu(90,d,r)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ctu.2",
+                      "input":  "think ctu(pi(),r,d)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sqrt.1",
+                      "input":  "think sqrt(4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sqrt.2",
+                      "input":  "think sqrt(-1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "root.1",
+                      "input":  "think root(4,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "root.2",
+                      "input":  "think root(-1,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "root.3",
+                      "input":  "think root(27, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "root.4",
+                      "input":  "think root(-27, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "root.5",
+                      "input":  "think root(125, 5)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@config/set float_precision=10"
+                                ]
+                  },
+                  {
+                      "id":  "round.0",
+                      "input":  "think round(pi(), 0)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@config/set float_precision=6"
+                                ]
+                  },
+                  {
+                      "id":  "round.1",
+                      "input":  "think round(pi(), 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.2",
+                      "input":  "think round(pi(), 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.3",
+                      "input":  "think round(pi(), 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.4",
+                      "input":  "think round(pi(), 4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.5",
+                      "input":  "think round(pi(), 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.6",
+                      "input":  "think round(-[pi()], 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.7",
+                      "input":  "think round(3.5, 3, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "round.8",
+                      "input":  "think round(1.2345, 2, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "div.1",
+                      "input":  "think div(13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "div.2",
+                      "input":  "think div(-13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "div.3",
+                      "input":  "think div(13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "div.4",
+                      "input":  "think div(-13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "floordiv.1",
+                      "input":  "think floordiv(13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "floordiv.2",
+                      "input":  "think floordiv(-13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "floordiv.3",
+                      "input":  "think floordiv(13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "floordiv.4",
+                      "input":  "think floordiv(-13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "mod.1",
+                      "input":  "think modulo(13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "mod.2",
+                      "input":  "think modulo(-13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "mod.3",
+                      "input":  "think modulo(13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "mod.4",
+                      "input":  "think modulo(-13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "remainder.1",
+                      "input":  "think remainder(13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "remainder.2",
+                      "input":  "think remainder(-13,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "remainder.3",
+                      "input":  "think remainder(13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "remainder.4",
+                      "input":  "think remainder(-13,-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sign.1",
+                      "input":  "think sign(-4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sign.2",
+                      "input":  "think sign(4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "sign.3",
+                      "input":  "think sign(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "mean.1",
+                      "input":  "think mean(1,2,3,4,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "median.1",
+                      "input":  "think median(1,2,3,4,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "median.2",
+                      "input":  "think median(1,2,3,4)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "stddev.1",
+                      "input":  "think stddev(1,2,3,4,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.1",
+                      "input":  "think log(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.2",
+                      "input":  "think log(1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.3",
+                      "input":  "think log(100)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.4",
+                      "input":  "think log(8,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.5",
+                      "input":  "think log(10,e)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.6",
+                      "input":  "think ln(10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.7",
+                      "input":  "think log(9,3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.8",
+                      "input":  "think log(9,foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "log.9",
+                      "input":  "think log(-5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.1",
+                      "input":  "think fraction(.75)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.2",
+                      "input":  "think fraction(pi())",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.3",
+                      "input":  "think fraction(2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.4",
+                      "input":  "think fraction(2.75)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.5",
+                      "input":  "think fraction(2.75, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "fraction.6",
+                      "input":  "think fraction(2, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "inc.1",
+                      "input":  "think inc(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "inc.2",
+                      "input":  "think inc(-2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "inc.3",
+                      "input":  "think inc(foo1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "inc.4",
+                      "input":  "think inc(1.2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "inc.5",
+                      "input":  "think inc(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dec.1",
+                      "input":  "think dec(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dec.2",
+                      "input":  "think dec(-2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dec.3",
+                      "input":  "think dec(foo1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dec.4",
+                      "input":  "think dec(1.2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dec.5",
+                      "input":  "think dec(foo)",
+                      "compare":  "exact"
+                  }
+              ]
+}

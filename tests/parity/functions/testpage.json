@@ -1,0 +1,12 @@
+{
+    "group":  "testpage",
+    "category":  "function",
+    "source":  "pennmush/test/testpage.t",
+    "cases":  [
+                  {
+                      "id":  "page.1",
+                      "input":  "page/noeval %# \\= =",
+                      "compare":  "exact"
+                  }
+              ]
+}

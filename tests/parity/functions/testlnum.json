@@ -1,0 +1,77 @@
+{
+    "group":  "testlnum",
+    "category":  "function",
+    "source":  "pennmush/test/testlnum.t",
+    "cases":  [
+                  {
+                      "id":  "lnum.1",
+                      "input":  "think lnum()",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.2",
+                      "input":  "think lnum(#1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.3",
+                      "input":  "think lnum(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.4",
+                      "input":  "think lnum(4.5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.5",
+                      "input":  "think lnum(5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.6",
+                      "input":  "think lnum(1,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.7",
+                      "input":  "think lnum(,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.8",
+                      "input":  "think lnum(1,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.9",
+                      "input":  "think lnum(1,4,@)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.10",
+                      "input":  "think lnum(1,5,@,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.11",
+                      "input":  "think lnum(1,5,,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.12",
+                      "input":  "think lnum(-2,2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.13",
+                      "input":  "think lnum(1.5, 4.5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "lnum.14",
+                      "input":  "think lnum(1.5,4.5,%b,.5)",
+                      "compare":  "exact"
+                  }
+              ]
+}

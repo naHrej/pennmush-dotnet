@@ -1,0 +1,19 @@
+{
+  "group": "zones-listeners-search",
+  "category": "command",
+  "cases": [
+    { "id": "dollar-command-local", "setup": [ "@create CmdWidget", "&CMD_PING CmdWidget=$+ping *:think pong:%0" ], "input": "+ping hello", "compare": "exact" },
+    { "id": "dollar-command-regexp", "setup": [ "@create RegexWidget", "&CMD_RE RegexWidget=$^\\+re (\\d+)$:think num:%1", "@set RegexWidget/CMD_RE=regexp" ], "input": "+re 42", "compare": "exact" },
+    { "id": "master-room-command", "setup": [ "@create GlobalWidget", "@tel GlobalWidget=#2", "&CMD_GLOBAL GlobalWidget=$+ghello:think global-ok" ], "input": "+ghello", "compare": "exact" },
+    { "id": "scan-command", "setup": [ "@create ScanObj", "&CMD_SCAN ScanObj=$+scantest:think scanned" ], "input": "@scan +scantest", "compare": "regex", "pattern": "ScanObj|CMD_SCAN" },
+    { "id": "sweep-command", "input": "@sweep", "compare": "regex", "pattern": "One|Listening|Here" },
+    { "id": "with-command", "setup": [ "@create WithObj", "&CMD_WITH WithObj=$+withtest:think with-ok" ], "input": "with WithObj=+withtest", "compare": "exact" },
+    { "id": "chzone-and-zemit", "setup": [ "@create ZoneMaster", "@chzone here=ZoneMaster" ], "input": "@zemit ZoneMaster=zone broadcast", "compare": "regex", "pattern": "zone broadcast" },
+    { "id": "nszemit-basic", "setup": [ "@create NsZone", "@chzone here=NsZone" ], "input": "@nszemit NsZone=clean zone", "compare": "regex", "pattern": "clean zone" },
+    { "id": "chzoneall-basic", "setup": [ "@create ZAllMaster" ], "input": "@chzoneall me=ZAllMaster", "compare": "regex", "pattern": "chzone|Zone|Ownership|changed" },
+    { "id": "search-players", "input": "@search type=player", "compare": "regex", "pattern": "One\\(#1" },
+    { "id": "find-basic", "input": "@find One", "compare": "regex", "pattern": "One\\(#1" },
+    { "id": "whereis-me", "input": "@whereis me", "compare": "regex", "pattern": "Room Zero" },
+    { "id": "entrances-here", "input": "@entrances here", "compare": "regex", "pattern": "Found|entrances|One" }
+  ]
+}

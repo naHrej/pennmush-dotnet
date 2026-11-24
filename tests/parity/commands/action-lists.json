@@ -1,0 +1,42 @@
+{
+  "group": "action-lists",
+  "category": "command",
+  "cases": [
+    {
+      "id": "include-basic",
+      "setup": [ "@create IncBox", "&RUN IncBox=think inc1:%0; think inc2:%1" ],
+      "input": "@include IncBox/RUN=foo,bar",
+      "compare": "exact"
+    },
+    {
+      "id": "assert-false-stops",
+      "setup": [ "@create AssertBox", "&RUN AssertBox=think before; @assert 0=think failed; think after" ],
+      "input": "@include AssertBox/RUN",
+      "compare": "exact"
+    },
+    {
+      "id": "break-true-stops",
+      "setup": [ "@create BreakBox", "&RUN BreakBox=think before; @break 1=think broke; think after" ],
+      "input": "@include BreakBox/RUN",
+      "compare": "exact"
+    },
+    {
+      "id": "retry-countdown",
+      "setup": [ "@create RetryBox", "&LOOP RetryBox=think step:%0; @retry gt(%0,0)=dec(%0)" ],
+      "input": "@include RetryBox/LOOP=2",
+      "compare": "exact"
+    },
+    {
+      "id": "verb-basic",
+      "setup": [
+        "@create VerbActor",
+        "&VDO VerbActor=did something",
+        "&OVDO VerbActor=does something",
+        "&AVDO VerbActor=think averb-ran"
+      ],
+      "input": "@verb VerbActor=me,VDO,default-v,OVDO,default-ov,AVDO",
+      "queued": true,
+      "compare": "exact"
+    }
+  ]
+}

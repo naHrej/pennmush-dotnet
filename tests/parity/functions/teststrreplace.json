@@ -1,0 +1,57 @@
+{
+    "group":  "teststrreplace",
+    "category":  "function",
+    "source":  "pennmush/test/teststrreplace.t",
+    "cases":  [
+                  {
+                      "id":  "strreplace.1",
+                      "input":  "think strreplace(0010, 2, 1, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.2",
+                      "input":  "think strreplace(0010, 2, 5, 011)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.3",
+                      "input":  "think strreplace(0010, 2, 2, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.4",
+                      "input":  "think strreplace(0010, 2, 1, 010)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.5",
+                      "input":  "think strreplace(0010, 6, 1, 0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.6",
+                      "input":  "think strreplace(0010, -1, 4, woot)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strreplace.7",
+                      "input":  "think strreplace(AA[ansi(r, BB)]A, 2, 2, C)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strinsert.1",
+                      "input":  "think strinsert(000, 1, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strinsert.2",
+                      "input":  "think strinsert(000, -1, 1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "strinsert.3",
+                      "input":  "think strinsert(000, 5, 11)",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,47 @@
+{
+    "group":  "testnull",
+    "category":  "function",
+    "source":  "pennmush/test/testnull.t",
+    "cases":  [
+                  {
+                      "id":  "null.1",
+                      "input":  "think null()",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.2",
+                      "input":  "think null(a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.3",
+                      "input":  "think null(a,b,c)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.4",
+                      "input":  "think null(pemit(#1,test))",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.5",
+                      "input":  "think @@()",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.6",
+                      "input":  "think @@(a)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.7",
+                      "input":  "think @@({a,b,c})",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "null.8",
+                      "input":  "think @@(pemit(#1,test))",
+                      "compare":  "exact"
+                  }
+              ]
+}

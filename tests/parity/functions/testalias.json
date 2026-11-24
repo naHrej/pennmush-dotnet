@@ -1,0 +1,62 @@
+{
+    "group":  "testalias",
+    "category":  "function",
+    "source":  "pennmush/test/testalias.t",
+    "cases":  [
+                  {
+                      "id":  "alias.1",
+                      "input":  "@name me=God",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.2",
+                      "input":  "@name me=One",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.3",
+                      "input":  "@alias me=God",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.4",
+                      "input":  "@name me=God",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.5",
+                      "input":  "@alias me=God",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.6",
+                      "input":  "@name me=One",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.7",
+                      "input":  "@name me=God",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.8",
+                      "input":  "@alias me=God;One",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.9",
+                      "input":  "@name me=Love",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.10",
+                      "input":  "@alias me",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "alias.11",
+                      "input":  "@name me=God",
+                      "compare":  "exact"
+                  }
+              ]
+}

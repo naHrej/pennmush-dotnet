@@ -1,0 +1,77 @@
+{
+    "group":  "testinsert",
+    "category":  "function",
+    "source":  "pennmush/test/testinsert.t",
+    "cases":  [
+                  {
+                      "id":  "insert.1",
+                      "input":  "think insert(a b c,0,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.2",
+                      "input":  "think insert(a b c,1,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.3",
+                      "input":  "think insert(a b c,2,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.4",
+                      "input":  "think insert(a b c,3,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.5",
+                      "input":  "think insert(a b c,4,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.6",
+                      "input":  "think insert(a b c,-1,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.7",
+                      "input":  "think insert(a b c,-2,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.8",
+                      "input":  "think insert(a b c,-3,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.9",
+                      "input":  "think insert(a b c,-4,X)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.10",
+                      "input":  "think insert(a|b|c,0,|)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.11",
+                      "input":  "think insert(a|b|c,1,|)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.12",
+                      "input":  "think insert(a|b|c,-1,|)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.13",
+                      "input":  "think insert(a|b|c,2,|)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "insert.14",
+                      "input":  "think insert(a|b|c,-2,|)",
+                      "compare":  "exact"
+                  }
+              ]
+}

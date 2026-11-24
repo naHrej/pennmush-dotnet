@@ -1,0 +1,17 @@
+{
+    "group":  "testletq",
+    "category":  "function",
+    "source":  "pennmush/test/testletq.t",
+    "cases":  [
+                  {
+                      "id":  "letq.1",
+                      "input":  "think setr(A, 1):[letq(A, 2, %qA)]:%qA",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "letq.2",
+                      "input":  "think setr(A, 1):[letq(setr(A, 2))]:%qA",
+                      "compare":  "exact"
+                  }
+              ]
+}

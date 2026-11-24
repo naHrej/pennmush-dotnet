@@ -1,0 +1,105 @@
+{
+    "group":  "testjust",
+    "category":  "function",
+    "source":  "pennmush/test/testjust.t",
+    "cases":  [
+                  {
+                      "id":  "ljust.1",
+                      "input":  "think ljust(foo, 3)",
+                      "compare":  "exact",
+                      "setup":  [
+                                    "@config/set tiny_math=no"
+                                ]
+                  },
+                  {
+                      "id":  "ljust.2",
+                      "input":  "think ljust(foo, 5)X",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ljust.3",
+                      "input":  "think ljust(foo, 5, =)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ljust.4",
+                      "input":  "think ljust(foo, 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ljust.5",
+                      "input":  "think ljust(foo, -3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "ljust.6",
+                      "input":  "think ljust(foo bar baz,5,=,1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.1",
+                      "input":  "think rjust(foo, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.2",
+                      "input":  "think rjust(foo, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.3",
+                      "input":  "think rjust(foo, 5, =)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.4",
+                      "input":  "think rjust(foo, 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.5",
+                      "input":  "think rjust(foo, -3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rjust.6",
+                      "input":  "think rjust(foo bar baz,5,=,1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.1",
+                      "input":  "think center(foo, 3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.2",
+                      "input":  "think #[center(fo, 3)]#",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.3",
+                      "input":  "think center(foo, 5)X",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.4",
+                      "input":  "think center(foo, 5, =)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.5",
+                      "input":  "think center(foo, 2)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.6",
+                      "input":  "think center(foo, -3)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "center.7",
+                      "input":  "think center(foo, 5, =, ~)",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,25 @@
+{
+  "group": "who-quota-admin-tables",
+  "category": "command",
+  "cases": [
+    { "id": "who-command", "input": "WHO", "compare": "regex", "pattern": "One" },
+    { "id": "session-command", "input": "session", "compare": "regex", "pattern": "One" },
+    { "id": "doing-and-poll", "setup": [ "@poll Parity Poll", "doing Testing" ], "input": "WHO", "compare": "regex", "pattern": "Parity Poll" },
+    { "id": "hide-command", "input": "@hide", "compare": "regex", "pattern": "hidden|visible|hide" },
+    { "id": "pcreate-and-newpassword", "setup": [ "@pcreate TestMortal=secret1" ], "input": "@newpassword TestMortal=secret2", "compare": "regex", "pattern": "Password|changed|TestMortal" },
+    { "id": "quota-squota-allquota", "setup": [ "@pcreate QuotaUser=pass1" ], "input": "@quota QuotaUser", "compare": "regex", "pattern": "Quota|owned|limit" },
+    { "id": "poor-command", "input": "@poor 150", "compare": "regex", "pattern": "150|pennies|Pennies" },
+    { "id": "chownall-command", "setup": [ "@pcreate ChownSrc=pass1" ], "input": "@chownall ChownSrc=me", "compare": "regex", "pattern": "Ownership|changed|0" },
+    { "id": "function-add-eval", "setup": [ "@create FnHost", "&MY_ADD FnHost=add(%0,%1)", "@function MYADD=FnHost,MY_ADD" ], "input": "think [myadd(10,20)]", "compare": "exact" },
+    { "id": "command-list", "input": "@list commands", "compare": "regex", "pattern": "THINK|SAY" },
+    { "id": "flag-list", "input": "@list flags", "compare": "regex", "pattern": "WIZARD" },
+    { "id": "attribute-list", "input": "@list attribs", "compare": "regex", "pattern": "DESCRIBE" },
+    { "id": "enable-disable-config", "input": "@config use_dns", "compare": "regex", "pattern": "use_dns" },
+    { "id": "uptime-command", "input": "@uptime", "compare": "regex", "pattern": "Up since|uptime|up" },
+    { "id": "dbck-command", "input": "@dbck", "compare": "regex", "pattern": "Check|complete|dbck" },
+    { "id": "sitelock-list", "input": "@sitelock", "compare": "regex", "pattern": "SITE|lock|No" },
+    { "id": "suggest-list", "input": "@suggest", "compare": "regex", "pattern": "Categor|suggest|HELP" },
+    { "id": "readcache-command", "input": "@readcache", "compare": "regex", "pattern": "Help|reindexed|cache" },
+    { "id": "warnings-command", "input": "@warnings me=normal", "compare": "regex", "pattern": "Warning|normal|checked" }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+    "group":  "testdistxd",
+    "category":  "function",
+    "source":  "pennmush/test/testdistxd.t",
+    "cases":  [
+                  {
+                      "id":  "dist2d.1",
+                      "input":  "think dist2d(0,0, 5,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist2d.2",
+                      "input":  "think lmath(dist2d, 0 0  5 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist2d.3",
+                      "input":  "think dist2d(0,0, 0,0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist2d.4",
+                      "input":  "think dist2d(0,0, 0,1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist3d.1",
+                      "input":  "think dist3d(0,0,0, 5,5,5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist3d.2",
+                      "input":  "think lmath(dist3d, 0 0 0  5 5 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist3d.3",
+                      "input":  "think dist3d(0,0,0, 0,0,0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "dist3d.4",
+                      "input":  "think dist3d(0,0,0, 1,0,0)",
+                      "compare":  "exact"
+                  }
+              ]
+}

@@ -1,0 +1,42 @@
+{
+    "group":  "testtr",
+    "category":  "function",
+    "source":  "pennmush/test/testtr.t",
+    "cases":  [
+                  {
+                      "id":  "tr.1",
+                      "input":  "think tr(test STRING,,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.2",
+                      "input":  "think tr(test STRING,t,)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.3",
+                      "input":  "think tr(test STRING,,t)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.4",
+                      "input":  "think tr(test STRING,t,f)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.5",
+                      "input":  "think tr(test STRING,tT,fF)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.6",
+                      "input":  "think tr(test STRING,Tt,Ff)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "tr.7",
+                      "input":  "think tr(test STRING,te,et)",
+                      "compare":  "exact"
+                  }
+              ]
+}

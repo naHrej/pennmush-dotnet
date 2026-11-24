@@ -1,0 +1,72 @@
+{
+    "group":  "testrand",
+    "category":  "function",
+    "source":  "pennmush/test/testrand.t",
+    "cases":  [
+                  {
+                      "id":  "rand.1",
+                      "input":  "think rand(-1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.2",
+                      "input":  "think rand(0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.3",
+                      "input":  "think rand(1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.4",
+                      "input":  "think rand(10)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.5",
+                      "input":  "think rand(0,0)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.6",
+                      "input":  "think rand(1,1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.7",
+                      "input":  "think rand(2,1)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.8",
+                      "input":  "think rand(0,9)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.9",
+                      "input":  "think rand(-5, 5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "rand.10",
+                      "input":  "think rand(5, -5)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "randword.1",
+                      "input":  "think randword(%b%b%b)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "randword.2",
+                      "input":  "think randword(foo)",
+                      "compare":  "exact"
+                  },
+                  {
+                      "id":  "randword.3",
+                      "input":  "think randword(foo bar)",
+                      "compare":  "exact"
+                  }
+              ]
+}
