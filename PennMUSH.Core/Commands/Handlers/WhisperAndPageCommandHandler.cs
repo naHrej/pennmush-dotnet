@@ -36,12 +36,6 @@ public class WhisperCommandHandler : ICommandHandler
             return false;
         }
 
-        if (target.Id == context.Executor)
-        {
-            context.Notify(Feedback.YouWhisperToYourself);
-            return true;
-        }
-
         context.Notify(Feedback.YouWhisperTo, ("value", $"{context.RightArg}"), ("value2", $"{target.Name}"));
         context.NotifyTarget(target.Id, Feedback.Whispers.Text(("value", $"{execObj.Name}"), ("value2", $"{context.RightArg}")));
         return true;
@@ -89,9 +83,7 @@ public class PageCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         string senderName = execObj != null ? execObj.Name : context.Executor.ToString();
 
-        var target = targetName.Equals("me", StringComparison.OrdinalIgnoreCase)
-            ? execObj
-            : db.FindPlayer(targetName);
+        var target = db.FindPlayer(targetName);
         if (target == null)
         {
             context.Notify(Feedback.ICannotFindPlayer, ("player", $"{targetName}"));
