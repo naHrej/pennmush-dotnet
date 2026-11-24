@@ -106,39 +106,35 @@ public class MUSHConnection
         await SendRawAsync(bytes, ct);
     }
 
-    public async Task SendLineAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
+    public Task SendLineAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
+        => SendAsync(ComposeLine(text, escapeHtml), ct);
+
+    public Task SendRawAsync(string text, CancellationToken ct = default)
+        => SendAsync(ComposeRaw(text), ct);
+
+    public Task SendPromptAsync(string text, CancellationToken ct = default)
+        => SendAsync(PromptNewlines ? ComposeLine(text, escapeHtml: false) : ComposePrompt(text), ct);
+
+    /// <summary>
+    /// A finished line. Accent stripping and HTML policy run here, once.
+    /// OUTPUTPREFIX and OUTPUTSUFFIX are their own records, sent around a command.
+    /// </summary>
+    private OutboundRecord ComposeLine(string text, bool escapeHtml)
     {
-        // JSON envelopes are recognized by the client only when the text still
-        // starts with '{' and ends with '}'. Leave those on the wire unchanged.
         if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
-        {
-            await DeliverTextAsync(text + "\r\n", ct);
-            return;
-        }
+            return OutboundRecord.Passthrough(text + "\r\n");
 
-        var rendered = WebSocketMarkup.Render(
-            text,
-            isWebSocket: IsWebSocket,
-            escapeLiteralHtml: Capabilities.SupportsHtml && escapeHtml,
-            stripAccents: StripAccents);
-
-        if (rendered.JsonPayloads.Count > 0)
-            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
-
+        var rendered = Render(text, Capabilities.SupportsHtml && escapeHtml);
         if (rendered.HadFrames && rendered.Text.Length == 0)
-            return;
+            return new OutboundRecord("", null, false, rendered.JsonPayloads);
 
         if (!Capabilities.SupportsHtml)
-        {
-            await DeliverTextAsync(rendered.Text + "\r\n", ct, preserveHtml: rendered.HasHtmlFrames);
-            return;
-        }
+            return new OutboundRecord(rendered.Text + "\r\n", null, rendered.HasHtmlFrames, rendered.JsonPayloads);
 
         bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(rendered.Text);
         string body = hadAnsi
             ? AnsiToHtmlTranslator.Translate(rendered.Text, escapeHtml: false, EffectiveHtmlColorDepth())
             : rendered.Text;
-
         string html = "<div>" + ApplyHtmlBreaks(body) + "</div>";
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
         {
@@ -148,94 +144,67 @@ public class MUSHConnection
             html += "\r\n";
         }
 
-        await DeliverTextAsync(
+        return new OutboundRecord(
             html,
-            ct,
-            preserveHtml: true,
-            plainText: hadAnsi ? AnsiToHtmlTranslator.StripAnsi(rendered.Text) : null);
+            hadAnsi ? AnsiToHtmlTranslator.StripAnsi(rendered.Text) : null,
+            true,
+            rendered.JsonPayloads);
     }
 
-    public async Task SendRawAsync(string text, CancellationToken ct = default)
+    private OutboundRecord ComposeRaw(string text)
     {
         if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
-        {
-            await DeliverTextAsync(text, ct);
-            return;
-        }
+            return OutboundRecord.Passthrough(text);
 
-        var rendered = WebSocketMarkup.Render(
-            text,
-            isWebSocket: IsWebSocket,
-            escapeLiteralHtml: false,
-            stripAccents: StripAccents);
-
-        if (rendered.JsonPayloads.Count > 0)
-            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
-
+        var rendered = Render(text, escapeLiteralHtml: false);
         if (rendered.HadFrames && rendered.Text.Length == 0)
-            return;
+            return new OutboundRecord("", null, false, rendered.JsonPayloads);
 
-        string outText = rendered.Text;
-        string? plainText = null;
+        string wire = rendered.Text;
+        string? plain = null;
         if (Capabilities.SupportsHtml)
         {
-            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(outText);
+            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(wire);
             if (hadAnsi)
             {
-                plainText = AnsiToHtmlTranslator.StripAnsi(outText);
-                outText = AnsiToHtmlTranslator.Translate(outText, escapeHtml: false, EffectiveHtmlColorDepth());
+                plain = AnsiToHtmlTranslator.StripAnsi(wire);
+                wire = AnsiToHtmlTranslator.Translate(wire, escapeHtml: false, EffectiveHtmlColorDepth());
             }
-            outText = ApplyHtmlBreaks(outText);
+            wire = ApplyHtmlBreaks(wire);
             if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
-            {
-                outText += "\r\n";
-            }
+                wire += "\r\n";
         }
 
-        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames, plainText: plainText);
+        return new OutboundRecord(wire, plain, Capabilities.SupportsHtml || rendered.HasHtmlFrames, rendered.JsonPayloads);
     }
 
-    public async Task SendPromptAsync(string text, CancellationToken ct = default)
+    private OutboundRecord ComposePrompt(string text)
     {
-        if (PromptNewlines)
-        {
-            await SendLineAsync(text, ct);
-            return;
-        }
-
         if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
-        {
-            await DeliverTextAsync(text, ct);
-            return;
-        }
+            return OutboundRecord.Passthrough(text);
 
-        var rendered = WebSocketMarkup.Render(
-            text,
-            isWebSocket: IsWebSocket,
-            escapeLiteralHtml: false,
-            stripAccents: StripAccents);
-
-        if (rendered.JsonPayloads.Count > 0)
-            await SendWebSocketJsonPayloadsAsync(rendered.JsonPayloads, ct);
-
+        var rendered = Render(text, escapeLiteralHtml: false);
         if (rendered.HadFrames && rendered.Text.Length == 0)
-            return;
+            return new OutboundRecord("", null, false, rendered.JsonPayloads);
 
-        string outText = rendered.Text;
-        string? plainText = null;
+        string wire = rendered.Text;
+        string? plain = null;
         if (Capabilities.SupportsHtml)
         {
-            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(outText);
+            bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(wire);
             if (hadAnsi)
             {
-                plainText = AnsiToHtmlTranslator.StripAnsi(outText);
-                outText = AnsiToHtmlTranslator.Translate(outText, escapeHtml: false, EffectiveHtmlColorDepth());
+                plain = AnsiToHtmlTranslator.StripAnsi(wire);
+                wire = AnsiToHtmlTranslator.Translate(wire, escapeHtml: false, EffectiveHtmlColorDepth());
             }
-            outText = ApplyHtmlBreaks(outText);
+            wire = ApplyHtmlBreaks(wire);
         }
 
-        await DeliverTextAsync(outText, ct, preserveHtml: Capabilities.SupportsHtml || rendered.HasHtmlFrames, plainText: plainText);
+        return new OutboundRecord(wire, plain, Capabilities.SupportsHtml || rendered.HasHtmlFrames, rendered.JsonPayloads);
     }
+
+    private RenderedWebSocketOutput Render(string text, bool escapeLiteralHtml)
+        => WebSocketMarkup.Render(text, IsWebSocket, escapeLiteralHtml, StripAccents);
 
     public async Task SendGmcpAsync(string package, string payload, CancellationToken ct = default)
     {
@@ -261,28 +230,37 @@ public class MUSHConnection
         await SendRawAsync(packet.ToArray(), ct);
     }
 
-    public async Task SendMarkupAsync(string markup, CancellationToken ct = default)
+    public Task SendMarkupAsync(string markup, CancellationToken ct = default)
+        => SendAsync(ComposeMarkup(markup), ct);
+
+    private OutboundRecord ComposeMarkup(string markup)
     {
         if (!Capabilities.SupportsHtml || IsProtocolText(markup))
-        {
-            await SendRawAsync(markup, ct);
-            return;
-        }
+            return ComposeRaw(markup);
 
         // One record. A line-oriented client would split a stylesheet or an
         // HTML screen on raw newlines, so newlines become spaces instead of <br/>.
         string compact = StripAccents ? AccentStripper.Strip(markup) : markup;
         compact = compact.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\n', ' ');
-        string? plainText = null;
+        string? plain = null;
         if (AnsiToHtmlTranslator.ContainsAnsi(compact))
         {
-            plainText = AnsiToHtmlTranslator.StripAnsi(compact);
+            plain = AnsiToHtmlTranslator.StripAnsi(compact);
             compact = AnsiToHtmlTranslator.Translate(compact, escapeHtml: false, EffectiveHtmlColorDepth());
         }
         if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
             compact += "\r\n";
 
-        await DeliverTextAsync(compact, ct, preserveHtml: true, plainText: plainText);
+        return new OutboundRecord(compact, plain, true, Array.Empty<string>());
+    }
+
+    private async Task SendAsync(OutboundRecord record, CancellationToken ct)
+    {
+        if (record.JsonPayloads.Count > 0)
+            await SendWebSocketJsonPayloadsAsync(record.JsonPayloads, ct);
+        if (record.Wire.Length == 0)
+            return;
+        await DeliverTextAsync(record.Wire, ct, record.PreserveHtml, record.Plain);
     }
 
     private ColorDepth EffectiveHtmlColorDepth()

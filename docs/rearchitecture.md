@@ -1,6 +1,6 @@
 # Rearchitecture notes
 
-Ideas for the PennMUSH .NET server after the feature work landed as separate pull requests. This is a design note. Items 1 through 4 below are in the code. Items 5 and 6 are not.
+Ideas for the PennMUSH .NET server after the feature work landed as separate pull requests. This is a design note. Items 1 through 4 are in the code. Item 5 is partly in: the room list, the password store, the outbound record, and command modules. Login and saving still live on `MUSHServer`. Item 6 waits for a profile. Item 6 waits for a profile.
 
 The game mailbox is `PennMUSH.Server/Engine/GameMailbox.cs`. Commands, login, the queue tick, reboot, and shutdown run there. Socket reads and the actual sends stay on the connection. `@` commands no longer rewrite the database. `SqliteStore.Flush` writes dirty objects, and when channels, mail, soft functions, sitelocks, or cron have changed, those tables, in one transaction. The game thread flushes about once a second. `@dump`, the editor save, reboot, and shutdown flush immediately. Destroyed objects stay in the file as Garbage, which is what `DestroyObject` already does in memory.
 
@@ -71,7 +71,7 @@ Four types match the code that is already there:
 - **World services.** Database, queue, cron, channels, mail, functions. This is what handlers need.
 - **Session service.** Connections, login, connect screens, and who is in a room. `SendToRoom` uses a room-to-sessions list, updated on connect, disconnect, and when a player's location changes. Login screens and the rest of the session work still live on `MUSHServer`.
 - **Persistence.** The writer from item 2. Handlers stop calling `Storage.Save` themselves.
-- **Command modules.** Each area registers its own handlers and restrictions. `RegisterCommands` becomes a list of modules instead of a method that grows with every command.
+- **Command modules.** Built-in commands register from `BuiltinCommandModules`. A new command is added in its area module. `MUSHServer` builds `CommandServices` and runs the list. Login and the save path still live on the server.
 
 `Feedback` can stay a catalog. The gain is not splitting the enum. The gain is that a new command does not have to edit the server shell to exist.
 
@@ -79,9 +79,7 @@ Passwords are the hash on `XYXXY`. Login reads that attribute. A player with no 
 
 ### 6. One outbound record
 
-`SendLineAsync`, `SendRawAsync`, `SendMarkupAsync`, and `SendPromptAsync` each decide accent stripping, HTML, newlines, prefix, suffix, and whether the socket is a MUjs WebSocket. A new presentation change has to be threaded through all of them.
-
-Build one record per line: plain text, optional HTML, and optional protocol payload. Apply prefix, suffix, and accent policy once, when the record is created. The socket writer only sends bytes or one JSON envelope. Telnet negotiation stays on the telnet listener, where it already belongs.
+`OutboundRecord` is one finished line: wire text, optional plain text for a MUjs envelope, and any JSON payloads. `ComposeLine`, `ComposeRaw`, `ComposePrompt`, and `ComposeMarkup` apply accent, HTML, and newline policy once. `SendAsync` only writes that record. OUTPUTPREFIX and OUTPUTSUFFIX stay their own records around a command. Telnet negotiation stays on the telnet listener.
 
 ## Later, if softcode or the database gets large
 
@@ -104,7 +102,7 @@ These are real, and they are not the current ceiling. The save and the full-tabl
 2. Dirty-set save that includes runtime state, and removal of the save-on-every-`@` rule. Done.
 3. Player, name, type, owner, and zone indexes, plus the room exit-alias map. Done.
 4. Listener list and inherited-attribute cache. Done.
-5. Split session, persistence, and command registration out of `MUSHServer`, and collapse outbound to one record. The room list and the single password store are in. The class split and the outbound record are not.
+5. Split session, persistence, and command registration out of `MUSHServer`. The room list, the password store, the outbound record, and command modules are in. Login and the save call still live on the server.
 6. Evaluation buffers and a regex cache when a profile says they matter.
 
 Items 1 and 2 change behavior under load and across a crash. They should land with tests that run two sessions against one database and a test that kills the process after a channel change and a single attribute edit. The rest can follow one area at a time.
