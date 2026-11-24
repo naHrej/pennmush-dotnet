@@ -69,6 +69,11 @@ public class PageCommandHandler : ICommandHandler
             targetName = context.LeftArg.Trim();
             message = context.RightArg.Trim();
         }
+        else if (!string.Equals(context.LeftArg, context.Arguments, StringComparison.Ordinal))
+        {
+            context.Notify("What do you want to page?");
+            return false;
+        }
         else
         {
             int firstSpace = context.Arguments.IndexOf(' ');
