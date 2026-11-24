@@ -9,71 +9,37 @@ on:
 jobs:
   build-and-deploy:
     name: Build PennMUSH Server and Restart
-    runs-on: [self-hosted, pennmush-dotnet]
+    runs-on: [self-hosted, linux, pennmush-dotnet]
 
     steps:
       - name: Update local repository
-        shell: powershell
+        shell: bash
         run: |
-          Set-Location -Path "C:\Repos\pennmush-dotnet"
+          cd /home/dsantos/deploy/pennmush-dotnet
           git fetch origin main
           git checkout main
           git pull origin main
 
-      - name: Stop running PennMUSH Server (to release binary file locks)
-        shell: powershell
-        run: |
-          $targets = Get-CimInstance Win32_Process | Where-Object { 
-            ($_.Name -eq "PennMUSH.Server.exe") -or 
-            ($_.Name -eq "dotnet.exe" -and $_.CommandLine -like "*PennMUSH.Server*")
-          }
-          if ($targets) {
-            Write-Host "Found $($targets.Count) running server process(es). Stopping..."
-            foreach ($t in $targets) {
-              try {
-                Stop-Process -Id $t.ProcessId -Force -ErrorAction SilentlyContinue
-                Write-Host "Stopped process $($t.ProcessId) ($($t.Name))"
-              } catch {
-                Write-Warning "Could not stop process $($t.ProcessId): $_"
-              }
-            }
-            Start-Sleep -Seconds 3
-          } else {
-            Write-Host "No running PennMUSH.Server processes found."
-          }
-
       - name: Build PennMUSH Server
-        shell: powershell
+        shell: bash
         run: |
-          dotnet build "C:\Repos\pennmush-dotnet\PennMUSH.Server\PennMUSH.Server.csproj" -c Debug
+          dotnet build /home/dsantos/deploy/pennmush-dotnet/PennMUSH.Server/PennMUSH.Server.csproj -c Debug
 
       - name: Build SpaceEngine Plugin (if present)
-        shell: powershell
+        shell: bash
         run: |
-          $spaceProj = "C:\Repos\pennmush-space\PennMUSH.SpaceEngine\PennMUSH.SpaceEngine.csproj"
-          if (Test-Path $spaceProj) {
-            dotnet build $spaceProj -c Debug
-          }
+          SPACE_PROJ="/home/dsantos/deploy/pennmush-space/PennMUSH.SpaceEngine/PennMUSH.SpaceEngine.csproj"
+          if [ -f "$SPACE_PROJ" ]; then
+            dotnet build "$SPACE_PROJ" -c Debug
+          fi
 
-      - name: Relaunch PennMUSH Server
-        shell: powershell
+      - name: Restart PennMUSH Service
+        shell: bash
         run: |
-          Set-Location -Path "C:\Repos\pennmush-dotnet"
-          Write-Host "Starting PennMUSH.Server in background..."
-          # Detach from GitHub Actions runner orphan-process cleanup (RUNNER_TRACKING_ID)
-          $savedTrackingId = $env:RUNNER_TRACKING_ID
-          Remove-Item Env:RUNNER_TRACKING_ID -ErrorAction SilentlyContinue
-          try {
-            Start-Process -FilePath "dotnet" -ArgumentList "run watch --project PennMUSH.Server\" -WorkingDirectory "C:\Repos\pennmush-dotnet"
-          } finally {
-            if ($null -ne $savedTrackingId) {
-              $env:RUNNER_TRACKING_ID = $savedTrackingId
-            }
-          }
-          Start-Sleep -Seconds 4
-          try {
-            $health = Invoke-RestMethod -Uri "http://localhost:5119/health" -TimeoutSec 5 -ErrorAction Stop
-            Write-Host "Server started successfully and responded to health check: $($health.status)"
-          } catch {
-            Write-Host "Server launched; warming up listener."
-          }
+          sudo systemctl restart pennmush
+          sleep 3
+          if HEALTH=$(curl -sf --max-time 5 http://localhost:5119/health); then
+            echo "Server started successfully: $HEALTH"
+          else
+            echo "Service restarted; warming up listener."
+          fi
