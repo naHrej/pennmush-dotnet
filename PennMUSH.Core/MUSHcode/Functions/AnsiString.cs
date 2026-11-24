@@ -106,6 +106,57 @@ public static class AnsiString
         return sb.ToString();
     }
 
+    public static string Splice(string? input, int pos, int len, string replacement)
+    {
+        if (string.IsNullOrEmpty(input))
+            return pos == 0 ? replacement : string.Empty;
+
+        var glyphs = Parse(input, out string trailing);
+        if (pos > glyphs.Count)
+            return input;
+
+        int rem = Math.Min(len, glyphs.Count - pos);
+        var sb = new StringBuilder();
+        bool hasOpenAnsi = false;
+
+        for (int i = 0; i < pos; i++)
+        {
+            if (glyphs[i].Prefix.Length > 0)
+            {
+                sb.Append(glyphs[i].Prefix);
+                hasOpenAnsi = !glyphs[i].Prefix.EndsWith("\x1B[0m", StringComparison.Ordinal);
+            }
+            sb.Append(glyphs[i].Char);
+        }
+
+        if (hasOpenAnsi)
+        {
+            sb.Append("\x1B[0m");
+            hasOpenAnsi = false;
+        }
+
+        sb.Append(replacement);
+
+        for (int i = pos + rem; i < glyphs.Count; i++)
+        {
+            if (glyphs[i].Prefix.Length > 0)
+            {
+                string prefix = glyphs[i].Prefix;
+                if (hasOpenAnsi || prefix != "\x1B[0m")
+                {
+                    sb.Append(prefix);
+                    hasOpenAnsi = !prefix.EndsWith("\x1B[0m", StringComparison.Ordinal);
+                }
+            }
+            sb.Append(glyphs[i].Char);
+        }
+
+        if (hasOpenAnsi && trailing.Length > 0)
+            sb.Append(trailing);
+
+        return sb.ToString();
+    }
+
     public static string RepeatFill(string fill, int count)
     {
         if (count <= 0) return string.Empty;

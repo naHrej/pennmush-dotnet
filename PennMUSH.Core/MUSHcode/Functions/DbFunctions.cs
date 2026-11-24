@@ -701,9 +701,8 @@ public static class DbFunctions
     public static string HasTypeFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Database == null) return "0";
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
-        if (obj == null) return "0";
+        var obj = ResolveObj(reg, ctx, args[0]);
+        if (obj == null) return "#-1 NO SUCH OBJECT VISIBLE";
 
         string targetType = args[1].Trim();
         return string.Equals(obj.Type.ToString(), targetType, StringComparison.OrdinalIgnoreCase) ? "1" : "0";
@@ -1428,6 +1427,7 @@ public static class DbFunctions
 
         string spec = args[1].Trim();
         if (string.IsNullOrEmpty(spec)) return "0";
+        if (spec.EndsWith('!')) return "#-1 INVALID FLAG";
 
         bool negateNext = false;
         bool anyChecked = false;
@@ -1439,7 +1439,9 @@ public static class DbFunctions
                 continue;
             }
             anyChecked = true;
-            bool has = MatchTypeOrFlagLetter(obj, c);
+            bool has = c == 'c'
+                ? reg.Database.IsConnected(obj.Id)
+                : MatchTypeOrFlagLetter(obj, c);
             bool ok = negateNext ? !has : has;
             negateNext = false;
 
@@ -1462,12 +1464,21 @@ public static class DbFunctions
         {
             bool neg = token.StartsWith('!');
             string name = neg ? token.Substring(1) : token;
+            if (string.IsNullOrEmpty(name))
+                return "#-1 INVALID FLAG";
+        }
+
+        foreach (string token in tokens)
+        {
+            bool neg = token.StartsWith('!');
+            string name = neg ? token.Substring(1) : token;
             bool has = name.ToUpperInvariant() switch
             {
                 "PLAYER" => obj.Type == ObjectType.Player,
                 "ROOM" => obj.Type == ObjectType.Room,
                 "THING" => obj.Type == ObjectType.Thing,
                 "EXIT" => obj.Type == ObjectType.Exit,
+                "CONNECTED" => reg.Database.IsConnected(obj.Id),
                 _ => obj.HasFlag(name)
             };
             bool ok = neg ? !has : has;
