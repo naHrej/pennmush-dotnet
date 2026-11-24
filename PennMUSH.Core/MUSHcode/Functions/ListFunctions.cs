@@ -269,8 +269,9 @@ public static class ListFunctions
         var list = SplitList(args[0], delim);
         if (!int.TryParse(args[1].Trim(), out int pos)) return args[0];
 
+        if (pos == 0 || (pos > 0 && pos > list.Count) || (pos < 0 && pos < -list.Count))
+            return args[0];
         int mapped = pos < 0 ? (list.Count + pos + 2) : pos;
-        if (mapped < 1 || mapped > list.Count + 1) return args[0];
         list.Insert(mapped - 1, args[2]);
         return string.Join(delim, list);
     }
@@ -393,7 +394,7 @@ public static class ListFunctions
 
     private static string DetectSortType(IEnumerable<string> items)
     {
-        var list = items.Where(s => !string.IsNullOrEmpty(s)).ToList();
+        var list = items.Select(AnsiString.Strip).Where(s => !string.IsNullOrEmpty(s)).ToList();
         if (list.Count == 0) return "a";
         if (list.All(s => long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))) return "n";
         if (list.All(s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _))) return "f";
@@ -405,25 +406,90 @@ public static class ListFunctions
     {
         "n" => (x, y) =>
         {
-            long.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out long nx);
-            long.TryParse(y, NumberStyles.Integer, CultureInfo.InvariantCulture, out long ny);
+            TryParseIntTrunc(AnsiString.Strip(x), out long nx);
+            TryParseIntTrunc(AnsiString.Strip(y), out long ny);
             return nx.CompareTo(ny);
         },
         "f" => (x, y) =>
         {
-            double.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out double dx);
-            double.TryParse(y, NumberStyles.Float, CultureInfo.InvariantCulture, out double dy);
+            double.TryParse(AnsiString.Strip(x), NumberStyles.Float, CultureInfo.InvariantCulture, out double dx);
+            double.TryParse(AnsiString.Strip(y), NumberStyles.Float, CultureInfo.InvariantCulture, out double dy);
             return dx.CompareTo(dy);
         },
         "d" => (x, y) =>
         {
-            Dbref.TryParse(x, out var dx);
-            Dbref.TryParse(y, out var dy);
+            Dbref.TryParse(AnsiString.Strip(x), out var dx);
+            Dbref.TryParse(AnsiString.Strip(y), out var dy);
             return dx.Value.CompareTo(dy.Value);
         },
-        "i" => (x, y) => string.Compare(x, y, StringComparison.OrdinalIgnoreCase),
-        _ => (x, y) => string.CompareOrdinal(x, y)
+        "i" => (x, y) => string.Compare(AnsiString.Strip(x), AnsiString.Strip(y), StringComparison.OrdinalIgnoreCase),
+        _ => (x, y) => string.CompareOrdinal(AnsiString.Strip(x), AnsiString.Strip(y))
     };
+
+    private static IEqualityComparer<string> GetSetEqualityComparer(string sortType) => sortType switch
+    {
+        "n" => new NumericSetComparer(isFloat: false),
+        "f" => new NumericSetComparer(isFloat: true),
+        "d" => new DbrefSetComparer(),
+        "i" => StringComparer.OrdinalIgnoreCase,
+        _ => StringComparer.Ordinal
+    };
+
+    private static bool TryParseIntTrunc(string s, out long result)
+    {
+        if (long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
+            return true;
+        if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) &&
+            !double.IsNaN(d) && !double.IsInfinity(d))
+        {
+            result = (long)d;
+            return true;
+        }
+        result = 0;
+        return false;
+    }
+
+    private sealed class NumericSetComparer(bool isFloat) : IEqualityComparer<string>
+    {
+        public bool Equals(string? x, string? y)
+        {
+            if (x == null || y == null) return x == y;
+            string sx = AnsiString.Strip(x);
+            string sy = AnsiString.Strip(y);
+            if (!isFloat && TryParseIntTrunc(sx, out long lx) && TryParseIntTrunc(sy, out long ly))
+                return lx == ly;
+            if (isFloat &&
+                double.TryParse(sx, NumberStyles.Float, CultureInfo.InvariantCulture, out double dx) &&
+                double.TryParse(sy, NumberStyles.Float, CultureInfo.InvariantCulture, out double dy))
+                return dx.Equals(dy);
+            return string.Equals(sx, sy, StringComparison.Ordinal);
+        }
+
+        public int GetHashCode(string obj)
+        {
+            string s = AnsiString.Strip(obj);
+            if (!isFloat && TryParseIntTrunc(s, out long l))
+                return l.GetHashCode();
+            if (isFloat && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double d))
+                return d.GetHashCode();
+            return StringComparer.Ordinal.GetHashCode(s);
+        }
+    }
+
+    private sealed class DbrefSetComparer : IEqualityComparer<string>
+    {
+        public bool Equals(string? x, string? y)
+        {
+            if (x == null || y == null) return x == y;
+            if (Dbref.TryParse(AnsiString.Strip(x), out var dx) &&
+                Dbref.TryParse(AnsiString.Strip(y), out var dy))
+                return dx.Value == dy.Value;
+            return string.Equals(x, y, StringComparison.Ordinal);
+        }
+
+        public int GetHashCode(string obj)
+            => Dbref.TryParse(AnsiString.Strip(obj), out var d) ? d.Value.GetHashCode() : StringComparer.Ordinal.GetHashCode(obj);
+    }
 
     public static string Sort(string[] args)
     {
@@ -469,7 +535,7 @@ public static class ListFunctions
             ? args[3].Trim().ToLowerInvariant()
             : DetectSortType(l1.Concat(l2));
 
-        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = GetSetEqualityComparer(sortType);
         var result = l1.Concat(l2).Distinct(comparer).ToList();
         result.Sort(GetSortComparison(sortType));
         return string.Join(osep, result);
@@ -486,7 +552,7 @@ public static class ListFunctions
             ? args[3].Trim().ToLowerInvariant()
             : DetectSortType(l1.Concat(l2List));
 
-        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = GetSetEqualityComparer(sortType);
         var l2 = new HashSet<string>(l2List, comparer);
         var result = l1.Where(l2.Contains).Distinct(comparer).ToList();
         result.Sort(GetSortComparison(sortType));
@@ -504,7 +570,7 @@ public static class ListFunctions
             ? args[3].Trim().ToLowerInvariant()
             : DetectSortType(l1.Concat(l2List));
 
-        var comparer = sortType == "i" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = GetSetEqualityComparer(sortType);
         var l2 = new HashSet<string>(l2List, comparer);
         var result = l1.Where(item => !l2.Contains(item)).Distinct(comparer).ToList();
         result.Sort(GetSortComparison(sortType));

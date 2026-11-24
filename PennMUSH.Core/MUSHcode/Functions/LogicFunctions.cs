@@ -459,6 +459,7 @@ public static class LogicFunctions
     {
         if (args.Length == 0) return MushError.TooFewArguments.Text();
         if (args.Length % 2 == 0) return MushError.FunctionExpectsOddArguments.Text("function", "LETQ");
+        if (args.Length == 1) return Eval(registry, ctx, args[0]);
 
         var saved = ctx.CloneRegisters();
         try

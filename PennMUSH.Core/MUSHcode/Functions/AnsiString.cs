@@ -48,6 +48,16 @@ public static class AnsiString
     public static int VisibleLength(string? input)
         => Parse(input, out _).Count;
 
+    public static string Strip(string? input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        var glyphs = Parse(input, out _);
+        var sb = new StringBuilder(glyphs.Count);
+        foreach (var g in glyphs)
+            sb.Append(g.Char);
+        return sb.ToString();
+    }
+
     public static string Substring(string? input, int start, int length)
     {
         if (string.IsNullOrEmpty(input) || length <= 0)

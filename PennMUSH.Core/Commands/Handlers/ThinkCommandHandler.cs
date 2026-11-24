@@ -21,7 +21,8 @@ public class ThinkCommandHandler : ICommandHandler
         {
             var evalCtx = new EvaluationContext(context.Executor, context.Enactor);
             string evaluated = _evaluator.Evaluate(input, evalCtx);
-            context.Notify(evaluated);
+            if (evaluated.Length > 0)
+                context.Notify(evaluated);
         }
         else
         {
