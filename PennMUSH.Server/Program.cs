@@ -35,7 +35,7 @@ builder.Services.AddHostedService<TelnetListenerService>(sp =>
 {
     var host = sp.GetRequiredService<MUSHServerHost>();
     var logger = sp.GetRequiredService<ILogger<TelnetListenerService>>();
-    int telnetPort = builder.Configuration.GetValue<int>("Telnet:Port", 4201);
+    int telnetPort = builder.Configuration.GetValue<int?>("Telnet:Port") ?? host.Server.Config.Port;
     return new TelnetListenerService(host, logger, telnetPort);
 });
 

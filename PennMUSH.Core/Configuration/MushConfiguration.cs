@@ -118,6 +118,9 @@ public class MushConfiguration
             case "use_quota":
                 UseQuota = enabled;
                 break;
+            case "tiny_trim_fun":
+                TinyTrimFun = enabled;
+                break;
             default:
                 failure = KnownDirectives.Contains(key)
                     ? "That isn't an on/off option."
@@ -140,7 +143,7 @@ public class MushConfiguration
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
         "full_file", "guest_file", "register_create_file", "colors_file", "dict_file",
         "help_command", "ahelp_command", "money_singular", "money_plural",
-        "starting_money", "paycheck", "use_quota", "starting_quota"
+        "starting_money", "paycheck", "use_quota", "starting_quota", "tiny_trim_fun"
     };
 }
 

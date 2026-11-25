@@ -102,7 +102,14 @@ public class MUSHServer
             GameDirectory = Directory.GetCurrentDirectory();
         }
 
-        Database = new ObjectDatabase { SystemObjectId = Config.SystemObject };
+        Database = new ObjectDatabase
+        {
+            SystemObjectId = Config.SystemObject,
+            MasterRoomId = Config.MasterRoom,
+            DefaultHomeId = Config.DefaultHome,
+            BaseRoomId = Config.BaseRoom,
+            PlayerStartId = Config.PlayerStart
+        };
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
         if (!string.IsNullOrEmpty(dbDir))
@@ -191,8 +198,11 @@ public class MUSHServer
                 PasswordHash.Store(player, password);
         });
         Functions.PlayerStart = Config.PlayerStart;
+        Functions.PlayerStartProvider = () => Config.PlayerStart;
         Functions.DefaultHome = Config.DefaultHome;
+        Functions.DefaultHomeProvider = () => Config.DefaultHome;
         Functions.StartingMoney = Config.StartingMoney;
+        Functions.StartingMoneyProvider = () => Config.StartingMoney;
         Functions.UseQuota = Config.UseQuota;
         Functions.UseQuotaProvider = () => Config.UseQuota;
         Functions.StartingQuota = Config.StartingQuota;
@@ -774,9 +784,15 @@ public class MUSHServer
             return;
         }
 
-        if (!SiteLocks.Can(conn.Host, SiteLockTable.Create))
+        if (!Config.PlayerCreation || !SiteLocks.Can(conn.Host, SiteLockTable.Create))
         {
             script.Steps.Add(new LoginStep("Creation is NOT allowed", null, false, false));
+            return;
+        }
+
+        if (Config.MaxPlayers > 0 && Database.GetAllObjects().Count(o => o.Type == ObjectType.Player) >= Config.MaxPlayers)
+        {
+            script.Steps.Add(new LoginStep("Too many players; creation is not allowed.", null, false, false));
             return;
         }
 

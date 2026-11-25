@@ -47,6 +47,10 @@ public class ConfigCommandHandler : ICommandHandler
             return false;
         }
         db.SystemObjectId = _config.SystemObject;
+        db.MasterRoomId = _config.MasterRoom;
+        db.DefaultHomeId = _config.DefaultHome;
+        db.BaseRoomId = _config.BaseRoom;
+        db.PlayerStartId = _config.PlayerStart;
         context.Notify(save
             ? "Option set but not saved (Saves disabled.)"
             : "Option set.");

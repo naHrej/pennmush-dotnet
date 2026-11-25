@@ -39,8 +39,14 @@ public class FunctionRegistry
     public PennMUSH.Core.Communication.Mail.MailAliasTable? MailAliases { get; set; }
     public IPlayerPasswords? Passwords { get; set; }
     public Dbref PlayerStart { get; set; } = new(0);
+    public Func<Dbref>? PlayerStartProvider { get; set; }
     public Dbref DefaultHome { get; set; } = new(0);
+    public Func<Dbref>? DefaultHomeProvider { get; set; }
     public int StartingMoney { get; set; } = 100;
+    public Func<int>? StartingMoneyProvider { get; set; }
+    public Dbref EffectivePlayerStart => PlayerStartProvider?.Invoke() ?? PlayerStart;
+    public Dbref EffectiveDefaultHome => DefaultHomeProvider?.Invoke() ?? DefaultHome;
+    public int EffectiveStartingMoney => StartingMoneyProvider?.Invoke() ?? StartingMoney;
     public bool UseQuota { get; set; } = true;
     public Func<bool>? UseQuotaProvider { get; set; }
     public int StartingQuota { get; set; } = 20;

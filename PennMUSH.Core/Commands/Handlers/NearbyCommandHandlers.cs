@@ -80,13 +80,13 @@ internal static class ListenerSearch
 
 public class ScanCommandHandler : ICommandHandler
 {
-    private readonly Dbref _masterRoom;
+    private readonly Dbref? _masterRoom;
 
     public string Name => "@scan";
 
-    public ScanCommandHandler(int masterRoom = 2)
+    public ScanCommandHandler(int? masterRoom = null)
     {
-        _masterRoom = new Dbref(masterRoom);
+        _masterRoom = masterRoom.HasValue ? new Dbref(masterRoom.Value) : null;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -140,10 +140,11 @@ public class ScanCommandHandler : ICommandHandler
         if (zone)
             ReportZone(context, db, actor, command);
 
-        if (globals && actor.Location != _masterRoom && actor.Zone != _masterRoom && LocationZone(db, actor) != _masterRoom)
+        Dbref masterRoom = _masterRoom ?? db.MasterRoomId;
+        if (globals && actor.Location != masterRoom && actor.Zone != masterRoom && LocationZone(db, actor) != masterRoom)
         {
             context.Notify(Feedback.MatchesOnObjectsInTheMasterRoom);
-            foreach (var item in db.GetContents(_masterRoom))
+            foreach (var item in db.GetContents(masterRoom))
                 Report(context, actor, item, command);
         }
 
@@ -331,15 +332,15 @@ public class WithCommandHandler : ICommandHandler
 {
     private readonly CommandDispatcher _dispatcher;
     private readonly ExpressionEvaluator? _evaluator;
-    private readonly Dbref _masterRoom;
+    private readonly Dbref? _masterRoom;
 
     public string Name => "with";
 
-    public WithCommandHandler(CommandDispatcher dispatcher, ExpressionEvaluator? evaluator = null, int masterRoom = 2)
+    public WithCommandHandler(CommandDispatcher dispatcher, ExpressionEvaluator? evaluator = null, int? masterRoom = null)
     {
         _dispatcher = dispatcher;
         _evaluator = evaluator;
-        _masterRoom = new Dbref(masterRoom);
+        _masterRoom = masterRoom.HasValue ? new Dbref(masterRoom.Value) : null;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -363,7 +364,8 @@ public class WithCommandHandler : ICommandHandler
         {
             if (roomSwitch)
             {
-                if (target.Id != _masterRoom && target.Id != actor.Zone)
+                Dbref masterRoom = _masterRoom ?? db.MasterRoomId;
+                if (target.Id != masterRoom && target.Id != actor.Zone)
                 {
                     context.Notify(Feedback.IDontSeeThatHere);
                     return false;

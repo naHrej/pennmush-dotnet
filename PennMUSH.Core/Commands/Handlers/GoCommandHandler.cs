@@ -42,7 +42,7 @@ public class GoCommandHandler : ICommandHandler
         string exitName = context.Arguments.Trim();
         var exitObj = db.FindExit(execObj.Location, exitName);
 
-        // Fallback: check Zone Master Room exits, then Master Room (#2) exits
+        // Fallback: check Zone Master Room exits, then Master Room exits
         var here = db.GetObject(execObj.Location);
         if (exitObj == null && here != null && here.Zone.IsValid)
         {
@@ -50,9 +50,9 @@ public class GoCommandHandler : ICommandHandler
             if (zoneObj != null && zoneObj.Type == ObjectType.Room)
                 exitObj = db.FindExit(zoneObj.Id, exitName);
         }
-        if (exitObj == null && execObj.Location != new Dbref(2))
+        if (exitObj == null && execObj.Location != db.MasterRoomId)
         {
-            exitObj = db.FindExit(new Dbref(2), exitName);
+            exitObj = db.FindExit(db.MasterRoomId, exitName);
         }
 
         // Fallback: check dbref directly

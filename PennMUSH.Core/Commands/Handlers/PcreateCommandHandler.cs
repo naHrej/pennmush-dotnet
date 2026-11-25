@@ -1,23 +1,29 @@
 namespace PennMUSH.Core.Commands.Handlers;
 
+using System;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Types;
 
 public class PcreateCommandHandler : ICommandHandler
 {
     private readonly IPlayerPasswords? _passwords;
-    private readonly Dbref _home;
-    private readonly Dbref _start;
-    private readonly int _pennies;
+    private readonly Func<Dbref> _homeProvider;
+    private readonly Func<Dbref> _startProvider;
+    private readonly Func<int> _penniesProvider;
 
     public string Name => "@pcreate";
 
     public PcreateCommandHandler(IPlayerPasswords? passwords, Dbref home, Dbref start, int pennies)
+        : this(passwords, () => home, () => start, () => pennies)
+    {
+    }
+
+    public PcreateCommandHandler(IPlayerPasswords? passwords, Func<Dbref> homeProvider, Func<Dbref> startProvider, Func<int> penniesProvider)
     {
         _passwords = passwords;
-        _home = home;
-        _start = start;
-        _pennies = pennies;
+        _homeProvider = homeProvider;
+        _startProvider = startProvider;
+        _penniesProvider = penniesProvider;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -42,7 +48,7 @@ public class PcreateCommandHandler : ICommandHandler
         }
 
         var created = PlayerCreator.Create(
-            db, actor, context.LeftArg, password, reuse, _passwords, _home, _start, _pennies, context.Notify);
+            db, actor, context.LeftArg, password, reuse, _passwords, _homeProvider(), _startProvider(), _penniesProvider(), context.Notify);
         return created.IsValid;
     }
 }

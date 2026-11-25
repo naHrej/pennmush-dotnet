@@ -280,6 +280,10 @@ public static class MushConfigParser
                 if (int.TryParse(value, out int startingQuota)) config.StartingQuota = startingQuota;
                 break;
 
+            case "tiny_trim_fun":
+                config.TinyTrimFun = ParseBool(value, false);
+                break;
+
             default:
                 config.RawDirectives[directive] = value;
                 break;
