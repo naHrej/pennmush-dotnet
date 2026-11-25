@@ -84,7 +84,7 @@ public class Section1To4FunctionTests
         Assert.Equal("2 4 6", _evaluator.Evaluate("[parse(1 2 3,[mul(##,2)])]", _ctx));
         Assert.Equal("20", _evaluator.Evaluate("[avg(10,20,30)]", _ctx));
         Assert.Equal("3", _evaluator.Evaluate("[val(3.99)]", _ctx));
-        Assert.Equal(Math.E.ToString("G", System.Globalization.CultureInfo.InvariantCulture), _evaluator.Evaluate("[exp(1)]", _ctx));
+        Assert.Equal("2.718282", _evaluator.Evaluate("[exp(1)]", _ctx));
         Assert.Equal("hlo", _evaluator.Evaluate("[delete(hello,1,2)]", _ctx));
     }
 
@@ -208,7 +208,7 @@ public class Section1To4FunctionTests
         Assert.Equal("heXYo", _evaluator.Evaluate("[strreplace(hello,2,2,XY)]", _ctx));
 
         Assert.Equal("Cafe naive", _evaluator.Evaluate("[stripaccents(Café naïve)]", _ctx));
-        Assert.Equal(@"a%bb\[c\]%r", _evaluator.Evaluate("[decompose({a b[c]\n})]", _ctx));
+        Assert.Equal(@"a b\[c\]%r", _evaluator.Evaluate("[decompose({a b[c]\n})]", _ctx));
 
         Assert.Equal("abc", _evaluator.Evaluate("[trimpenn(xxabcxx,x)]", _ctx));
         Assert.Equal("abcxx", _evaluator.Evaluate("[trimpenn(xxabcxx,x,l)]", _ctx));

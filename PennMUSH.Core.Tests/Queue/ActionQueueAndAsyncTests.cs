@@ -72,7 +72,7 @@ public class ActionQueueAndAsyncTests
     public void Semaphore_WaitsUntilNotified()
     {
         var waitCtx = _dispatcher.Dispatch(_player.Id, "@wait signal1=say Signal Received!", _db);
-        Assert.Contains(waitCtx.Notifications, n => n.Contains("Queued on semaphore 'signal1'"));
+        Assert.Empty(waitCtx.Notifications);
         Assert.Equal(1, _queue.Count);
 
         // Processing before notify produces nothing

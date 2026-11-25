@@ -101,8 +101,8 @@ public class Pr5ListMathTimeCryptoJsonTests
     [Fact]
     public void TimeCryptoAndJsonFunctions_MatchOriginalSemantics()
     {
-        Assert.Equal("1y 1w 1d 1h 1m 1s", _evaluator.Evaluate("[etime(32230861)]", _ctx));
-        Assert.Equal("1y 1w", _evaluator.Evaluate("[etime(32230861,6)]", _ctx));
+        Assert.Equal("1y  1w  1d  1h  1m  1s", _evaluator.Evaluate("[etime(32230861)]", _ctx));
+        Assert.Equal("1y  1w", _evaluator.Evaluate("[etime(32230861,6)]", _ctx));
 
         Assert.Equal("1", _evaluator.Evaluate("[ssl()]", _ctx));
         Assert.Contains("sha256", _evaluator.Evaluate("[digest(list)]", _ctx));

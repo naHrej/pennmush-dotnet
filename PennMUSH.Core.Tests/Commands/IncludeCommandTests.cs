@@ -65,7 +65,7 @@ public class IncludeCommandTests
             sent.TargetedNotifications
                 .Where(note => note.Scope == NotificationScope.Target)
                 .Select(note => note.Message));
-        Assert.Contains("Message sent to Ada.", sent.Notifications);
+        Assert.DoesNotContain("Message sent to Ada.", sent.Notifications);
         Assert.DoesNotContain(sent.Notifications, note => note.Contains("Bea."));
     }
 

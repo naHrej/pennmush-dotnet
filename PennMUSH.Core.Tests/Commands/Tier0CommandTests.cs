@@ -78,7 +78,7 @@ public class Tier0CommandTests
         Assert.Null(lamp.GetLock(LockType.Use));
 
         _dispatcher.Dispatch(_player, $"@lock #{lamp.Id.Value}=#{_player.Value}", _db);
-        Assert.NotNull(lamp.GetLock("Default"));
+        Assert.NotNull(lamp.GetLock(LockType.Basic));
     }
 
     [Fact]

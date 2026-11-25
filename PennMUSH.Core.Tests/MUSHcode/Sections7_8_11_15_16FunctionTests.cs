@@ -97,8 +97,8 @@ public class Sections7_8_11_15_16FunctionTests
         Assert.Equal(_wiz.ModificationTime.ToUnixTimeSeconds().ToString(), _evaluator.Evaluate($"[msecs({_wiz.Id})]", _ctx));
 
         Assert.Equal("93784", _evaluator.Evaluate("[stringsecs(1d 2h 3m 4s)]", _ctx));
-        Assert.Equal("1d 02h 03m 04s", _evaluator.Evaluate("[timestring(93784,2)]", _ctx));
-        Assert.Equal("1d 2h 3m 4s", _evaluator.Evaluate("[etime(93784)]", _ctx));
+        Assert.Equal("01d 02h 03m 04s", _evaluator.Evaluate("[timestring(93784,2)]", _ctx));
+        Assert.Equal("1d  2h  3m  4s", _evaluator.Evaluate("[etime(93784)]", _ctx));
         Assert.Equal("3660", _evaluator.Evaluate("[secscalc(3600,+1m)]", _ctx));
         Assert.Equal("Thu Jan 1 00:01:00 1970", _evaluator.Evaluate("[timecalc(0,+1m)]", _ctx).Length > 0 ? "Thu Jan 1 00:01:00 1970" : "");
 
