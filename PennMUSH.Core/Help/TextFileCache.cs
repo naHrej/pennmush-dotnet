@@ -287,6 +287,26 @@ public sealed class TextFileCache : ITextFileCache
 
         foreach (string file in files)
         {
+            if (file.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            {
+                var (mdTopics, mdAdminTopics, mdEntry) = HelpStore.ParseMarkdownFile(file);
+                if (mdEntry != null)
+                {
+                    anyIndexedFile = true;
+                    foreach (string t in mdTopics)
+                    {
+                        if (!publicTopics.ContainsKey(t))
+                            publicTopics[t] = mdEntry.PlainText;
+                    }
+                    foreach (string t in mdAdminTopics)
+                    {
+                        if (!adminTopics.ContainsKey(t))
+                            adminTopics[t] = mdEntry.PlainText;
+                    }
+                }
+                continue;
+            }
+
             string[] lines = File.ReadAllLines(file);
             if (lines.Any(l => l.StartsWith('&')))
             {
@@ -507,7 +527,9 @@ public sealed class TextFileCache : ITextFileCache
             "help" => new[]
             {
                 new DirectorySpec(Path.Combine(txtRoot, "hlp"), "*.hlp"),
-                new DirectorySpec(Path.Combine(txtRoot, "help"), "*.hlp")
+                new DirectorySpec(Path.Combine(txtRoot, "hlp"), "*.md"),
+                new DirectorySpec(Path.Combine(txtRoot, "help"), "*.hlp"),
+                new DirectorySpec(Path.Combine(txtRoot, "help"), "*.md")
             },
             "news" => new[]
             {

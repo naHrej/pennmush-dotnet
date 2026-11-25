@@ -1,0 +1,19 @@
+---
+topics: ["@-GENERAL"]
+---
+
+These '@' commands are general utility and programming commands:
+
+```text
+  @@             @alias         @break         @channel       @chat
+  @cemit         @command       @config        @decompile     @doing
+  @dolist        @drain         @edit          @emit          @entrances
+  @find          @force         @function      @gedit         @grep
+  @halt          @if            @lemit         @listmotd      @mail
+  @notify        @nsemit        @nslemit       @nsoemit       @nspemit
+  @nsprompt      @nsremit       @nszemit       @oemit         @password
+  @pemit         @prompt        @ps            @remit         @restart
+  @scan          @search        @select        @stats         @sweep
+  @switch        @teleport      @trigger       @verb          @version
+  @wait          @whereis       @zemit
+```

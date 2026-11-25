@@ -228,7 +228,8 @@ public class ServerIntegrationTests
             await host.HandleInputAsync(conn, "@reboot");
 
             // Allow async task to complete reboot
-            await Task.Delay(400);
+            for (int i = 0; i < 60 && !connOutputs.Any(o => o.Contains("reloaded with 0 disconnects")); i++)
+                await Task.Delay(50);
 
             // 4. Verify sockets were NEVER disconnected and player remained authenticated
             Assert.True(conn.IsConnected);
