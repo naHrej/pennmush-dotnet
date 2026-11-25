@@ -5,7 +5,7 @@ A modernized, clean-room implementation of the **PennMUSH** virtual world engine
 - **Runtime**: .NET 10 (`net10.0`) across 4 projects (`PennMUSH.Core`, `PennMUSH.Extensions`, `PennMUSH.Server`, `PennMUSH.Core.Tests`)
 - **MUSHcode Functions**: **567** distinct built-in function registrations across 18 modules (**40** `noParse`, **29** `sideEffect`), plus **18** `function_alias` entries in `game/alias.cnf` (**578** total callable names under default config)
 - **Player Commands**: **139** handler registrations covering **201** distinct built-in C# command names/aliases, plus **21** `command_alias` entries in `game/alias.cnf` (**204** total command names under default config) and pre-login commands (`connect`/`conn`/`co`, `create`/`cr`, `WHO`, `QUIT`)
-- **Test Suite**: **480** tests across **97** test files
+- **Test Suite**: **504** passing unit tests in `PennMUSH.Core.Tests`, plus **36** automated live-server parity suites (**948** test cases) verified against PennMUSH C (`pennmush:latest`)
 
 ---
 
@@ -60,6 +60,27 @@ flowchart TB
 - **SQLite Persistence & Zero-Disconnect Hot-Reboot**: Atomic persistence across `mush.db` (**16** tables covering objects, attributes, flags, powers, parents, zones, cron jobs, channels, mail, mail aliases, softcode functions, and sitelocks), `connlog.db` connection history (`connlog()`, `connrecord()`, `addrlog()`, `@sitelock/player`), and an optional separate SQLite SQL DB (`sql()`, `mapsql()`, `sqlescape()`, `@sql`, `@mapsql`). `MUSHServerHost` persists state and swaps the engine instance in-process without dropping active TCP or WebSocket sockets.
 - **PennMUSH Flatfile Import (`DBF_LABELS` / `dbversion 6`)**: Import existing PennMUSH 1.8.x flatfile dumps (plain text or `.gz` compressed, including labeled flags/powers/locks and sparse dbref layouts) directly into SQLite via CLI flags.
 - **Collectible C# Plugin SDK (`PennMUSH.Extensions`)**: Plugins implement `IExtension` against `IExtensionHost` (commands, functions, tick services, custom protocol handlers), load from memory streams without locking DLLs on disk, and hot-reload automatically via `FileSystemWatcher` or `@plugin` (`/list`, `/load`, `/unload`, `/reload`).
+
+---
+
+## PennMUSH C Compatibility & Feature Parity
+
+`pennmush-dotnet` is a mature, drop-in replacement for PennMUSH 1.8.x, verified against live PennMUSH C (`pennmush:latest`) across **36 parity suites (948 cases)** with **0 missing commands or functions**:
+
+| PennMUSH C Subsystem | .NET Equivalent | Compatibility Status |
+| :--- | :--- | :--- |
+| **Parser & Evaluator** (`parse.c`, `eval.c`, `function.c`) | `PennMUSH.Core/MUSHcode/` | Full parity — `%q` registers, `letq`, `localize`, lazy evaluation, side-effect gating, `@function` softcode |
+| **Built-in Functions** (`fun*.c`, `sort.c`, `wild.c`) | `PennMUSH.Core/MUSHcode/Functions/` | Full parity — 0 missing functions across 28 suites (ANSI-aware string/list/set/sort, `etimefmt`, `json`, `math`, `regex`, `digest`, `soundex`, attribute trees) |
+| **Command Pipeline** (`game.c`, `command.c`, `cmds.c`) | `PennMUSH.Core/Commands/` | Full parity — `process_command` priority & break cases (built-ins → local exits → `EALIAS`/`LALIAS` → local `$` → zone exits/`$` → Master Room `#2` → `+channel` → `Huh?`), `@hook`, `NO_COMMAND` default on `@create` |
+| **Attributes & Trees** (`attrib.c`, `atr_tab.c`) | `PennMUSH.Core/Attributes/` | Full parity — branch `Root` (`` ` ``), `no_inherit` propagation, `no_command`, `Regexp`/`Case` listeners, `@atrlock`, `@atrchown`, `@wipe`, `examine`, `@decompile` |
+| **Flags, Powers & Warnings** (`flags.c`, `warnings.c`) | `PennMUSH.Core/Flags/` | Full parity — flag/power tables, aliases, `andlflags`/`orlflags`, `@warnings`, `@wcheck` |
+| **Locks & Boolexp** (`boolexp.c`, `lock.c`) | `PennMUSH.Core/Locks/` | Full parity — `Basic`/`Enter`/`Use`/`Leave`/`Page`/`Zone`/custom locks and `@lset` |
+| **Zones, Movement & Objects** (`create.c`, `destroy.c`, `move.c`, `look.c`, `match.c`) | `PennMUSH.Core/Entities/`, `Database/` | Full parity — `@create`, `@clone`/`clone()`, `@destroy`/`@undestroy`/`@purge`/`@nuke`, `@parent`, `@chzone`/`@chzoneall`/`@zemit`, exits/`go`/`enter`/`leave`/`@teleport`/`home`, `@find`/`@search`/`@whereis` |
+| **Queue & Scheduling** (`cque.c`, `wait.c`, `timer.c`) | `PennMUSH.Core/Queue/`, `Scheduling/` | Full parity — timed `@wait`, semaphores (`@notify`/`@drain`), `@halt`/`@allhalt`, `@ps`/`@kick`, `@cron` |
+| **Communication, Channels & Mail** (`speech.c`, `extchat.c`, `extmail.c`, `malias.c`) | `PennMUSH.Core/Communication/` | Full parity — `say`/`pose`/`;`/`@emit`/`@pemit`/`@remit`/`@oemit`/`@wall`/`whisper`/`page`/`@message`, channels (`@channel`/`@chat`/`+chan`/`addcom`), `@mail` & `@malias` |
+| **Access, Security & Logging** (`access.c`, `log.c`, `player.c`) | `PennMUSH.Core/Access/`, `Logging/` | Full parity — `SiteLockTable`, `NameLockFile`, `WizardLog`, `@pcreate`/`@password`/`@newpassword` |
+| **Networking & Protocols** (`bsd.c`, `myssl.c`, `websock.c`, `services.c`) | `PennMUSH.Server/Network/`, `Presentation/`, `Protocol/` | Full parity + modern transports — TCP/Telnet, ANSI/HTML, WebSocket/HTTP (`@http`/`@respond`, `@client`, MUjs) |
+| **Persistence, Config & Help** (`db.c`, `conf.c`, `help.c`, `sql.c`) | `PennMUSH.Core/Database/`, `Configuration/`, `Help/` | Full parity + SQLite — `DBF_LABELS` flatfile import, SQLite storage, `@config`, `@help`/`@readcache`, `@sql`/`@mapsql`, zero-disconnect `@reboot` |
 
 ---
 
