@@ -157,4 +157,33 @@ public class ExtensionManagerTests
             Assert.Equal(CommandLookupStatus.NotFound, server.Dispatcher.Table.Lookup("@space").Status);
         }
     }
+
+    [Fact]
+    public void ExtensionHostProxy_CapturesAndReleasesPlayerInput()
+    {
+        var server = new MUSHServer();
+        var hostProxy = new ExtensionHostProxy(server.Extensions, server, "ScriptPlugin");
+        var player = new Dbref(1);
+        var lines = new List<string>();
+
+        hostProxy.CapturePlayerInput(player, line =>
+        {
+            if (line == ".")
+                return false;
+            lines.Add(line);
+            return true;
+        });
+
+        Assert.True(server.TryHandleCapturedInput(player, "  var x = 1;"));
+        Assert.True(server.TryHandleCapturedInput(player, ""));
+        Assert.True(server.TryHandleCapturedInput(player, "  return x;"));
+        Assert.True(server.TryHandleCapturedInput(player, "."));
+        Assert.False(server.TryHandleCapturedInput(player, "say normal command"));
+
+        Assert.Equal(new[] { "  var x = 1;", "", "  return x;" }, lines);
+
+        hostProxy.CapturePlayerInput(player, _ => true);
+        hostProxy.Cleanup();
+        Assert.False(server.TryHandleCapturedInput(player, "after cleanup"));
+    }
 }
