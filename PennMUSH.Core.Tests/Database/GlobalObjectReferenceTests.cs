@@ -24,6 +24,7 @@ public class GlobalObjectReferenceTests
         Assert.True(sysObj.HasFlag("SAFE"));
         Assert.True(sysObj.HasFlag("VISUAL"));
         Assert.True(sysObj.HasFlag("NO_COMMAND"));
+        Assert.Equal(sysObj.Id, db.MatchObject(god.Id, "$system")?.Id);
 
         var combat = db.CreateObject("CombatSystem", ObjectType.Thing, god.Id);
         sysObj.SetAttribute("COMBAT", combat.Id.ToString(), god.Id);
