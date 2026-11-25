@@ -511,6 +511,32 @@ public class MUSHServer
 
     public async Task HandleInputAsync(MUSHConnection conn, string input, CancellationToken ct = default)
     {
+        string trimmedAll = input.Trim();
+        if (trimmedAll.StartsWith('{') && ProtocolSerializer.TryParseType(trimmedAll, out var protoType, out var protoId))
+        {
+            conn.NoteInput(trimmedAll.Length);
+            await HandleProtocolEnvelopeAsync(conn, protoType!, protoId, trimmedAll, ct);
+            return;
+        }
+
+        if (input.IndexOfAny(new[] { '\r', '\n' }) >= 0)
+        {
+            string normalized = input.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+            string[] lines = normalized.Split('\n');
+            // Ignore a single trailing empty element produced by a trailing newline when not captured
+            int count = lines.Length;
+            if (count > 1 && lines[count - 1].Length == 0)
+                count--;
+            for (int i = 0; i < count; i++)
+                await HandleSingleLineAsync(conn, lines[i], ct);
+            return;
+        }
+
+        await HandleSingleLineAsync(conn, input, ct);
+    }
+
+    private async Task HandleSingleLineAsync(MUSHConnection conn, string input, CancellationToken ct)
+    {
         string rawLine = input.TrimEnd('\r', '\n');
         string trimmed = rawLine.Trim();
         bool isCaptured = conn.PlayerId.IsValid && _inputCaptures.ContainsKey(conn.PlayerId);
