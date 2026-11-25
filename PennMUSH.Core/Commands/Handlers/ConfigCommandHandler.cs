@@ -55,6 +55,22 @@ public class ConfigCommandHandler : ICommandHandler
         db.PlayerStartId = _config.PlayerStart;
         db.MoneySingular = _config.MoneySingular;
         db.MoneyPlural = _config.MoneyPlural;
+        db.EmptyAttrs = _config.EmptyAttrs;
+        db.ReadRemoteDesc = _config.ReadRemoteDesc;
+        db.MaxAttrsPerObj = _config.MaxAttrsPerObj;
+        db.MaxParents = _config.MaxParents;
+        db.MaxDbref = _config.MaxDbref;
+        db.ObjectCost = _config.ObjectCost;
+        db.RoomCost = _config.RoomCost;
+        db.ExitCost = _config.ExitCost;
+        db.LinkCost = _config.LinkCost;
+        db.FindCost = _config.FindCost;
+        db.QueueCost = _config.QueueCost;
+        db.QuotaCost = _config.QuotaCost;
+        db.MaxPennies = _config.MaxPennies;
+        db.PlayerNameLen = _config.PlayerNameLen;
+        db.PlayerNameSpaces = _config.PlayerNameSpaces;
+        db.OnlyAsciiInNames = _config.OnlyAsciiInNames;
         if (!save)
         {
             context.Notify("Option set.");

@@ -63,6 +63,49 @@ public class MushConfiguration
     public int StartingQuota { get; set; } = 20;
     public int Paycheck { get; set; } = 50;
 
+    // Phase 2: Evaluation & Security
+    public bool SaferUfun { get; set; } = true;
+    public bool FunctionSideEffects { get; set; } = true;
+    public int FunctionInvocationLimit { get; set; } = 25000;
+    public int FunctionRecursionLimit { get; set; } = 50;
+    public int CallLimit { get; set; } = 100;
+    public bool TinyBooleans { get; set; } = false;
+    public bool TinyMath { get; set; } = false;
+    public bool NullEqZero { get; set; } = false;
+    public bool ReadRemoteDesc { get; set; } = false;
+    public bool EmptyAttrs { get; set; } = true;
+
+    // Phase 2: Economy & Limits
+    public int ObjectCost { get; set; } = 10;
+    public int RoomCost { get; set; } = 10;
+    public int ExitCost { get; set; } = 1;
+    public int LinkCost { get; set; } = 1;
+    public int FindCost { get; set; } = 100;
+    public int QueueCost { get; set; } = 10;
+    public int QuotaCost { get; set; } = 1;
+    public int MaxPennies { get; set; } = 100000;
+    public int MaxAliases { get; set; } = 3;
+    public int MaxAttrsPerObj { get; set; } = 2048;
+    public int MaxChannels { get; set; } = 200;
+    public int MaxPlayerChans { get; set; } = 0;
+    public int MaxDbref { get; set; } = 0;
+    public int MaxDepth { get; set; } = 10;
+    public int MaxParents { get; set; } = 10;
+    public int MaxNamedQregs { get; set; } = 50;
+    public int PlayerQueueLimit { get; set; } = 100;
+    public int QueueChunk { get; set; } = 3;
+    public int MailLimit { get; set; } = 300;
+
+    // Phase 2: Login & Player Naming
+    public bool Logins { get; set; } = true;
+    public int MaxLogins { get; set; } = 120;
+    public int ConnectFailLimit { get; set; } = 10;
+    public int IdleTimeout { get; set; } = 0;
+    public int UnconnectedIdleTimeout { get; set; } = 300;
+    public int PlayerNameLen { get; set; } = 15;
+    public bool PlayerNameSpaces { get; set; } = false;
+    public bool OnlyAsciiInNames { get; set; } = true;
+
     // Aliases & Restrictions
     public Dictionary<string, string> CommandAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FunctionAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -127,6 +170,36 @@ public class MushConfiguration
             case "unsafe_eval_functions":
                 UnsafeEvalFunctions = enabled;
                 break;
+            case "safer_ufun":
+                SaferUfun = enabled;
+                break;
+            case "function_side_effects":
+                FunctionSideEffects = enabled;
+                break;
+            case "tiny_booleans":
+                TinyBooleans = enabled;
+                break;
+            case "tiny_math":
+                TinyMath = enabled;
+                break;
+            case "null_eq_zero":
+                NullEqZero = enabled;
+                break;
+            case "read_remote_desc":
+                ReadRemoteDesc = enabled;
+                break;
+            case "empty_attrs":
+                EmptyAttrs = enabled;
+                break;
+            case "logins":
+                Logins = enabled;
+                break;
+            case "player_name_spaces":
+                PlayerNameSpaces = enabled;
+                break;
+            case "only_ascii_in_names":
+                OnlyAsciiInNames = enabled;
+                break;
             default:
                 failure = KnownDirectives.Contains(key)
                     ? "That isn't an on/off option."
@@ -149,7 +222,14 @@ public class MushConfiguration
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
         "full_file", "guest_file", "register_create_file", "colors_file", "dict_file",
         "help_command", "ahelp_command", "money_singular", "money_plural",
-        "starting_money", "paycheck", "use_quota", "starting_quota", "tiny_trim_fun", "unsafe_eval_functions", "config_save"
+        "starting_money", "paycheck", "use_quota", "starting_quota", "tiny_trim_fun", "unsafe_eval_functions", "config_save",
+        "safer_ufun", "function_side_effects", "function_invocation_limit", "function_recursion_limit", "call_limit",
+        "tiny_booleans", "tiny_math", "null_eq_zero", "read_remote_desc", "empty_attrs",
+        "object_cost", "room_cost", "exit_cost", "link_cost", "find_cost", "queue_cost", "quota_cost",
+        "max_pennies", "max_aliases", "max_attrs_per_obj", "max_channels", "max_player_chans", "max_dbref",
+        "max_depth", "max_parents", "max_named_qregs", "player_queue_limit", "queue_chunk", "mail_limit",
+        "logins", "max_logins", "connect_fail_limit", "idle_timeout", "unconnected_idle_timeout",
+        "player_name_len", "player_name_spaces", "only_ascii_in_names"
     };
 }
 

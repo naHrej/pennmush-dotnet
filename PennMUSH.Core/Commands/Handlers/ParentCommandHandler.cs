@@ -60,6 +60,12 @@ public class ParentCommandHandler : ICommandHandler
             validParents.Add(pObj.Id);
         }
 
+        if (!execObj.IsWizard && db.MaxParents > 0 && validParents.Count > db.MaxParents)
+        {
+            context.Notify(Feedback.PermissionDenied);
+            return false;
+        }
+
         targetObj.SetParents(validParents, db);
         context.Notify(Feedback.ParentSet);
         return true;

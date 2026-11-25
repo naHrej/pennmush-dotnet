@@ -98,6 +98,20 @@ public class SetCommandHandler : ICommandHandler
                 return false;
             }
 
+            if (!db.EmptyAttrs && string.IsNullOrEmpty(attrVal))
+            {
+                target.RemoveAttribute(attrName);
+                context.Notify(Feedback.Set);
+                return true;
+            }
+
+            if (!executorObj.IsWizard && target.GetAttribute(attrName) == null
+                && db.MaxAttrsPerObj > 0 && target.Attributes.Count >= db.MaxAttrsPerObj)
+            {
+                context.Notify(Feedback.PermissionDenied);
+                return false;
+            }
+
             if (attrName.Contains('`'))
             {
                 var written = AttributeWriter.Apply(executorObj, target, attrName, string.IsNullOrEmpty(attrVal) ? null : attrVal);

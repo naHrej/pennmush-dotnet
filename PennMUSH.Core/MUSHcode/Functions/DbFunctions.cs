@@ -376,6 +376,7 @@ public static class DbFunctions
             ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
             : obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
+        if (IsBlockedBySaferUfun(reg, ctx, obj, attr)) return MushError.PermissionDenied.Text();
 
         string[] ufunArgs = args.Length > 1 ? args[1..] : Array.Empty<string>();
 
@@ -806,6 +807,7 @@ public static class DbFunctions
         var (obj, attr) = ResolveObjAttr(reg, ctx, spec);
         if (obj != null && attr != null)
         {
+            if (IsBlockedBySaferUfun(reg, ctx, obj, attr)) return MushError.PermissionDenied.Text();
             if (reg.Evaluator == null) return attr.Value;
             var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
             return reg.Evaluator.Evaluate(attr.Value, childCtx);
@@ -828,9 +830,25 @@ public static class DbFunctions
             ? AttributePermissions.GetReadableAttribute(looker, obj, attrName, reg.Database, includeParents: true)
             : obj.GetAttribute(attrName, reg.Database);
         if (attr == null) return string.Empty;
+        if (IsBlockedBySaferUfun(reg, ctx, obj, attr)) return MushError.PermissionDenied.Text();
 
         var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
         return reg.Evaluator.Evaluate(attr.Value, childCtx);
+    }
+
+    private static bool IsBlockedBySaferUfun(FunctionRegistry reg, EvaluationContext ctx, MUSHObject obj, AttributeEntry attr)
+    {
+        if (!reg.IsSaferUfunEnabled || reg.Database == null)
+            return false;
+        var looker = reg.Database.GetObject(ctx.Executor);
+        if (looker == null || obj.Id == looker.Id)
+            return false;
+        if (attr.Flags.HasFlag(AttributeFlags.Public))
+            return false;
+        int targetRank = obj.HasFlag("TRUST")
+            ? Math.Max(AttributePermissions.PrivilegeRank(obj), AttributePermissions.PrivilegeRank(reg.Database.GetObject(obj.Owner)))
+            : AttributePermissions.PrivilegeRank(obj);
+        return targetRank > AttributePermissions.PrivilegeRank(looker);
     }
 
     public static string ObjEvalFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
@@ -2241,6 +2259,7 @@ public static class DbFunctions
         if (args.Length == 0 || reg.Database == null) return string.Empty;
         var (obj, attr) = ResolveObjAttr(reg, ctx, args[0]);
         if (obj == null || attr == null) return string.Empty;
+        if (IsBlockedBySaferUfun(reg, ctx, obj, attr)) return MushError.PermissionDenied.Text();
         if (reg.Evaluator == null) return attr.Value;
         var childCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, Array.Empty<string>());
         return reg.Evaluator.Evaluate(attr.Value, childCtx);

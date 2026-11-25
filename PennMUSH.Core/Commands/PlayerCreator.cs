@@ -26,7 +26,7 @@ public static class PlayerCreator
             return Dbref.Nothing;
         }
 
-        if (!OkName(name))
+        if (!OkPlayerName(name, db))
         {
             tell($"Failure creating '{name}' (bad name)");
             return Dbref.Nothing;
@@ -83,6 +83,19 @@ public static class PlayerCreator
 
         tell($"New player '{player.Name}' ({player.Id}) created with password '{password}'");
         return player.Id;
+    }
+
+    public static bool OkPlayerName(string name, ObjectDatabase db)
+    {
+        if (!OkName(name))
+            return false;
+        if (db.PlayerNameLen > 0 && name.Length > db.PlayerNameLen)
+            return false;
+        if (!db.PlayerNameSpaces && name.Contains(' '))
+            return false;
+        if (db.OnlyAsciiInNames && name.Any(ch => ch > 127))
+            return false;
+        return true;
     }
 
     public static bool OkName(string name)

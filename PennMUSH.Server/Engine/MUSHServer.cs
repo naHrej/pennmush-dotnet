@@ -111,7 +111,23 @@ public class MUSHServer
             BaseRoomId = Config.BaseRoom,
             PlayerStartId = Config.PlayerStart,
             MoneySingular = Config.MoneySingular,
-            MoneyPlural = Config.MoneyPlural
+            MoneyPlural = Config.MoneyPlural,
+            EmptyAttrs = Config.EmptyAttrs,
+            ReadRemoteDesc = Config.ReadRemoteDesc,
+            MaxAttrsPerObj = Config.MaxAttrsPerObj,
+            MaxParents = Config.MaxParents,
+            MaxDbref = Config.MaxDbref,
+            ObjectCost = Config.ObjectCost,
+            RoomCost = Config.RoomCost,
+            ExitCost = Config.ExitCost,
+            LinkCost = Config.LinkCost,
+            FindCost = Config.FindCost,
+            QueueCost = Config.QueueCost,
+            QuotaCost = Config.QuotaCost,
+            MaxPennies = Config.MaxPennies,
+            PlayerNameLen = Config.PlayerNameLen,
+            PlayerNameSpaces = Config.PlayerNameSpaces,
+            OnlyAsciiInNames = Config.OnlyAsciiInNames
         };
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
@@ -212,6 +228,20 @@ public class MUSHServer
         Functions.StartingQuotaProvider = () => Config.StartingQuota;
         Functions.UnsafeEvalFunctions = Config.UnsafeEvalFunctions;
         Functions.UnsafeEvalFunctionsProvider = () => Config.UnsafeEvalFunctions;
+        Functions.SaferUfun = Config.SaferUfun;
+        Functions.SaferUfunProvider = () => Config.SaferUfun;
+        Functions.SideEffectsEnabled = Config.FunctionSideEffects;
+        Functions.SideEffectsEnabledProvider = () => Config.FunctionSideEffects;
+        Functions.FunctionInvocationLimit = Config.FunctionInvocationLimit;
+        Functions.FunctionInvocationLimitProvider = () => Config.FunctionInvocationLimit;
+        Functions.FunctionRecursionLimit = Config.FunctionRecursionLimit;
+        Functions.FunctionRecursionLimitProvider = () => Config.FunctionRecursionLimit;
+        Functions.TinyBooleans = Config.TinyBooleans;
+        Functions.TinyBooleansProvider = () => Config.TinyBooleans;
+        Functions.TinyMath = Config.TinyMath;
+        Functions.TinyMathProvider = () => Config.TinyMath;
+        Functions.NullEqZero = Config.NullEqZero;
+        Functions.NullEqZeroProvider = () => Config.NullEqZero;
         Evaluator = new ExpressionEvaluator(Functions.Dispatch, Functions.Database);
         Functions.Evaluator = Evaluator;
 
@@ -844,6 +874,18 @@ public class MUSHServer
             return;
         }
 
+        if (!Config.Logins && !player.IsWizard)
+        {
+            script.Steps.Add(new LoginStep("Logins are currently disabled.", null, false, false));
+            return;
+        }
+
+        if (Config.MaxLogins > 0 && !player.IsWizard && _connections.Values.Count(c => c.PlayerId.IsValid) >= Config.MaxLogins)
+        {
+            script.Steps.Add(new LoginStep("The game is full; please try again later.", null, false, false));
+            return;
+        }
+
         conn.PlayerId = player.Id;
         _rooms.Place(conn, player.Location);
         Database.SetConnected(player.Id, true);
@@ -892,6 +934,12 @@ public class MUSHServer
         if (!Config.PlayerCreation || !SiteLocks.Can(conn.Host, SiteLockTable.Create))
         {
             script.Steps.Add(new LoginStep("Creation is NOT allowed", null, false, false));
+            return;
+        }
+
+        if (!PlayerCreator.OkPlayerName(name, Database))
+        {
+            script.Steps.Add(new LoginStep("That is not a valid player name.", null, false, false));
             return;
         }
 

@@ -39,6 +39,23 @@ public class ObjectDatabase
     /// <summary>Plural currency name (default "Pennies").</summary>
     public string MoneyPlural { get; set; } = "Pennies";
 
+    public bool EmptyAttrs { get; set; } = true;
+    public bool ReadRemoteDesc { get; set; } = false;
+    public int MaxAttrsPerObj { get; set; } = 2048;
+    public int MaxParents { get; set; } = 10;
+    public int MaxDbref { get; set; } = 0;
+    public int ObjectCost { get; set; } = 10;
+    public int RoomCost { get; set; } = 10;
+    public int ExitCost { get; set; } = 1;
+    public int LinkCost { get; set; } = 1;
+    public int FindCost { get; set; } = 100;
+    public int QueueCost { get; set; } = 10;
+    public int QuotaCost { get; set; } = 1;
+    public int MaxPennies { get; set; } = 100000;
+    public int PlayerNameLen { get; set; } = 15;
+    public bool PlayerNameSpaces { get; set; } = false;
+    public bool OnlyAsciiInNames { get; set; } = true;
+
     public string FormatMoneyUnit(int amount)
         => (amount == 1 ? MoneySingular : MoneyPlural).ToLowerInvariant();
 
