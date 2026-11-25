@@ -33,6 +33,9 @@ public interface IExtensionHost
     bool RegisterAttributeFlag(string flagName);
     bool UnregisterAttributeFlag(string flagName);
 
+    void CapturePlayerInput(Dbref player, Func<string, bool> onLine);
+    void ReleasePlayerInput(Dbref player);
+
     void BroadcastNotification(Notification notification);
     void NotifyPlayer(Dbref player, string message);
     Task SendProtocolEnvelopeAsync(Dbref player, string type, object payload);

@@ -32,6 +32,7 @@ using PennMUSH.Server.Session;
 public class MUSHServer
 {
     private readonly ConcurrentDictionary<string, MUSHConnection> _connections = new();
+    private readonly ConcurrentDictionary<Dbref, Func<string, bool>> _inputCaptures = new();
     private readonly ConnectionDirectory _sessions;
     private readonly RoomSessions _rooms = new();
     private readonly CancellationTokenSource _cts = new();
@@ -498,6 +499,7 @@ public class MUSHServer
         ConnectionLog.RecordDisconnect(conn.ConnLogId, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "quit");
         if (conn.PlayerId.IsValid)
         {
+            _inputCaptures.TryRemove(conn.PlayerId, out _);
             Database.SetConnected(conn.PlayerId, false);
             var player = Database.GetObject(conn.PlayerId);
             if (player != null && player.Location.IsValid)
@@ -509,10 +511,12 @@ public class MUSHServer
 
     public async Task HandleInputAsync(MUSHConnection conn, string input, CancellationToken ct = default)
     {
-        string trimmed = input.Trim();
-        if (string.IsNullOrEmpty(trimmed)) return;
+        string rawLine = input.TrimEnd('\r', '\n');
+        string trimmed = rawLine.Trim();
+        bool isCaptured = conn.PlayerId.IsValid && _inputCaptures.ContainsKey(conn.PlayerId);
+        if (!isCaptured && string.IsNullOrEmpty(trimmed)) return;
 
-        conn.NoteInput(trimmed.Length);
+        conn.NoteInput(rawLine.Length);
 
         if (trimmed.StartsWith('{') && ProtocolSerializer.TryParseType(trimmed, out var protoType, out var protoId))
         {
@@ -538,7 +542,7 @@ public class MUSHServer
         if (!string.IsNullOrEmpty(conn.OutputPrefix))
             await conn.SendLineAsync(conn.OutputPrefix, ct);
 
-        var outcome = await _game.RunAsync(() => DispatchCommand(conn, trimmed));
+        var outcome = await _game.RunAsync(() => DispatchCommand(conn, trimmed, rawLine));
         await FlushOutbound();
 
         if (!string.IsNullOrEmpty(conn.OutputSuffix))
@@ -559,11 +563,34 @@ public class MUSHServer
 
     private readonly record struct CommandOutcome(bool Shutdown, bool QuietReboot);
 
-    private CommandOutcome DispatchCommand(MUSHConnection conn, string trimmed)
+    public void CapturePlayerInput(Dbref player, Func<string, bool> onLine)
+    {
+        ArgumentNullException.ThrowIfNull(onLine);
+        _inputCaptures[player] = onLine;
+    }
+
+    public void ReleasePlayerInput(Dbref player)
+    {
+        _inputCaptures.TryRemove(player, out _);
+    }
+
+    public bool TryHandleCapturedInput(Dbref player, string line)
+    {
+        if (!_inputCaptures.TryGetValue(player, out var handler))
+            return false;
+        if (!handler(line))
+            _inputCaptures.TryRemove(new KeyValuePair<Dbref, Func<string, bool>>(player, handler));
+        return true;
+    }
+
+    private CommandOutcome DispatchCommand(MUSHConnection conn, string trimmed, string? rawLine = null)
     {
         _sessions.SourceDescriptor = conn.Descriptor;
         try
         {
+            if (TryHandleCapturedInput(conn.PlayerId, rawLine ?? trimmed))
+                return new CommandOutcome(false, false);
+
             var context = Dispatcher.Dispatch(conn.PlayerId, trimmed, Database);
             bool shutdown = _shutdownRequested;
             bool quietReboot = _quietRebootRequested;

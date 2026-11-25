@@ -26,6 +26,7 @@ public class ExtensionHostProxy : IExtensionHost
     private readonly List<string> _registeredTickServices = new();
     private readonly List<string> _registeredProtocolHandlers = new();
     private readonly List<string> _registeredAttributeFlags = new();
+    private readonly HashSet<Dbref> _capturedInputPlayers = new();
 
     public ObjectDatabase Database => _server.Database;
     public CommandDispatcher Dispatcher => _server.Dispatcher;
@@ -106,6 +107,25 @@ public class ExtensionHostProxy : IExtensionHost
         return StandardAttributes.UnregisterCustomFlag(flagName);
     }
 
+    public void CapturePlayerInput(Dbref player, Func<string, bool> onLine)
+    {
+        ArgumentNullException.ThrowIfNull(onLine);
+        _capturedInputPlayers.Add(player);
+        _server.CapturePlayerInput(player, line =>
+        {
+            bool keep = onLine(line);
+            if (!keep)
+                _capturedInputPlayers.Remove(player);
+            return keep;
+        });
+    }
+
+    public void ReleasePlayerInput(Dbref player)
+    {
+        _capturedInputPlayers.Remove(player);
+        _server.ReleasePlayerInput(player);
+    }
+
     public void BroadcastNotification(Notification notification)
     {
         _server.DispatchNotification(notification);
@@ -183,5 +203,11 @@ public class ExtensionHostProxy : IExtensionHost
             try { StandardAttributes.UnregisterCustomFlag(attrFlag); } catch { }
         }
         _registeredAttributeFlags.Clear();
+
+        foreach (var captured in _capturedInputPlayers.ToArray())
+        {
+            try { _server.ReleasePlayerInput(captured); } catch { }
+        }
+        _capturedInputPlayers.Clear();
     }
 }
