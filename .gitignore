@@ -29,6 +29,9 @@ mush.db*
 .DS_Store
 Thumbs.db
 
+## Local runtime configuration (copied from *.dst on first startup)
+*.cnf
+
 ## Plugin assemblies (runtime drop-ins)
 plugins/
 plugins/*.dll

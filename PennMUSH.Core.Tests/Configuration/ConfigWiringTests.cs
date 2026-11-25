@@ -93,4 +93,30 @@ public class ConfigWiringTests
         Assert.Equal(customHome.Id, created.Location);
         Assert.Equal(250, created.Pennies);
     }
+
+    [Fact]
+    public void EnsureDefaultConfigFilesCopiesMissingCnfFromDstWithoutOverwritingExisting()
+    {
+        string tempDir = Path.Combine(Path.GetTempPath(), "pennmush-cfg-test-" + System.Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            File.WriteAllText(Path.Combine(tempDir, "mushcnf.dst"), "mud_name FromDst\n");
+            File.WriteAllText(Path.Combine(tempDir, "aliascnf.dst"), "# alias dst\n");
+            File.WriteAllText(Path.Combine(tempDir, "namescnf.dst"), "# names dst\n");
+            File.WriteAllText(Path.Combine(tempDir, "restrictcnf.dst"), "# restrict dst\n");
+            File.WriteAllText(Path.Combine(tempDir, "alias.cnf"), "# existing custom alias\n");
+
+            PennMUSH.Server.Engine.MUSHServer.EnsureDefaultConfigFiles(tempDir);
+
+            Assert.Equal("mud_name FromDst\n", File.ReadAllText(Path.Combine(tempDir, "mush.cnf")));
+            Assert.Equal("# existing custom alias\n", File.ReadAllText(Path.Combine(tempDir, "alias.cnf")));
+            Assert.Equal("# names dst\n", File.ReadAllText(Path.Combine(tempDir, "names.cnf")));
+            Assert.Equal("# restrict dst\n", File.ReadAllText(Path.Combine(tempDir, "restrict.cnf")));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }

@@ -268,11 +268,36 @@ public class MUSHServer
         }
     }
 
+    private static readonly (string CnfFile, string DstFile)[] DefaultConfigTemplates =
+    [
+        ("mush.cnf", "mushcnf.dst"),
+        ("alias.cnf", "aliascnf.dst"),
+        ("names.cnf", "namescnf.dst"),
+        ("restrict.cnf", "restrictcnf.dst"),
+    ];
+
+    public static void EnsureDefaultConfigFiles(string? directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+            return;
+
+        foreach (var (cnfFile, dstFile) in DefaultConfigTemplates)
+        {
+            string cnfPath = Path.Combine(directory, cnfFile);
+            string dstPath = Path.Combine(directory, dstFile);
+            if (!File.Exists(cnfPath) && File.Exists(dstPath))
+                File.Copy(dstPath, cnfPath);
+        }
+    }
+
     private static string? ResolveConfigPath(string? configPath)
     {
-        if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
+        if (!string.IsNullOrEmpty(configPath))
         {
-            return Path.GetFullPath(configPath);
+            string fullPath = Path.GetFullPath(configPath);
+            EnsureDefaultConfigFiles(Path.GetDirectoryName(fullPath));
+            if (File.Exists(fullPath))
+                return fullPath;
         }
 
         var candidates = new[]
@@ -288,7 +313,19 @@ public class MUSHServer
         {
             if (File.Exists(path))
             {
+                EnsureDefaultConfigFiles(Path.GetDirectoryName(path));
                 return path;
+            }
+        }
+
+        foreach (var path in candidates)
+        {
+            string? dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && File.Exists(Path.Combine(dir, "mushcnf.dst")))
+            {
+                EnsureDefaultConfigFiles(dir);
+                if (File.Exists(path))
+                    return path;
             }
         }
 
