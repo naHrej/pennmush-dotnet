@@ -25,8 +25,8 @@ public class HelpCommandHandler : ICommandHandler
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         string topic = string.IsNullOrWhiteSpace(context.Arguments) ? "help" : context.Arguments.Trim();
-        string? result = _helpStore.Lookup(topic);
-        if (string.IsNullOrEmpty(result))
+        var entry = _helpStore.LookupEntry(topic);
+        if (entry == null || string.IsNullOrEmpty(entry.PlainText))
         {
             string? suggestion = _suggestions?.Closest("HELP", topic);
             if (suggestion != null)
@@ -36,7 +36,13 @@ public class HelpCommandHandler : ICommandHandler
             return false;
         }
 
-        context.Notify(ForClient(result, context));
+        if (_receivesHtml?.Invoke(context.Executor) == true && !string.IsNullOrEmpty(entry.Html))
+        {
+            context.Notify(entry.Html);
+            return true;
+        }
+
+        context.Notify(ForClient(entry.PlainText, context));
         return true;
     }
 
