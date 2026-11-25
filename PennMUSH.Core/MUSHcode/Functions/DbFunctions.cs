@@ -202,9 +202,9 @@ public static class DbFunctions
             args[1],
             args.Length > 2 ? args[2] : null,
             registry.Passwords,
-            registry.DefaultHome,
-            registry.PlayerStart,
-            registry.StartingMoney,
+            registry.EffectiveDefaultHome,
+            registry.EffectivePlayerStart,
+            registry.EffectiveStartingMoney,
             message => registry.NotificationDispatcher?.Invoke(
                 new Notification(NotificationScope.Self, message, ctx.Executor)));
         return created.IsValid ? created.ToString() : MushError.Nothing.Text();

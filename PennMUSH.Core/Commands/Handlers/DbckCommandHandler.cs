@@ -31,7 +31,7 @@ public class DbckCommandHandler : ICommandHandler
     {
         var god = db.GetObject(new Dbref(1));
         Dbref godId = god != null && god.Type == ObjectType.Player ? god.Id : new Dbref(1);
-        var home = db.GetObject(new Dbref(0));
+        var home = db.GetObject(db.DefaultHomeId);
         Dbref defaultHome = home != null && home.Type == ObjectType.Room ? home.Id : Dbref.Nothing;
         var objects = new List<MUSHObject>(db.GetAllObjects());
 

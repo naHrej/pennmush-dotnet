@@ -25,7 +25,7 @@ public class HomeCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null) return false;
 
-        Dbref homeRef = execObj.Home.IsValid ? execObj.Home : new Dbref(0);
+        Dbref homeRef = execObj.Home.IsValid ? execObj.Home : db.DefaultHomeId;
         if (execObj.Location == homeRef)
         {
             context.Notify(Feedback.YouAreAlreadyHome);

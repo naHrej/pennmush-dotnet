@@ -468,8 +468,8 @@ public class CommandDispatcher
         if (matched > 0)
             return true;
 
-        // Tier 3: Master Room (#2) global exits and global $ commands
-        var masterRoom = new Dbref(2);
+        // Tier 3: Master Room global exits and global $ commands
+        var masterRoom = db.MasterRoomId;
         if (executor.Location != masterRoom)
         {
             var globalExit = db.FindExit(masterRoom, context.CommandName);

@@ -41,9 +41,9 @@ public sealed class SpeechAndBuildingModule : ICommandModule
         dispatcher.Register(new ChzoneCommandHandler(), "@chzone");
         dispatcher.Register(new ChzoneAllCommandHandler(), "@chzoneall");
         dispatcher.Register(new ZemitCommandHandler(), "@zemit", "@nszemit");
-        dispatcher.Register(new ScanCommandHandler(services.Config.MasterRoom.Value), "@scan");
+        dispatcher.Register(new ScanCommandHandler(), "@scan");
         dispatcher.Register(new SweepCommandHandler(), "@sweep");
-        dispatcher.Register(new WithCommandHandler(dispatcher, services.Evaluator, services.Config.MasterRoom.Value), "with");
+        dispatcher.Register(new WithCommandHandler(dispatcher, services.Evaluator), "with");
         dispatcher.Register(new SearchCommandHandler(services.Evaluator), "@search");
         dispatcher.Register(new WaitCommandHandler(services.Queue), "@wait", "@notify", "@drain");
         dispatcher.Register(new HaltCommandHandler(services.Queue), "@halt");
@@ -181,7 +181,7 @@ public sealed class AdministrationModule : ICommandModule
         dispatcher.Register(new BootCommandHandler(services.Sessions), "@boot");
         dispatcher.Register(new SocksetCommandHandler(services.Sessions), "@sockset");
         dispatcher.Register(new PollCommandHandler(services.Sessions), "@poll");
-        dispatcher.Register(new PcreateCommandHandler(services.Functions.Passwords, config.DefaultHome, config.PlayerStart, config.StartingMoney), "@pcreate");
+        dispatcher.Register(new PcreateCommandHandler(services.Functions.Passwords, () => config.DefaultHome, () => config.PlayerStart, () => config.StartingMoney), "@pcreate");
         dispatcher.Register(new PasswordCommandHandler(), "@password");
         dispatcher.Register(new NewPasswordCommandHandler(services.Logs), "@newpassword");
         dispatcher.Register(new VersionCommandHandler(), "@version");

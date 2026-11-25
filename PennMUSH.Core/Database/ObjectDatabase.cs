@@ -21,6 +21,18 @@ public class ObjectDatabase
     /// <summary>Dbref of the System Object used for global $name object resolution (default #3).</summary>
     public Dbref SystemObjectId { get; set; } = new Dbref(3);
 
+    /// <summary>Dbref of the Master Room used for global exits and $commands (default #2).</summary>
+    public Dbref MasterRoomId { get; set; } = new Dbref(2);
+
+    /// <summary>Dbref of the Default Home room (default #0).</summary>
+    public Dbref DefaultHomeId { get; set; } = new Dbref(0);
+
+    /// <summary>Dbref of the Base Room (default #0).</summary>
+    public Dbref BaseRoomId { get; set; } = new Dbref(0);
+
+    /// <summary>Dbref of the Player Start room (default #0).</summary>
+    public Dbref PlayerStartId { get; set; } = new Dbref(0);
+
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
 

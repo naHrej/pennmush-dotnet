@@ -35,7 +35,7 @@ builder.Services.AddHostedService<TelnetListenerService>(sp =>
 {
     var host = sp.GetRequiredService<MUSHServerHost>();
     var logger = sp.GetRequiredService<ILogger<TelnetListenerService>>();
-    int telnetPort = builder.Configuration.GetValue<int>("Telnet:Port", 4201);
+    int telnetPort = builder.Configuration.GetValue<int?>("Telnet:Port") ?? host.Server.Config.Port;
     return new TelnetListenerService(host, logger, telnetPort);
 });
 
@@ -97,6 +97,13 @@ app.MapGet("/html/stylesheet.css", async (HttpContext context, MUSHServerHost ho
 // WebSocket Gateway Endpoints (/ws and /game for backward compatibility)
 var handleWebSocket = async (HttpContext context, MUSHServerHost host) =>
 {
+    if (!host.Server.Config.UseWs)
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        await context.Response.WriteAsync("WebSockets are disabled.");
+        return;
+    }
+
     if (context.WebSockets.IsWebSocketRequest)
     {
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
@@ -142,6 +149,9 @@ var handleWebSocket = async (HttpContext context, MUSHServerHost host) =>
 
 app.Map("/ws", handleWebSocket);
 app.Map("/game", handleWebSocket);
+string wsUrl = game.Server.Config.WsUrl.Trim();
+if (wsUrl.StartsWith('/') && !wsUrl.Equals("/ws", StringComparison.OrdinalIgnoreCase) && !wsUrl.Equals("/game", StringComparison.OrdinalIgnoreCase))
+    app.Map(wsUrl, handleWebSocket);
 
 // Optional API endpoint (/api) for legacy dual-socket MUjs configurations
 app.Map("/api", async (HttpContext context) =>
