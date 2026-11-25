@@ -19,8 +19,11 @@ public class GlobalObjectReferenceTests
         Assert.NotNull(sysObj);
         Assert.Equal("System Object", sysObj!.Name);
         Assert.Equal(ObjectType.Thing, sysObj.Type);
+        Assert.Equal(new Dbref(2), sysObj.Location);
+        Assert.Contains(db.GetContents(new Dbref(2)), o => o.Id == sysObj.Id);
         Assert.True(sysObj.HasFlag("SAFE"));
         Assert.True(sysObj.HasFlag("VISUAL"));
+        Assert.True(sysObj.HasFlag("NO_COMMAND"));
 
         var combat = db.CreateObject("CombatSystem", ObjectType.Thing, god.Id);
         sysObj.SetAttribute("COMBAT", combat.Id.ToString(), god.Id);
