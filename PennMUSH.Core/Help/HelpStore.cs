@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Markdig;
 
 public sealed class HelpEntry
@@ -30,8 +31,26 @@ public sealed class HelpEntry
         : string.Empty;
 
     public string? Html => _html ??= _rawMarkdown != null && _pipeline != null
-        ? "<div class=\"help-topic\">" + Markdown.ToHtml(_rawMarkdown, _pipeline).TrimEnd() + "</div>"
+        ? "<div class=\"help-topic\">" + EnhanceHelpHtml(Markdown.ToHtml(_rawMarkdown, _pipeline).TrimEnd()) + "</div>"
         : null;
+
+    private static readonly Regex HtmlSegmentRegex = new(@"(<[^>]+>)|([^<]+)", RegexOptions.Compiled);
+    private static readonly Regex ArgPlaceholderRegex = new(@"&lt;([A-Za-z0-9_/\-\.\*\+\?\s]{1,40}?)&gt;", RegexOptions.Compiled);
+    private static readonly Regex OptBracketRegex = new(@"(\[|\])", RegexOptions.Compiled);
+
+    private static string EnhanceHelpHtml(string html)
+    {
+        return HtmlSegmentRegex.Replace(html, m =>
+        {
+            if (m.Groups[1].Success)
+                return m.Groups[1].Value;
+
+            string text = m.Groups[2].Value;
+            text = ArgPlaceholderRegex.Replace(text, "<span class=\"help-arg\">&lt;$1&gt;</span>");
+            text = OptBracketRegex.Replace(text, "<span class=\"help-opt\">$1</span>");
+            return text;
+        });
+    }
 }
 
 public class HelpStore
