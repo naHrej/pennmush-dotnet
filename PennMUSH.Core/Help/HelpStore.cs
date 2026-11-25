@@ -6,7 +6,33 @@ using System.IO;
 using System.Linq;
 using Markdig;
 
-public sealed record HelpEntry(string PlainText, string? Html = null);
+public sealed class HelpEntry
+{
+    private readonly string? _rawMarkdown;
+    private readonly MarkdownPipeline? _pipeline;
+    private string? _plainText;
+    private string? _html;
+
+    public HelpEntry(string plainText, string? html = null)
+    {
+        _plainText = plainText;
+        _html = html;
+    }
+
+    internal HelpEntry(string rawMarkdown, MarkdownPipeline pipeline, bool isMarkdown)
+    {
+        _rawMarkdown = rawMarkdown;
+        _pipeline = pipeline;
+    }
+
+    public string PlainText => _plainText ??= _rawMarkdown != null && _pipeline != null
+        ? Markdown.ToPlainText(_rawMarkdown, _pipeline).TrimEnd()
+        : string.Empty;
+
+    public string? Html => _html ??= _rawMarkdown != null && _pipeline != null
+        ? "<div class=\"help-topic\">" + Markdown.ToHtml(_rawMarkdown, _pipeline).TrimEnd() + "</div>"
+        : null;
+}
 
 public class HelpStore
 {
@@ -103,19 +129,25 @@ public class HelpStore
 
     public void LoadFromMarkdownFile(string filePath)
     {
-        if (!File.Exists(filePath))
+        var (topicNames, _, entry) = ParseMarkdownFile(filePath);
+        if (entry == null)
             return;
 
-        string raw = File.ReadAllText(filePath);
-        var (topicNames, body) = ParseMarkdownFrontmatter(raw, Path.GetFileNameWithoutExtension(filePath));
-        if (string.IsNullOrWhiteSpace(body))
-            return;
-
-        string plain = Markdown.ToPlainText(body, MarkdownPipeline).TrimEnd();
-        string html = "<div class=\"help-topic\">" + Markdown.ToHtml(body, MarkdownPipeline).TrimEnd() + "</div>";
-        var entry = new HelpEntry(plain, html);
         foreach (var name in topicNames)
             AddTopic(name, entry);
+    }
+
+    public static (List<string> Topics, List<string> AdminTopics, HelpEntry? Entry) ParseMarkdownFile(string filePath)
+    {
+        if (!File.Exists(filePath))
+            return (new List<string>(), new List<string>(), null);
+
+        string raw = File.ReadAllText(filePath);
+        var (topicNames, adminNames, body) = ParseMarkdownFrontmatter(raw, Path.GetFileNameWithoutExtension(filePath));
+        if (string.IsNullOrWhiteSpace(body))
+            return (topicNames, adminNames, null);
+
+        return (topicNames, adminNames, new HelpEntry(body, MarkdownPipeline, isMarkdown: true));
     }
 
     public string? Lookup(string topic) => LookupEntry(topic)?.PlainText;
@@ -173,9 +205,10 @@ public class HelpStore
         _topics[name] = new HelpEntry(combinedPlain, combinedHtml);
     }
 
-    private static (List<string> Topics, string Body) ParseMarkdownFrontmatter(string raw, string fallbackName)
+    private static (List<string> Topics, List<string> AdminTopics, string Body) ParseMarkdownFrontmatter(string raw, string fallbackName)
     {
         var topics = new List<string>();
+        var adminTopics = new List<string>();
         string body = raw;
 
         if (raw.StartsWith("---", StringComparison.Ordinal))
@@ -211,13 +244,22 @@ public class HelpStore
                                 topics.Add(cleaned);
                         }
                     }
+                    else if (key is "admin_topics" or "admin_topic")
+                    {
+                        foreach (string item in val.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            string cleaned = TopicName(item.Trim().Trim('"', '\''));
+                            if (cleaned.Length > 0 && !adminTopics.Contains(cleaned, StringComparer.OrdinalIgnoreCase))
+                                adminTopics.Add(cleaned);
+                        }
+                    }
                 }
 
                 body = string.Join('\n', lines[(endIdx + 1)..]);
             }
         }
 
-        if (topics.Count == 0 && !string.IsNullOrWhiteSpace(fallbackName))
+        if (topics.Count == 0 && adminTopics.Count == 0 && !string.IsNullOrWhiteSpace(fallbackName))
         {
             string rawName = TopicName(fallbackName);
             if (rawName.Length > 0)
@@ -227,7 +269,7 @@ public class HelpStore
                 topics.Add(spaced);
         }
 
-        return (topics, body);
+        return (topics, adminTopics, body);
     }
 
     private static string TopicName(string header)

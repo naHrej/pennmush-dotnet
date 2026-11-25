@@ -15,11 +15,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if (-not [System.IO.Path]::IsPathRooted($InDir)) { $InDir = Join-Path $PWD.Path $InDir }
+if (-not [System.IO.Path]::IsPathRooted($OutDir)) { $OutDir = Join-Path $PWD.Path $OutDir }
+$InDir = [System.IO.Path]::GetFullPath($InDir)
+$OutDir = [System.IO.Path]::GetFullPath($OutDir)
 
 function Get-TopicSlug([string]$name) {
     $slug = $name.ToLowerInvariant().Trim() -replace '@', 'at_'
     $slug = ($slug -replace '[^a-z0-9]+', '_').Trim('_')
     if ([string]::IsNullOrEmpty($slug)) { return "topic" }
+    if ($slug -match '^(con|prn|aux|nul|com[1-9]|lpt[1-9])$') { return "${slug}_topic" }
     return $slug
 }
 
@@ -34,8 +39,6 @@ function Test-PreformattedLine([string]$line) {
 
 function Format-BodyToMarkdown([string]$primary, [string[]]$lines) {
     $out = [System.Collections.Generic.List[string]]::new()
-    $out.Add("# $primary")
-    $out.Add("")
     $inCode = $false
 
     foreach ($raw in $lines) {
@@ -85,7 +88,7 @@ function Format-BodyToMarkdown([string]$primary, [string[]]$lines) {
     return ($out -join "`n") + "`n"
 }
 
-function Format-TopicsYaml([string[]]$names) {
+function Format-TopicsYaml([string]$key, [string[]]$names) {
     $escaped = foreach ($n in $names) {
         if ($n -match '[:#,\[\]@&*''"]') {
             '"' + ($n -replace '"', '\"') + '"'
@@ -93,41 +96,49 @@ function Format-TopicsYaml([string[]]$names) {
             $n
         }
     }
-    return "topics: [" + ($escaped -join ", ") + "]"
+    return "${key}: [" + ($escaped -join ", ") + "]"
 }
 
 function Parse-HlpFile([string]$path) {
     $entries = [System.Collections.Generic.List[object]]::new()
     $names = [System.Collections.Generic.List[string]]::new()
+    $adminNames = [System.Collections.Generic.List[string]]::new()
     $body = [System.Collections.Generic.List[string]]::new()
     $inHeader = $false
     $started = $false
 
     $flush = {
-        if ($names.Count -gt 0 -and $body.Count -gt 0) {
+        if (($names.Count -gt 0 -or $adminNames.Count -gt 0) -and $body.Count -gt 0) {
             while ($body.Count -gt 0 -and [string]::IsNullOrWhiteSpace($body[$body.Count - 1])) {
                 $body.RemoveAt($body.Count - 1)
             }
             if ($body.Count -gt 0) {
                 $entries.Add([PSCustomObject]@{
-                    Names = @($names.ToArray())
-                    Body  = @($body.ToArray())
+                    Names      = @($names.ToArray())
+                    AdminNames = @($adminNames.ToArray())
+                    Body       = @($body.ToArray())
                 })
             }
         }
         $names.Clear()
+        $adminNames.Clear()
         $body.Clear()
     }
 
     foreach ($rawLine in [System.IO.File]::ReadAllLines($path)) {
         if ($rawLine.StartsWith('&')) {
             $started = $true
-            if (-not $inHeader -and ($names.Count -gt 0 -or $body.Count -gt 0)) {
+            if (-not $inHeader -and ($names.Count -gt 0 -or $adminNames.Count -gt 0 -or $body.Count -gt 0)) {
                 & $flush
             }
             $inHeader = $true
             $afterAmp = $rawLine.Substring(1).TrimStart()
-            if (-not $afterAmp.StartsWith('&')) {
+            if ($afterAmp.StartsWith('&')) {
+                $topic = ($afterAmp.Substring(1).TrimStart() -split '\s+' | Where-Object { $_ -ne '' }) -join ' '
+                if ($topic.Length -gt 0 -and -not $adminNames.Contains($topic)) {
+                    $adminNames.Add($topic)
+                }
+            } else {
                 $topic = ($afterAmp -split '\s+' | Where-Object { $_ -ne '' }) -join ' '
                 if ($topic.Length -gt 0 -and -not $names.Contains($topic)) {
                     $names.Add($topic)
@@ -153,14 +164,19 @@ foreach ($hlp in $hlpFiles) {
     $usedSlugs = @{}
 
     foreach ($entry in $entries) {
-        $primary = $entry.Names[0]
+        $primary = if ($entry.Names.Count -gt 0) { $entry.Names[0] } else { $entry.AdminNames[0] }
         $baseSlug = Get-TopicSlug $primary
         $count = if ($usedSlugs.ContainsKey($baseSlug)) { $usedSlugs[$baseSlug] + 1 } else { 1 }
         $usedSlugs[$baseSlug] = $count
         $fileName = if ($count -eq 1) { "$baseSlug.md" } else { "${baseSlug}_$count.md" }
         $target = Join-Path $categoryDir $fileName
 
-        $frontmatter = "---`n$(Format-TopicsYaml $entry.Names)`n---`n`n"
+        $fmLines = [System.Collections.Generic.List[string]]::new()
+        $fmLines.Add("---")
+        if ($entry.Names.Count -gt 0) { $fmLines.Add((Format-TopicsYaml "topics" $entry.Names)) }
+        if ($entry.AdminNames.Count -gt 0) { $fmLines.Add((Format-TopicsYaml "admin_topics" $entry.AdminNames)) }
+        $fmLines.Add("---")
+        $frontmatter = ($fmLines -join "`n") + "`n`n"
         $mdContent = $frontmatter + (Format-BodyToMarkdown $primary $entry.Body)
 
         if (-not $DryRun) {
