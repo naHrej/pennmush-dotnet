@@ -14,7 +14,7 @@ If no explicit `configPath` is passed to `MUSHServer`, it checks in order:
 4. `<AppBase>/game/mush.cnf`
 5. `<AppBase>/mush.cnf`
 
-`GameDirectory` defaults to the directory containing the resolved `mush.cnf`.
+`GameDirectory` defaults to the directory containing the resolved `mush.cnf`. On first startup, `MUSHServer.EnsureDefaultConfigFiles` copies any missing `.cnf` files (`mush.cnf`, `alias.cnf`, `names.cnf`, `restrict.cnf`) from their `.dst` templates without overwriting existing `.cnf` files.
 
 ### Config Directives & Included Files (`MushConfigParser.cs`)
 `mush.cnf` supports `include <file>` directives with cycle prevention. By default, `game/mush.cnf` includes:
@@ -30,14 +30,16 @@ Inspectable via `@config`, `@config/<group>`, `@config <option>`, and `config(<o
 
 | Group | Visibility | Stored Options |
 |---|---|---|
-| `cosmetic` | All | `money_singular` (`"Penny"`), `money_plural` (`"Pennies"`) |
-| `db` | All | `base_room` (`#0`), `default_home` (`#0`), `master_room` (`#2`), `player_start` (`#0`), `http_handler` (`#-1`) |
-| `files` | Royalty+ | `chat_database` (`"data/chatdb"`), `crash_database` (`"data/PANIC.db"`), `input_database` (`"data/indb"`), `mail_database` (`"data/maildb"`), `output_database` (`"data/outdb"`), `sql_database` (`""`) |
+| `cosmetic` | All | `money_singular` (`"Penny"`), `money_plural` (`"Pennies"`), `tiny_trim_fun` (`No`) |
+| `db` | All | `base_room` (`#0`), `default_home` (`#0`), `http_handler` (`#-1`), `master_room` (`#2`), `player_start` (`#0`), `system_object` (`#3`) |
+| `files` | Royalty+ | `chat_database` (`"data/chatdb"`), `crash_database` (`"data/PANIC.db"`), `dict_file` (`""`), `input_database` (`"data/indb"`), `mail_database` (`"data/maildb"`), `output_database` (`"data/outdb"`), `sql_database` (`""`) |
 | `limits` | All | `max_guests` (`10`), `max_players` (`1000`), `paycheck` (`50`), `starting_money` (`100`), `starting_quota` (`20`), `use_quota` (`Yes`) |
-| `messages` | Royalty+ | `colors_file`, `connect_file`, `down_file`, `full_file`, `guest_file`, `motd_file`, `newuser_file`, `quit_file`, `wizmotd_file` |
+| `messages` | Royalty+ | `colors_file`, `connect_file`, `down_file`, `full_file`, `guest_file`, `motd_file`, `newuser_file`, `quit_file`, `register_create_file`, `wizmotd_file` |
 | `net` | All | `guests` (`Yes`), `ip_addr` (`""`), `mud_name` (`"PennMUSH"`), `mud_url` (`""`), `player_creation` (`Yes`), `port` (`4201`), `ssl_port` (`4202`), `use_dns` (`Yes`), `use_ws` (`Yes`), `ws_url` (`""`) |
 
-**`@enable` / `@disable` Toggleable Options (`MushConfiguration.TrySetSwitch`)**: `use_ws`, `use_dns`, `player_creation`, `guests`, `use_quota`.
+**`@enable` / `@disable` Toggleable Options (`MushConfiguration.TrySetSwitch`)**: `use_ws`, `use_dns`, `player_creation`, `guests`, `use_quota`, `tiny_trim_fun`.
+
+**`@config/save` Persistence (`config_save`)**: God-only `@config/save` persists changes back to `mush.cnf` via `MushConfigWriter` only when `config_save yes` is set in `mush.cnf` (default `no`). `config_save` cannot be modified in-game via `@config/set`, `@config/save`, or `@enable`/`@disable`.
 
 *(Other directives present in stock `game/mush.cnf` are preserved in `MushConfiguration.RawDirectives` and `Directives` for `{{directive}}` screen-token expansion.)*
 
