@@ -283,62 +283,99 @@ public class ExamineCommandHandler : ICommandHandler
         }
 
         var sb = new StringBuilder();
-        var owner = db.GetObject(target.Owner);
-        string ownerName = owner != null ? owner.Name : target.Owner.ToString();
+        bool isBrief = context.CommandName.Equals("brief", StringComparison.OrdinalIgnoreCase);
 
-        sb.AppendLine($"{target.Name} ({target.Id})");
-        sb.AppendLine($"Type: {target.Type}  Owner: {ownerName} ({target.Owner})  Pennies: {target.Pennies}");
-        sb.AppendLine($"Flags: {string.Join(" ", target.Flags)}");
-        if (target.Powers.Count > 0)
-            sb.AppendLine($"Powers: {string.Join(" ", target.Powers)}");
-        sb.AppendLine($"Warnings checked: {WarningBits.Unparse(target.Warnings)}");
-        sb.AppendLine($"Location: {target.Location}  Home: {target.Home}");
-
-        if (!context.CommandName.Equals("brief", StringComparison.OrdinalIgnoreCase))
+        string FormatObj(MUSHObject o)
         {
-        // Contents
-        var contents = db.GetContents(target.Id).ToList();
-        if (contents.Count > 0)
-        {
-            sb.AppendLine("Contents:");
-            foreach (var item in contents)
-                sb.AppendLine($"  {item.Name} ({item.Id})");
-        }
-
-        // Exits
-        if (target.Type == ObjectType.Room)
-        {
-            var exits = db.GetExits(target.Id);
-            if (exits.GetEnumerator().MoveNext())
+            var flags = new StringBuilder();
+            flags.Append(o.Type switch
             {
-                sb.AppendLine("Exits:");
-                foreach (var exit in db.GetExits(target.Id))
-                    sb.AppendLine($"  {exit.Name} ({exit.Id}) -> {exit.Location}");
+                ObjectType.Player => 'P',
+                ObjectType.Room => 'R',
+                ObjectType.Thing => 'T',
+                ObjectType.Exit => 'E',
+                ObjectType.Garbage => 'g',
+                _ => '?'
+            });
+            foreach (string fn in o.Flags)
+            {
+                var def = PennMUSH.Core.Flags.FlagTable.FindFlag(fn);
+                if (def != null && def.Letter != '\0' && def.Letter != ' ')
+                    flags.Append(def.Letter);
             }
+            if (o.Type == ObjectType.Player && db.IsConnected(o.Id))
+                flags.Append('c');
+            return $"{o.Name}({o.Id}{flags})";
         }
 
-        // Attributes
-        if (target.Attributes.Count > 0)
+        string FormatRef(Dbref id)
         {
-            sb.AppendLine("Attributes:");
-            foreach (var attr in target.Attributes)
+            if (!id.IsValid) return "*NOTHING*";
+            var o = db.GetObject(id);
+            return o != null ? FormatObj(o) : id.ToString();
+        }
+
+        sb.AppendLine(FormatObj(target));
+        var flagList = target.Flags.ToList();
+        if (target.Type == ObjectType.Player && db.IsConnected(target.Id) && !flagList.Contains("CONNECTED", StringComparer.OrdinalIgnoreCase))
+            flagList.Add("CONNECTED");
+        sb.AppendLine($"Type: {target.Type.ToString().ToUpperInvariant()} Flags: {string.Join(" ", flagList)}");
+
+        if (!isBrief)
+        {
+            var desc = target.GetAttribute("DESCRIBE");
+            if (desc != null && AttributePermissions.CanRead(execObj, target, desc, target) && !string.IsNullOrEmpty(desc.Value))
+                sb.AppendLine(desc.Value);
+        }
+
+        sb.AppendLine($"Owner: {FormatRef(target.Owner)}  Zone: {FormatRef(target.Zone)}  Pennies: {target.Pennies}");
+        sb.AppendLine($"Parent: {FormatRef(target.Parent)}");
+
+        foreach (var l in target.Locks)
+        {
+            sb.AppendLine($"{l.Type} Lock [#{l.Creator.Value}]: {l.Key}");
+        }
+
+        sb.AppendLine($"Powers: {string.Join(" ", target.Powers)}");
+        sb.AppendLine($"Warnings checked: {WarningBits.Unparse(target.Warnings)}");
+        sb.AppendLine($"Created: {target.CreationTime.UtcDateTime:ddd MMM dd HH:mm:ss yyyy}");
+
+        if (!isBrief)
+        {
+            // Top-level attributes only (attribute tree leaves are shown via examine obj/** or examine obj/branch`)
+            foreach (var attr in target.Attributes
+                .Where(a => !a.Name.Contains('`') && !a.Name.Equals("DESCRIBE", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
             {
                 if (!AttributePermissions.CanRead(execObj, target, attr, target))
                     continue;
-                sb.AppendLine($"  {attr.Name} [flags: {attr.Flags}]: {attr.Value}");
+                sb.AppendLine($"{attr.Name} [#{attr.Creator.Value}{AttrFlagLetters(attr)}]: {attr.Value}");
             }
-        }
 
-        // Locks
-        if (target.Locks.Count > 0)
-        {
-            sb.AppendLine("Locks:");
-            foreach (var l in target.Locks)
+            var contents = db.GetContents(target.Id).ToList();
+            if (contents.Count > 0)
             {
-                sb.AppendLine($"  {l.Type}: {l.Key}");
+                sb.AppendLine("Contents:");
+                foreach (var item in contents)
+                    sb.AppendLine($"  {FormatObj(item)}");
+            }
+
+            if (target.Type == ObjectType.Room)
+            {
+                var exits = db.GetExits(target.Id).ToList();
+                if (exits.Count > 0)
+                {
+                    sb.AppendLine("Exits:");
+                    foreach (var exit in exits)
+                        sb.AppendLine($"  {FormatObj(exit)} -> {exit.Location}");
+                }
             }
         }
 
+        if (target.Type is ObjectType.Player or ObjectType.Thing)
+        {
+            sb.AppendLine($"Home: {FormatRef(target.Home)}");
+            sb.AppendLine($"Location: {FormatRef(target.Location)}");
         }
 
         context.Notify(sb.ToString().TrimEnd(), escapeHtml: true);
