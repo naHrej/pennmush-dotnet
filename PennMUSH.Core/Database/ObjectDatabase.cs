@@ -33,6 +33,15 @@ public class ObjectDatabase
     /// <summary>Dbref of the Player Start room (default #0).</summary>
     public Dbref PlayerStartId { get; set; } = new Dbref(0);
 
+    /// <summary>Singular currency name (default "Penny").</summary>
+    public string MoneySingular { get; set; } = "Penny";
+
+    /// <summary>Plural currency name (default "Pennies").</summary>
+    public string MoneyPlural { get; set; } = "Pennies";
+
+    public string FormatMoneyUnit(int amount)
+        => (amount == 1 ? MoneySingular : MoneyPlural).ToLowerInvariant();
+
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
 

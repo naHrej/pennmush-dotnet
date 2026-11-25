@@ -109,7 +109,9 @@ public class MUSHServer
             MasterRoomId = Config.MasterRoom,
             DefaultHomeId = Config.DefaultHome,
             BaseRoomId = Config.BaseRoom,
-            PlayerStartId = Config.PlayerStart
+            PlayerStartId = Config.PlayerStart,
+            MoneySingular = Config.MoneySingular,
+            MoneyPlural = Config.MoneyPlural
         };
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
@@ -484,11 +486,12 @@ public class MUSHServer
     {
         _connections[conn.Id] = conn;
         string host = string.IsNullOrWhiteSpace(conn.Host) ? "localhost" : conn.Host;
+        string hostname = string.IsNullOrWhiteSpace(conn.Hostname) ? host : conn.Hostname;
         conn.ConnLogId = ConnectionLog.RecordConnect(
             conn.PlayerId,
             conn.PlayerId.IsValid ? Database.GetObject(conn.PlayerId)?.Name : null,
             host,
-            host,
+            hostname,
             conn.ConnectedAt.ToUnixTimeSeconds(),
             ssl: conn.Capabilities.IsSsl,
             websocket: conn.IsWebSocket);
@@ -772,6 +775,40 @@ public class MUSHServer
         string name = parts[1];
         string password = parts.Length > 2 ? parts[2] : "";
         var player = Database.FindPlayer(name);
+        bool autoGuest = false;
+
+        if (player == null && name.Equals("guest", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Config.Guests || !SiteLocks.Can(conn.Host, SiteLockTable.Guest))
+            {
+                script.Steps.Add(new LoginStep("Guest connections not allowed.", null, false, false));
+                return;
+            }
+
+            int activeGuests = _connections.Values.Count(c =>
+                c.PlayerId.IsValid && Database.GetObject(c.PlayerId)?.HasFlag("GUEST") == true);
+            if (Config.MaxGuests > 0 && activeGuests >= Config.MaxGuests)
+            {
+                script.Steps.Add(new LoginStep("Sorry, all guest slots are currently in use.", null, false, false));
+                return;
+            }
+
+            player = Database.ByType(ObjectType.Player)
+                .FirstOrDefault(p => p.HasFlag("GUEST") && !Database.IsConnected(p.Id));
+            if (player == null)
+            {
+                int suffix = 1;
+                while (Database.FindPlayer($"Guest{suffix}") != null)
+                    suffix++;
+                player = Database.CreateObject($"Guest{suffix}", ObjectType.Player, Dbref.Nothing);
+                player.Owner = player.Id;
+                player.Home = Config.DefaultHome;
+                player.Pennies = 0;
+                player.AddFlag("GUEST");
+                Database.MoveObject(player.Id, Config.PlayerStart);
+            }
+            autoGuest = true;
+        }
 
         if (player == null)
         {
@@ -779,17 +816,29 @@ public class MUSHServer
             return;
         }
 
-        if (player.HasFlag("GUEST")
-            ? !SiteLocks.Can(conn.Host, SiteLockTable.Guest)
+        bool isGuest = player.HasFlag("GUEST");
+        if (isGuest
+            ? (!Config.Guests || !SiteLocks.Can(conn.Host, SiteLockTable.Guest))
             : !SiteLocks.Can(conn.Host, SiteLockTable.Connect))
         {
             script.Steps.Add(new LoginStep(
-                player.HasFlag("GUEST") ? "Guest connections not allowed." : "Player connections not allowed.",
+                isGuest ? "Guest connections not allowed." : "Player connections not allowed.",
                 null, false, false));
             return;
         }
 
-        if (!PasswordHash.Accepts(player, password, memory: null))
+        if (isGuest && !autoGuest && Config.MaxGuests > 0)
+        {
+            int activeGuests = _connections.Values.Count(c =>
+                c.PlayerId.IsValid && Database.GetObject(c.PlayerId)?.HasFlag("GUEST") == true);
+            if (activeGuests >= Config.MaxGuests)
+            {
+                script.Steps.Add(new LoginStep("Sorry, all guest slots are currently in use.", null, false, false));
+                return;
+            }
+        }
+
+        if (!autoGuest && !PasswordHash.Accepts(player, password, memory: null))
         {
             script.Steps.Add(new LoginStep("Either that player does not exist, or has a different password.", null, false, false));
             return;
@@ -800,6 +849,22 @@ public class MUSHServer
         Database.SetConnected(player.Id, true);
         ConnectionLog.UpdatePlayer(conn.ConnLogId, player.Id, player.Name);
         Channels.GetChannel("Public")?.AddMember(player.Id);
+
+        if (!isGuest && Config.Paycheck > 0)
+        {
+            string? lastVal = player.GetAttribute("LAST")?.Value;
+            DateTimeOffset lastLogin = default;
+            bool parsedLast = !string.IsNullOrWhiteSpace(lastVal)
+                && (DateTimeOffset.TryParseExact(lastVal.Trim(), "ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out lastLogin)
+                    || DateTimeOffset.TryParse(lastVal, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out lastLogin));
+            bool eligible = !parsedLast || lastLogin.UtcDateTime.Date < DateTime.UtcNow.Date;
+            if (eligible)
+            {
+                player.Pennies += Config.Paycheck;
+                script.Steps.Add(new LoginStep($"You receive your daily paycheck of {Config.Paycheck} {Database.FormatMoneyUnit(Config.Paycheck)}.", null, false, false));
+            }
+            player.SetAttribute("LAST", DateTime.UtcNow.ToString("ddd MMM dd HH:mm:ss yyyy", System.Globalization.CultureInfo.InvariantCulture), new Dbref(1), PennMUSH.Core.Attributes.StandardAttributes.DefaultFlags("LAST"), wizardOverride: true);
+        }
 
         script.Steps.Add(new LoginStep($"Welcome back to {Config.MudName}, {player.Name}!", null, false, false));
         script.Steps.Add(new LoginStep(null, Config.MotdFile, false, false));

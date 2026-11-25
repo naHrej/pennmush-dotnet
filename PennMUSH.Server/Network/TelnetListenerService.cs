@@ -16,20 +16,25 @@ public class TelnetListenerService : BackgroundService
     private readonly MUSHServerHost _host;
     private readonly ILogger<TelnetListenerService> _logger;
     private readonly int _port;
+    private readonly string? _ipAddr;
     private TcpListener? _listener;
 
-    public TelnetListenerService(MUSHServerHost host, ILogger<TelnetListenerService> logger, int port = 4201)
+    public TelnetListenerService(MUSHServerHost host, ILogger<TelnetListenerService> logger, int port = 4201, string? ipAddr = null)
     {
         _host = host;
         _logger = logger;
         _port = port;
+        _ipAddr = ipAddr;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _listener = new TcpListener(IPAddress.Any, _port);
+        IPAddress bindAddr = !string.IsNullOrWhiteSpace(_ipAddr) && IPAddress.TryParse(_ipAddr.Trim(), out var parsed)
+            ? parsed
+            : IPAddress.Any;
+        _listener = new TcpListener(bindAddr, _port);
         _listener.Start();
-        _logger.LogInformation("PennMUSH Telnet Server listening on port {Port}...", _port);
+        _logger.LogInformation("PennMUSH Telnet Server listening on {Address}:{Port}...", bindAddr, _port);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -55,7 +60,22 @@ public class TelnetListenerService : BackgroundService
     {
         var conn = new MUSHConnection(tcpClient);
         if (tcpClient.Client.RemoteEndPoint is IPEndPoint remote)
+        {
             conn.Host = remote.Address.ToString();
+            if (_host.Server.Config.UseDns)
+            {
+                try
+                {
+                    var dnsTask = Dns.GetHostEntryAsync(remote.Address);
+                    if (await Task.WhenAny(dnsTask, Task.Delay(500, stoppingToken)) == dnsTask)
+                        conn.Hostname = (await dnsTask).HostName;
+                }
+                catch
+                {
+                    // Keep numeric IP fallback when reverse DNS fails
+                }
+            }
+        }
         _host.RegisterConnection(conn);
         _logger.LogInformation("New Telnet connection from {Endpoint} [Session {Id}]", tcpClient.Client.RemoteEndPoint, conn.Id);
 

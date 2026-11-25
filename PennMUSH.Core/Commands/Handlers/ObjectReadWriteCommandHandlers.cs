@@ -1003,7 +1003,7 @@ public class PoorCommandHandler : ICommandHandler
             count++;
         }
 
-        context.Notify(Feedback.SetPlayerSToPennies, ("value", $"{count}"), ("value2", $"{amount}"));
+        context.Notify($"Set {count} player(s) to {amount} {db.FormatMoneyUnit(amount)}.");
         return true;
     }
 }

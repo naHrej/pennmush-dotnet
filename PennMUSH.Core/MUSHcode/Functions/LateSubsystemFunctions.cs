@@ -70,7 +70,9 @@ public static class LateSubsystemFunctions
     public static string ConfigFunc(FunctionRegistry reg, string[] args)
     {
         if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
-            return "mud_name mud_url starting_money";
+            return reg.ConfigProvider != null
+                ? string.Join(" ", PennMUSH.Core.Configuration.ConfigCatalog.Options.Select(o => o.Name))
+                : "mud_name mud_url starting_money";
 
         string key = args[0].Trim().ToLowerInvariant();
         if (reg.ConfigProvider != null)
