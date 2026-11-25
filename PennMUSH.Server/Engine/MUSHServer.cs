@@ -958,7 +958,7 @@ public class MUSHServer
         var features = new ServerFeatures(
             MaxWindowCount: 8,
             SupportedLanguages: new[] { "mushcode", "csharp", "moocode" },
-            AssetBaseUrl: !string.IsNullOrEmpty(Config.MudUrl) ? Config.MudUrl : "http://localhost:5000");
+            AssetBaseUrl: !string.IsNullOrEmpty(Config.MudUrl) ? Config.MudUrl : "http://localhost:5119");
         return new ServerHelloPayload("pennmush-dotnet", "1.0.0", token, features);
     }
 
