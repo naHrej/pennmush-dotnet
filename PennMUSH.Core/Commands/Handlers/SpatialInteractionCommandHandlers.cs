@@ -249,12 +249,37 @@ public class ExamineCommandHandler : ICommandHandler
         if (execObj == null) return false;
 
         string targetStr = string.IsNullOrWhiteSpace(context.Arguments) ? "here" : context.Arguments.Trim();
+        string? attrPattern = null;
+        int slash = targetStr.IndexOf('/');
+        if (slash > 0)
+        {
+            attrPattern = targetStr[(slash + 1)..].Trim();
+            targetStr = targetStr[..slash].Trim();
+        }
+
         var target = db.MatchObject(context.Executor, targetStr);
 
         if (target == null)
         {
             context.Notify(Feedback.ICantSeeThatHereToExamine);
             return false;
+        }
+
+        if (attrPattern != null)
+        {
+            var matched = new List<string>();
+            foreach (var attr in target.Attributes.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (!AttributePermissions.CanRead(execObj, target, attr, target))
+                    continue;
+                if (MatchesAttributePattern(attr.Name, attrPattern))
+                    matched.Add($"{attr.Name} [{attr.Creator}{AttrFlagLetters(attr)}]: {attr.Value}");
+            }
+            if (matched.Count > 0)
+                context.Notify(string.Join("\n", matched), escapeHtml: true);
+            else
+                context.Notify("No matching attributes.");
+            return true;
         }
 
         var sb = new StringBuilder();
@@ -318,5 +343,58 @@ public class ExamineCommandHandler : ICommandHandler
 
         context.Notify(sb.ToString().TrimEnd(), escapeHtml: true);
         return true;
+    }
+
+    private static bool MatchesAttributePattern(string attrName, string pattern)
+    {
+        if (pattern == "**")
+            return true;
+        if (pattern.EndsWith('`') && !pattern.Contains('*') && !pattern.Contains('?'))
+        {
+            if (!attrName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase))
+                return false;
+            return attrName.IndexOf('`', pattern.Length) < 0;
+        }
+        if (!pattern.Contains('*') && !pattern.Contains('?'))
+            return attrName.Equals(pattern, StringComparison.OrdinalIgnoreCase);
+
+        var regex = new StringBuilder("^");
+        for (int i = 0; i < pattern.Length; i++)
+        {
+            char c = pattern[i];
+            if (c == '*' && i + 1 < pattern.Length && pattern[i + 1] == '*')
+            {
+                regex.Append(".*");
+                i++;
+            }
+            else if (c == '*')
+            {
+                regex.Append("[^`]*");
+            }
+            else if (c == '?')
+            {
+                regex.Append("[^`]");
+            }
+            else
+            {
+                regex.Append(System.Text.RegularExpressions.Regex.Escape(c.ToString()));
+            }
+        }
+        regex.Append('$');
+        return System.Text.RegularExpressions.Regex.IsMatch(attrName, regex.ToString(), System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
+    private static string AttrFlagLetters(PennMUSH.Core.Attributes.AttributeEntry attr)
+    {
+        var sb = new StringBuilder();
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Root)) sb.Append('`');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.NoProg)) sb.Append('$');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Wizard)) sb.Append('w');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Visual)) sb.Append('v');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Locked)) sb.Append('+');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Safe)) sb.Append('S');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Regexp)) sb.Append('R');
+        if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Case)) sb.Append('C');
+        return sb.ToString();
     }
 }

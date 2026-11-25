@@ -251,7 +251,7 @@ public class ComprehensiveCommandTests
             // 4. @wipe
             outputs.Clear();
             await server.HandleInputAsync(conn, "@wipe Magic Wand/CHARG*");
-            Assert.Contains(outputs, o => o.Contains("Wiped 1 attribute(s) on Magic Wand."));
+            Assert.Contains(outputs, o => o.Contains("1 attributes wiped."));
 
             // 5. @stats
             outputs.Clear();

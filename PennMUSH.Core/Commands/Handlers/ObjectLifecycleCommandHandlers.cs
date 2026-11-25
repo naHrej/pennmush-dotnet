@@ -381,15 +381,27 @@ public class WipeCommandHandler : ICommandHandler
             pattern = raw.Substring(slash + 1).Trim();
         }
 
-        var target = db.FindObject(objStr);
+        var target = db.MatchObject(context.Executor, objStr);
         if (target == null)
         {
             context.Notify(Feedback.ICantFindThatObject);
             return false;
         }
 
+        var actor = db.GetObject(context.Executor);
+        if (actor == null || (!actor.IsWizard && actor.Id != target.Owner))
+        {
+            context.Notify(Feedback.PermissionDenied);
+            return false;
+        }
+
+        bool hasWildcard = pattern.Contains('*') || pattern.Contains('?');
         var toWipe = target.Attributes
-            .Where(a => PatternMatcher.Match(pattern, a.Name, out _))
+            .Where(a => hasWildcard
+                ? PatternMatcher.Match(pattern, a.Name, out _)
+                : (slash == -1
+                    || a.Name.Equals(pattern, StringComparison.OrdinalIgnoreCase)
+                    || a.Name.StartsWith(pattern + "`", StringComparison.OrdinalIgnoreCase)))
             .Select(a => a.Name)
             .ToList();
 
@@ -398,7 +410,7 @@ public class WipeCommandHandler : ICommandHandler
             target.ClearAttribute(attr);
         }
 
-        context.Notify(Feedback.WipedAttributeSOn, ("value", $"{toWipe.Count}"), ("value2", $"{target.Name}"));
+        context.Notify($"{toWipe.Count} attributes wiped.");
         return true;
     }
 }
