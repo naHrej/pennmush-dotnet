@@ -15,8 +15,10 @@ public interface IExtensionHost
     ObjectDatabase Database { get; }
     CommandDispatcher Dispatcher { get; }
     FunctionRegistry Functions { get; }
+    ExpressionEvaluator Evaluator { get; }
     ActionQueue Queue { get; }
     CronScheduler Cron { get; }
+    string DataDirectory { get; }
 
     void RegisterCommand(ICommandHandler handler, params string[] aliases);
     void UnregisterCommand(string commandName);
@@ -35,6 +37,8 @@ public interface IExtensionHost
 
     void CapturePlayerInput(Dbref player, Func<string, bool> onLine);
     void ReleasePlayerInput(Dbref player);
+
+    void OnObjectDestroyed(Action<Dbref> handler);
 
     void BroadcastNotification(Notification notification);
     void NotifyPlayer(Dbref player, string message);

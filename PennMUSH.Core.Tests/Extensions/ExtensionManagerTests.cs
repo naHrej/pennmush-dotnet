@@ -186,4 +186,26 @@ public class ExtensionManagerTests
         hostProxy.Cleanup();
         Assert.False(server.TryHandleCapturedInput(player, "after cleanup"));
     }
+
+    [Fact]
+    public void ExtensionHostProxy_ExposesEvaluatorDataDirectoryAndObjectDestroyedHook()
+    {
+        var server = new MUSHServer();
+        var hostProxy = new ExtensionHostProxy(server.Extensions, server, "ScriptPlugin");
+
+        Assert.Same(server.Evaluator, hostProxy.Evaluator);
+        Assert.EndsWith(Path.Combine("plugins", "data", "ScriptPlugin"), hostProxy.DataDirectory, StringComparison.Ordinal);
+
+        var destroyed = new List<Dbref>();
+        hostProxy.OnObjectDestroyed(id => destroyed.Add(id));
+
+        var obj1 = server.Database.CreateObject("Temp1", ObjectType.Thing, new Dbref(1));
+        var obj2 = server.Database.CreateObject("Temp2", ObjectType.Thing, new Dbref(1));
+        Assert.True(server.Database.DestroyObject(obj1.Id));
+        Assert.Equal(new[] { obj1.Id }, destroyed);
+
+        hostProxy.Cleanup();
+        Assert.True(server.Database.DestroyObject(obj2.Id));
+        Assert.Single(destroyed);
+    }
 }
