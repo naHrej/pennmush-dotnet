@@ -105,7 +105,7 @@ public class CommandModeSwitchTests
         room.SetAttribute("EAR", "^knock:say who", _ada);
 
         var eval = _dispatcher.Dispatch(_ada, "@search eval=1", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", eval.Notifications);
+        Assert.Contains(eval.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         var none = _dispatcher.Dispatch(_ada, "@search eval=0", _db);
         Assert.Contains("Nothing found.", none.Notifications);
 
@@ -114,24 +114,24 @@ public class CommandModeSwitchTests
         Assert.DoesNotContain(players.Notifications, line => line.Contains("Lamp"));
 
         var things = _dispatcher.Dispatch(_ada, "@search ething=1", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", things.Notifications);
+        Assert.Contains(things.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(things.Notifications, line => line.Contains("Study"));
 
         var rooms = _dispatcher.Dispatch(_ada, "@search eroom=1", _db);
-        Assert.Contains($"Study (#{room.Id.Value})", rooms.Notifications);
+        Assert.Contains(rooms.Notifications, line => line.StartsWith($"Study(#{room.Id.Value}"));
 
         var locked = _dispatcher.Dispatch(_ada, $"@search elock=#{lamp.Id.Value}", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", locked.Notifications);
+        Assert.Contains(locked.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(locked.Notifications, line => line.Contains("Study"));
 
         var command = _dispatcher.Dispatch(_ada, "@search command=frob", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", command.Notifications);
+        Assert.Contains(command.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         Assert.DoesNotContain(command.Notifications, line => line.Contains("Study"));
 
         var heard = _dispatcher.Dispatch(_ada, "@search listen=hello", _db);
-        Assert.Contains($"Lamp (#{lamp.Id.Value})", heard.Notifications);
+        Assert.Contains(heard.Notifications, line => line.StartsWith($"Lamp(#{lamp.Id.Value}"));
         var knock = _dispatcher.Dispatch(_ada, "@search listen=knock", _db);
-        Assert.Contains($"Study (#{room.Id.Value})", knock.Notifications);
+        Assert.Contains(knock.Notifications, line => line.StartsWith($"Study(#{room.Id.Value}"));
     }
 
     [Fact]

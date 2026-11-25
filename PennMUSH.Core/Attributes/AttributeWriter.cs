@@ -137,7 +137,7 @@ public static class AttributeWriter
         if (flags.HasFlag(AttributeFlags.Quiet))
             return AttributeWriteResult.Silent();
         string verb = set ? "Set" : "Cleared";
-        return AttributeWriteResult.Done($"{target.Name}(#{target.Id.Value})/{name} - {verb}.");
+        return AttributeWriteResult.Done($"{target.Name}/{name} - {verb}.");
     }
 
     private static AttributeWriteResult Safe(string name)

@@ -33,8 +33,9 @@ public class QueueReportCommandTests
     {
         var waited = _dispatcher.Dispatch(_owner, "@wait 30=think later", _db);
         var held = _dispatcher.Dispatch(_owner, "@wait gate=think held", _db);
-        int waitedPid = Pid(waited);
-        int heldPid = Pid(held);
+        var entries = _queue.Snapshot().ToList();
+        int waitedPid = entries.First(e => e.Command == "think later").Pid;
+        int heldPid = entries.First(e => e.Command == "think held").Pid;
 
         var report = _dispatcher.Dispatch(_owner, "@ps", _db);
 

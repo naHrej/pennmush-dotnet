@@ -21,7 +21,8 @@
                   {
                       "id":  "rand.4",
                       "input":  "think rand(10)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^[0-9]$"
                   },
                   {
                       "id":  "rand.5",
@@ -36,22 +37,26 @@
                   {
                       "id":  "rand.7",
                       "input":  "think rand(2,1)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^[12]$"
                   },
                   {
                       "id":  "rand.8",
                       "input":  "think rand(0,9)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^[0-9]$"
                   },
                   {
                       "id":  "rand.9",
                       "input":  "think rand(-5, 5)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^-?[0-5]$"
                   },
                   {
                       "id":  "rand.10",
                       "input":  "think rand(5, -5)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^-?[0-5]$"
                   },
                   {
                       "id":  "randword.1",
@@ -66,7 +71,8 @@
                   {
                       "id":  "randword.3",
                       "input":  "think randword(foo bar)",
-                      "compare":  "exact"
+                      "compare":  "regex",
+                      "pattern":  "^(foo|bar)$"
                   }
               ]
 }

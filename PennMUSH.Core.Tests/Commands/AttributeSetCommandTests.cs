@@ -39,15 +39,15 @@ public class AttributeSetCommandTests
         var described = Run(_mortal, "@desc me=the hall");
         var underscored = Run(_mortal, "@_va me=ready");
 
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/DESC - Set.", Single(literal));
+        Assert.Equal($"{mortal.Name}/DESC - Set.", Single(literal));
         Assert.Equal("literal", mortal.GetAttribute("DESC")!.Value);
         Assert.Equal("the hall", mortal.GetAttribute("DESCRIBE")!.Value);
         Assert.Equal(
             AttributeFlags.Visual | AttributeFlags.Public | AttributeFlags.Nearby | AttributeFlags.NoProg | AttributeFlags.PrefixMatch,
             mortal.GetAttribute("DESCRIBE")!.Flags);
         Assert.Equal("ready", mortal.GetAttribute("VA")!.Value);
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/DESCRIBE - Set.", Single(described));
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/VA - Set.", Single(underscored));
+        Assert.Equal($"{mortal.Name}/DESCRIBE - Set.", Single(described));
+        Assert.Equal($"{mortal.Name}/VA - Set.", Single(underscored));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class AttributeSetCommandTests
             {
                 string attr = $"{series}{letter}";
                 var ctx = Run(_mortal, $"@{attr.ToLowerInvariant()} me={attr}");
-                Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/{attr} - Set.", Single(ctx));
+                Assert.Equal($"{mortal.Name}/{attr} - Set.", Single(ctx));
                 Assert.Equal(attr, mortal.GetAttribute(attr)!.Value);
             }
         }
@@ -71,7 +71,7 @@ public class AttributeSetCommandTests
     {
         var mortal = Player(_mortal);
         var ctx = Run(_mortal, "@descr me=short");
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/DESCRIBE - Set.", Single(ctx));
+        Assert.Equal($"{mortal.Name}/DESCRIBE - Set.", Single(ctx));
         Assert.Equal("short", mortal.GetAttribute("DESCRIBE")!.Value);
     }
 
@@ -98,7 +98,7 @@ public class AttributeSetCommandTests
     {
         var mortal = Player(_mortal);
         var set = Run(_mortal, "&KEEP`MID`LEAF me=3");
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/KEEP`MID`LEAF - Set.", Single(set));
+        Assert.Equal($"{mortal.Name}/KEEP`MID`LEAF - Set.", Single(set));
         Assert.Equal(" ", mortal.GetAttribute("KEEP")!.Value);
         Assert.Equal(AttributeFlags.Root, mortal.GetAttribute("KEEP")!.Flags);
         Assert.Equal(" ", mortal.GetAttribute("KEEP`MID")!.Value);
@@ -156,7 +156,7 @@ public class AttributeSetCommandTests
 
         var god = Player(_god);
         var allowed = Run(_god, $"&SECURE`LEAF #{lamp.Id.Value}=yes");
-        Assert.Equal($"{lamp.Name}(#{lamp.Id.Value})/SECURE`LEAF - Set.", Single(allowed));
+        Assert.Equal($"{lamp.Name}/SECURE`LEAF - Set.", Single(allowed));
         Assert.Equal("yes", lamp.GetAttribute("SECURE`LEAF")!.Value);
         Assert.True(god.IsGod);
     }
@@ -200,7 +200,7 @@ public class AttributeSetCommandTests
     {
         var mortal = Player(_mortal);
         Run(_mortal, "&VA me=1");
-        Assert.Equal($"{mortal.Name}(#{mortal.Id.Value})/VA - Cleared.", Single(Run(_mortal, "&VA me")));
+        Assert.Equal($"{mortal.Name}/VA - Cleared.", Single(Run(_mortal, "&VA me")));
         Assert.Equal("No such attribute to reset.", Single(Run(_mortal, "&VA me=")));
         Assert.Equal("That's not a very good name for an attribute.", Single(Run(_mortal, "&`NOPE me=1")));
         Assert.Equal("I don't see that here.", Single(Run(_mortal, "&VA #99=1")));
