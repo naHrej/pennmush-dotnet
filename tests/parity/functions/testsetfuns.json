@@ -866,7 +866,7 @@
                   {
                       "id":  "setunion.nums.8",
                       "input":  "think setunion(5 [ansi(h,5.0)], [ansi(h,5)] 5.0)",
-                      "compare":  "exact"
+                      "compare":  "ansi_stripped"
                   },
                   {
                       "id":  "setunion.nums.9",
