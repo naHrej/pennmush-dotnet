@@ -239,11 +239,9 @@ public class DecompileCommandHandler : ICommandHandler
         AttrFlagMode flagMode)
     {
         int printed = 0;
-        foreach (var attr in target.Attributes)
+        foreach (var attr in target.Attributes.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))
         {
-            if (attr.Name.Contains('`'))
-                continue;
-            if (!Matches(pattern, attr.Name) || !CanRead(db, actor, target, attr))
+            if (!ExamineCommandHandler.MatchesAttributePattern(attr.Name, pattern) || !CanRead(db, actor, target, attr))
                 continue;
             if (attr.Flags.HasFlag(AttributeFlags.NoDump))
                 continue;

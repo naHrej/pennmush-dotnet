@@ -225,7 +225,7 @@ public class ConfigurationAndAliasTests
 
         var ctx = dispatcher.Dispatch(wizard.Id, "x Krenath", db);
         Assert.Contains(ctx.Notifications, n => n.Contains("Krenath (#4)") || n.Contains("Krenath"));
-        Assert.Contains(ctx.Notifications, n => n.Contains("Type: Player"));
+        Assert.Contains(ctx.Notifications, n => n.Contains("Type: PLAYER"));
     }
 
     [Fact]

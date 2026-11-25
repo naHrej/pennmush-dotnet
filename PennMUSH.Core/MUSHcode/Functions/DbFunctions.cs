@@ -443,7 +443,18 @@ public static class DbFunctions
     public static string FlagsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var obj = ResolveObj(reg, ctx, args[0]);
+        string raw = args[0].Trim();
+        int slash = raw.IndexOf('/');
+        if (slash > 0)
+        {
+            var target = ResolveObj(reg, ctx, raw[..slash].Trim());
+            if (target == null) return MushError.NoMatch.Text();
+            var attr = target.GetAttribute(raw[(slash + 1)..].Trim(), reg.Database);
+            if (attr == null) return MushError.NoMatch.Text();
+            return PennMUSH.Core.Commands.Handlers.ExamineCommandHandler.AttrFlagLetters(attr);
+        }
+
+        var obj = ResolveObj(reg, ctx, raw);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -875,7 +886,7 @@ public static class DbFunctions
         var looker = reg.Database?.GetObject(ctx.Executor);
         return AttributePermissions.EnumerateAttributes(obj, reg.Database, includeParents)
             .Where(pair => (looker == null || AttributePermissions.CanRead(looker, obj, pair.Entry, pair.Source))
-                && PatternMatcher.Match(pattern, pair.Entry.Name, out _))
+                && PennMUSH.Core.Commands.Handlers.ExamineCommandHandler.MatchesAttributePattern(pair.Entry.Name, pattern))
             .Select(pair => pair.Entry.Name)
             .OrderBy(n => n, StringComparer.Ordinal);
     }
@@ -883,11 +894,20 @@ public static class DbFunctions
     public static string LattrFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args, bool includeParents = false)
     {
         if (args.Length == 0 || reg.Database == null) return string.Empty;
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        string raw = args[0].Trim();
+        string? inlinePattern = null;
+        int slash = raw.IndexOf('/');
+        if (slash > 0)
+        {
+            inlinePattern = raw[(slash + 1)..].Trim();
+            raw = raw[..slash].Trim();
+        }
+        var obj = ResolveObj(reg, ctx, raw);
         if (obj == null) return string.Empty;
 
-        string pattern = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim() : "*";
+        string pattern = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1])
+            ? args[1].Trim()
+            : (!string.IsNullOrEmpty(inlinePattern) ? inlinePattern : "*");
         return string.Join(" ", GetMatchingReadableAttrNames(reg, ctx, obj, pattern, includeParents));
     }
 
