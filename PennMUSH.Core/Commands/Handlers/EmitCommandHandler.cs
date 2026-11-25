@@ -105,7 +105,7 @@ public class PemitCommandHandler : ICommandHandler
             context.NotifyTarget(target.Id, message, prompt, speakerId, spoofable);
         }
 
-        if (!context.Switches.Contains("silent"))
+        if (!context.Switches.Contains("silent") && target.Id != context.Executor)
         {
             context.Notify(Feedback.MessageSentTo, ("value", $"{target.Name}"));
         }
@@ -150,7 +150,8 @@ public class RemitCommandHandler : ICommandHandler
         string message = context.RightArg;
         bool spoofable = speaker != null && !SpoofPrefix.Omits(speaker, context.CommandName);
         context.NotifyRoom(room.Id, message, speaker?.Id ?? default, spoofable);
-        context.Notify(Feedback.MessageSentTo, ("value", $"{room.Name}"));
+        if (!context.Switches.Contains("silent") && speaker?.Location != room.Id)
+            context.Notify(Feedback.MessageSentTo, ("value", $"{room.Name}"));
         return true;
     }
 }

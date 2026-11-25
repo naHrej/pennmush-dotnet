@@ -541,7 +541,6 @@ public class CommandDispatcher
 
             bool isCommand = trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&')
                 || _commandTable.Lookup(cmdHead).Status == CommandLookupStatus.Found;
-
             if (isCommand)
             {
                 var subCtx = DispatchQueued(listener.Id, piece, db, enactor.Id, captures);
@@ -678,10 +677,10 @@ public class CommandDispatcher
 
         string left = args;
         string right = string.Empty;
-        int eqIndex = args.IndexOf('=');
+        int eqIndex = FindUnescapedEquals(args);
         if (eqIndex != -1)
         {
-            left = args.Substring(0, eqIndex).Trim();
+            left = args.Substring(0, eqIndex).Replace(@"\=", "=").Trim();
             right = args.Substring(eqIndex + 1).Trim();
         }
 
@@ -696,5 +695,20 @@ public class CommandDispatcher
             LeftArg = left,
             RightArg = right
         };
+    }
+
+    private static int FindUnescapedEquals(string s)
+    {
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                i++;
+                continue;
+            }
+            if (s[i] == '=')
+                return i;
+        }
+        return -1;
     }
 }

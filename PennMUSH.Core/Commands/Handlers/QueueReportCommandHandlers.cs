@@ -149,9 +149,14 @@ public class KickCommandHandler : ICommandHandler
 
         string arg = (context.Arguments ?? string.Empty).Trim();
         int count = 1;
-        if (arg.Length > 0 && (!int.TryParse(arg, out count) || count < 1))
+        if (arg.Length > 0 && !int.TryParse(arg, out count))
         {
             context.Notify(Feedback.UsageKickCount);
+            return false;
+        }
+        if (count < 1)
+        {
+            context.Notify("Number out of range.");
             return false;
         }
 
