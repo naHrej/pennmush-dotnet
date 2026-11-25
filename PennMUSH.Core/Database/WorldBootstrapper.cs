@@ -37,6 +37,14 @@ public static class WorldBootstrapper
         masterRoom.Location = roomZero.Id;
         masterRoom.SetAttribute("DESCRIBE", "The Master Room. Actions and exits here are global.", god.Id);
 
+        // #3 - System Object (global $name registry)
+        var sysObj = db.CreateObject("System Object", ObjectType.Thing, god.Id);
+        sysObj.Location = masterRoom.Id;
+        sysObj.Home = masterRoom.Id;
+        sysObj.AddFlag("SAFE");
+        sysObj.AddFlag("VISUAL");
+        sysObj.SetAttribute("DESCRIBE", "Global object registry. Set attributes like NAME=#dbref to register $name references.", god.Id);
+
         return god;
     }
 }

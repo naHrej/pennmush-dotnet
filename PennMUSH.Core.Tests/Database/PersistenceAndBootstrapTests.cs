@@ -16,7 +16,7 @@ public class PersistenceAndBootstrapTests
         var db = new ObjectDatabase();
         var god = WorldBootstrapper.GenerateBaseWorld(db);
 
-        Assert.Equal(3, db.Count);
+        Assert.Equal(4, db.Count);
 
         // #0: Room Zero
         var roomZero = db.GetObject(new Dbref(0));

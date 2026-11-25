@@ -18,6 +18,9 @@ public class ObjectDatabase
     /// <summary>Raised when an object is destroyed/recycled.</summary>
     public event Action<Dbref>? ObjectDestroyed;
 
+    /// <summary>Dbref of the System Object used for global $name object resolution (default #3).</summary>
+    public Dbref SystemObjectId { get; set; } = new Dbref(3);
+
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
 
@@ -336,6 +339,25 @@ public class ObjectDatabase
         return _index.FindByName(search, GetById);
     }
 
+    public MUSHObject? ResolveGlobalObject(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+        string attrName = name.Trim().TrimStart('$');
+        if (attrName.Length == 0)
+            return null;
+
+        var sysObj = GetObject(SystemObjectId);
+        var attr = sysObj?.GetAttribute(attrName, this);
+        if (attr == null || string.IsNullOrWhiteSpace(attr.Value))
+            return null;
+
+        string raw = attr.Value.Trim();
+        if (raw.StartsWith('#'))
+            raw = raw.Substring(1);
+        return int.TryParse(raw, out int id) ? GetObject(new Dbref(id)) : null;
+    }
+
     public MUSHObject? MatchObject(Dbref executor, string nameOrDbref)
     {
         if (string.IsNullOrWhiteSpace(nameOrDbref)) return null;
@@ -356,6 +378,11 @@ public class ObjectDatabase
         if (search.StartsWith('*'))
         {
             return FindPlayer(search.Substring(1));
+        }
+
+        if (search.StartsWith('$') && search.Length > 1)
+        {
+            return ResolveGlobalObject(search.Substring(1));
         }
 
         if (search.StartsWith('#') && int.TryParse(search.Substring(1), out int id))
