@@ -345,7 +345,7 @@ public class ExamineCommandHandler : ICommandHandler
         return true;
     }
 
-    private static bool MatchesAttributePattern(string attrName, string pattern)
+    internal static bool MatchesAttributePattern(string attrName, string pattern)
     {
         if (pattern == "**")
             return true;
@@ -384,7 +384,7 @@ public class ExamineCommandHandler : ICommandHandler
         return System.Text.RegularExpressions.Regex.IsMatch(attrName, regex.ToString(), System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 
-    private static string AttrFlagLetters(PennMUSH.Core.Attributes.AttributeEntry attr)
+    internal static string AttrFlagLetters(PennMUSH.Core.Attributes.AttributeEntry attr)
     {
         var sb = new StringBuilder();
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Root)) sb.Append('`');

@@ -479,17 +479,64 @@ public class CommandDispatcher
             return 0;
 
         int matched = 0;
-        foreach (var listener in candidate.Listeners)
+        var seenAttrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visitedObjs = new HashSet<Dbref>();
+        var queue = new Queue<MUSHObject>();
+        queue.Enqueue(candidate);
+        visitedObjs.Add(candidate.Id);
+
+        while (queue.Count > 0)
         {
-            if (!listener.Command)
-                continue;
-            if (TryMatchListenerPattern(listener, input, out var captures))
+            var current = queue.Dequeue();
+            bool isSelf = current.Id == candidate.Id;
+
+            foreach (var listener in current.Listeners)
             {
-                ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
-                matched++;
+                if (!listener.Command)
+                    continue;
+                var attr = current.GetAttribute(listener.AttributeName);
+                if (attr == null)
+                    continue;
+                if (!isSelf && IsPrivateOrUnderPrivateBranch(current, listener.AttributeName, attr))
+                    continue;
+                if (!seenAttrs.Add(listener.AttributeName))
+                    continue;
+                if (attr.Flags.HasFlag(Attributes.AttributeFlags.NoProg))
+                    continue;
+
+                if (TryMatchListenerPattern(listener, input, out var captures))
+                {
+                    ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
+                    matched++;
+                }
+            }
+
+            foreach (var parentId in current.Parents)
+            {
+                if (visitedObjs.Add(parentId))
+                {
+                    var parent = db.GetObject(parentId);
+                    if (parent != null)
+                        queue.Enqueue(parent);
+                }
             }
         }
         return matched;
+    }
+
+    private static bool IsPrivateOrUnderPrivateBranch(MUSHObject obj, string attrName, Attributes.AttributeEntry attr)
+    {
+        if (attr.Flags.HasFlag(Attributes.AttributeFlags.Private))
+            return true;
+        int tick = attrName.IndexOf('`');
+        while (tick > 0)
+        {
+            var branch = obj.GetAttribute(attrName[..tick]);
+            if (branch != null && branch.Flags.HasFlag(Attributes.AttributeFlags.Private))
+                return true;
+            tick = attrName.IndexOf('`', tick + 1);
+        }
+        return false;
     }
 
     internal static bool TryMatchListenerPattern(StoredListener listener, string input, out string[] captures)
