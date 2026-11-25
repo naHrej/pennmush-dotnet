@@ -83,7 +83,7 @@ public class ComprehensiveCommandTests
             // 5. whisper (in-room)
             await server.HandleInputAsync(aliceConn, "whisper Bob=Psst, over here.");
             Assert.Contains(aliceOutputs, o => o.Contains("You whisper, \"Psst, over here.\" to Bob."));
-            Assert.Contains(bobOutputs, o => o.Contains("Alice whispers, \"Psst, over here.\""));
+            Assert.Contains(bobOutputs, o => o.Contains("Alice whispers: Psst, over here."));
             Assert.DoesNotContain(charlieOutputs, o => o.Contains("Psst"));
 
             aliceOutputs.Clear();
@@ -251,7 +251,7 @@ public class ComprehensiveCommandTests
             // 4. @wipe
             outputs.Clear();
             await server.HandleInputAsync(conn, "@wipe Magic Wand/CHARG*");
-            Assert.Contains(outputs, o => o.Contains("Wiped 1 attribute(s) on Magic Wand."));
+            Assert.Contains(outputs, o => o.Contains("1 attributes wiped."));
 
             // 5. @stats
             outputs.Clear();

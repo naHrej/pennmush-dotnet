@@ -81,7 +81,7 @@ public class ActionQueueAndAsyncTests
 
         // Notify semaphore
         var notifyCtx = _dispatcher.Dispatch(_player.Id, "@notify signal1", _db);
-        Assert.Contains("Notified 1 process(es) on semaphore 'signal1'.", notifyCtx.Notifications);
+        Assert.Contains("Notified.", notifyCtx.Notifications);
 
         // Now it's ready
         var ready = _queue.ProcessReady(DateTimeOffset.UtcNow, _dispatcher, _db);
@@ -99,12 +99,12 @@ public class ActionQueueAndAsyncTests
 
         // Halt player
         var haltCtx = _dispatcher.Dispatch(_player.Id, $"@halt {_player.Id}", _db);
-        Assert.Contains("Halted 2 process(es).", haltCtx.Notifications);
+        Assert.Contains($"Halted: {_player.Name}({_player.Id})", haltCtx.Notifications);
         Assert.Equal(1, _queue.Count);
 
         // Allhalt by Wizard
         var allHaltCtx = _dispatcher.Dispatch(_god.Id, "@allhalt", _db);
-        Assert.Contains("Halted all 1 process(es)", allHaltCtx.Notifications[0]);
+        Assert.Contains("Your objects have been globally halted by", allHaltCtx.Notifications[0]);
         Assert.Equal(0, _queue.Count);
     }
 

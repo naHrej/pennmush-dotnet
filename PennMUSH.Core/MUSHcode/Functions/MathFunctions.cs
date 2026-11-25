@@ -327,7 +327,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val < 0) return MushError.SquareRootOfNegative.Text();
+        if (val < 0) return MushError.ImaginaryNumber.Text();
         return FormatNumber(Math.Sqrt(val));
     }
 
@@ -344,7 +344,7 @@ public static class MathFunctions
         if (args.Length == 0) return MushError.TooFewArguments.Text();
         if (!double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
             return MushError.ArgumentsMustBeNumbers.Text();
-        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.OutOfRange.Text();
         if (val == 0) return "-inf";
         if (args.Length > 1 && args[1].Trim().Equals("e", StringComparison.OrdinalIgnoreCase))
             return FormatNumber(Math.Log(val));
@@ -363,7 +363,7 @@ public static class MathFunctions
     {
         if (args.Length == 0) return "0";
         double.TryParse(args[0].Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out double val);
-        if (val < 0) return MushError.LogOfNonpositive.Text();
+        if (val < 0) return MushError.OutOfRange.Text();
         if (val == 0) return "-inf";
         return FormatNumber(Math.Log(val));
     }
@@ -1064,7 +1064,7 @@ public static class MathFunctions
             return "0";
         double rounded = Math.Round(val, 6, MidpointRounding.AwayFromZero);
         if (Math.Abs(rounded) < 1e-12)
-            return "0";
+            return val < 0 ? "-0" : "0";
         if (rounded == Math.Floor(rounded) && rounded >= -9e18 && rounded <= 9e18)
             return ((long)rounded).ToString(CultureInfo.InvariantCulture);
         return rounded.ToString("0.######", CultureInfo.InvariantCulture);

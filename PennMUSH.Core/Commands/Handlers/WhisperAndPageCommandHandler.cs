@@ -86,7 +86,7 @@ public class PageCommandHandler : ICommandHandler
         var target = db.FindPlayer(targetName);
         if (target == null)
         {
-            context.Notify(Feedback.ICannotFindPlayer, ("player", $"{targetName}"));
+            context.Notify($"I can't find who you're trying to page with: {targetName}\nUnable to page: {targetName}");
             return false;
         }
 

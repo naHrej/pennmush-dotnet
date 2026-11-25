@@ -318,7 +318,7 @@ public class GrepCommandHandler : ICommandHandler
 
         string needle = context.RightArg;
         bool list = context.Switches.Contains("list") || context.Switches.Contains("ilist");
-        bool print = context.Switches.Contains("print") || context.Switches.Contains("iprint") || !list;
+        bool print = context.Switches.Contains("print") || context.Switches.Contains("iprint");
         bool ignoreCase = context.Switches.Contains("nocase")
             || context.Switches.Contains("ilist")
             || context.Switches.Contains("iprint");
@@ -349,7 +349,12 @@ public class GrepCommandHandler : ICommandHandler
             return true;
         }
 
-        context.Notify(string.Join("\n", hits.Select(attr => print ? $"{attr.Name}: {attr.Value}" : attr.Name)));
+        if (print)
+            context.Notify(string.Join("\n", hits.Select(attr => $"{attr.Name}: {attr.Value}")));
+        else if (list)
+            context.Notify(string.Join("\n", hits.Select(attr => attr.Name)));
+        else
+            context.Notify($"Matches of '{needle}' on {target.Name}({target.Id}{FindCommandHandler.FlagLetters(target)}): {string.Join(" ", hits.Select(attr => attr.Name))}");
         return true;
     }
 
@@ -452,7 +457,7 @@ public class AttributeLockCommandHandler : ICommandHandler
         }
 
         bool locked = flags.HasFlag(AttributeFlags.Locked);
-        context.Notify(locked ? Feedback.IsLocked2 : Feedback.IsUnlocked, ("value", entry.Name));
+        context.Notify(locked ? "Attribute locked." : "Attribute unlocked.");
         return true;
     }
 }
@@ -550,6 +555,8 @@ public class LockFlagCommandHandler : ICommandHandler
                 flags = clear ? flags & ~flag : flags | flag;
             }
             target.SetLock(entry.Type, entry.Key, entry.Creator, flags);
+            context.Notify($"{target.Name}/{entry.Type} - lock flags set.");
+            return true;
         }
 
         context.Notify(Feedback.ValueValue4, ("value", $"{entry.Type}"), ("value2", $"{flags}"));

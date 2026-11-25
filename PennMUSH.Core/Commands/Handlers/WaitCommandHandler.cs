@@ -27,8 +27,8 @@ public class WaitCommandHandler : ICommandHandler
                 return false;
             }
 
-            int count = _queue.DrainSemaphore(sem);
-            context.Notify(Feedback.DrainedProcessEsOnSemaphore, ("value", $"{count}"), ("value2", $"{sem}"));
+            _queue.DrainSemaphore(sem);
+            context.Notify("Drained.");
             return true;
         }
 
@@ -41,8 +41,8 @@ public class WaitCommandHandler : ICommandHandler
                 return false;
             }
 
-            int count = _queue.NotifySemaphore(sem);
-            context.Notify(Feedback.NotifiedProcessEsOnSemaphore, ("value", $"{count}"), ("value2", $"{sem}"));
+            _queue.NotifySemaphore(sem);
+            context.Notify("Notified.");
             return true;
         }
 

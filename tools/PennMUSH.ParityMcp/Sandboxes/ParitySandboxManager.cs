@@ -61,6 +61,41 @@ public sealed class ParitySandboxManager : IAsyncDisposable
         }
     }
 
+    public async Task ReconnectAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_cSession != null)
+            {
+                await _cSession.DisposeAsync();
+                _cSession = null;
+            }
+            if (_dotnetSession != null)
+            {
+                await _dotnetSession.DisposeAsync();
+                _dotnetSession = null;
+            }
+
+            if (CPort <= 0 || DotnetPort <= 0)
+            {
+                await StopInternalAsync();
+                await StartInternalAsync(ct);
+                return;
+            }
+
+            _cSession = new TelnetSession();
+            await _cSession.ConnectAndLoginAsync("127.0.0.1", CPort, "connect One", ct: ct);
+
+            _dotnetSession = new TelnetSession();
+            await _dotnetSession.ConnectAndLoginAsync("127.0.0.1", DotnetPort, "connect One", ct: ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task<string> EvalCAsync(string command, bool queued = false, TimeSpan? timeout = null, CancellationToken ct = default)
     {
         await EnsureStartedAsync(ct);

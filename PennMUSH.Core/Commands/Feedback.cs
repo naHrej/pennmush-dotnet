@@ -1245,7 +1245,7 @@ public static class FeedbackText
         [Feedback.WhichAttributeDoYouMean] = "Which attribute do you mean?",
         [Feedback.WhichAttributesDoYouMean] = "Which attributes do you mean?",
         [Feedback.WhichOfThoseCommandsDoYouMean] = "Which of those commands do you mean?",
-        [Feedback.Whispers] = "{{value}} whispers, \"{{value2}}\"",
+        [Feedback.Whispers] = "{{value}} whispers: {{value2}}",
         [Feedback.WhoDoYouThinkYouAreGallup] = "Who do you think you are, Gallup?",
         [Feedback.WhoDoYouThinkYouAreGod] = "Who do you think you are, GOD?",
         [Feedback.WhyWouldYouWantToBeWarnedAboutGarbage] = "Why would you want to be warned about garbage?",

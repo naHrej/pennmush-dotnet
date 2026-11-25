@@ -394,7 +394,7 @@ public static class ListFunctions
 
     private static string DetectSortType(IEnumerable<string> items)
     {
-        var list = items.Select(AnsiString.Strip).Where(s => !string.IsNullOrEmpty(s)).ToList();
+        var list = items.Where(s => !string.IsNullOrEmpty(s)).ToList();
         if (list.Count == 0) return "a";
         if (list.All(s => long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))) return "n";
         if (list.All(s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out _))) return "f";
@@ -431,9 +431,15 @@ public static class ListFunctions
         "n" => new NumericSetComparer(isFloat: false),
         "f" => new NumericSetComparer(isFloat: true),
         "d" => new DbrefSetComparer(),
-        "i" => StringComparer.OrdinalIgnoreCase,
-        _ => StringComparer.Ordinal
+        "i" => new AnsiStrippedComparer(StringComparer.OrdinalIgnoreCase),
+        _ => new AnsiStrippedComparer(StringComparer.Ordinal)
     };
+
+    private sealed class AnsiStrippedComparer(StringComparer inner) : IEqualityComparer<string>
+    {
+        public bool Equals(string? x, string? y) => inner.Equals(AnsiString.Strip(x ?? string.Empty), AnsiString.Strip(y ?? string.Empty));
+        public int GetHashCode(string obj) => inner.GetHashCode(AnsiString.Strip(obj));
+    }
 
     private static bool TryParseIntTrunc(string s, out long result)
     {
