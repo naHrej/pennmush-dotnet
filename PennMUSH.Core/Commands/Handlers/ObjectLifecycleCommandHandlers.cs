@@ -584,7 +584,7 @@ public class ScoreCommandHandler : ICommandHandler
         var execObj = db.GetObject(context.Executor);
         if (execObj == null) return false;
 
-        context.Notify(Feedback.YouHavePennies, ("value", $"{execObj.Pennies}"));
+        context.Notify($"You have {execObj.Pennies} {db.FormatMoneyUnit(execObj.Pennies)}.");
         return true;
     }
 }

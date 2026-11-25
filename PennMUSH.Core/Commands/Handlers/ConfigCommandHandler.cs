@@ -53,6 +53,8 @@ public class ConfigCommandHandler : ICommandHandler
         db.DefaultHomeId = _config.DefaultHome;
         db.BaseRoomId = _config.BaseRoom;
         db.PlayerStartId = _config.PlayerStart;
+        db.MoneySingular = _config.MoneySingular;
+        db.MoneyPlural = _config.MoneyPlural;
         if (!save)
         {
             context.Notify("Option set.");

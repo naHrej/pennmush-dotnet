@@ -210,9 +210,10 @@ public class GiveCommandHandler : ICommandHandler
             if (!execObj.IsWizard) execObj.Pennies -= pennies;
             target.Pennies += pennies;
 
-            context.Notify(Feedback.YouGivePenniesTo, ("value", $"{pennies}"), ("value2", $"{target.Name}"));
-            context.NotifyTarget(target.Id, Feedback.GivesYouPennies.Text(("value", $"{execObj.Name}"), ("value2", $"{pennies}")));
-            context.NotifyExcept(execObj.Location, context.Executor, Feedback.GivesSomePenniesTo.Text(("value", $"{execObj.Name}"), ("value2", $"{target.Name}")));
+            string unit = db.FormatMoneyUnit(pennies);
+            context.Notify($"You give {pennies} {unit} to {target.Name}.");
+            context.NotifyTarget(target.Id, $"{execObj.Name} gives you {pennies} {unit}.");
+            context.NotifyExcept(execObj.Location, context.Executor, $"{execObj.Name} gives some {db.MoneyPlural.ToLowerInvariant()} to {target.Name}.");
             return true;
         }
 

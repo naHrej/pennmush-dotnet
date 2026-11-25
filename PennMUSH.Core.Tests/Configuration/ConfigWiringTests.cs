@@ -212,4 +212,103 @@ public class ConfigWiringTests
         Assert.True(functions.TryRestrict("s", "nobody"));
         Assert.Equal("#-1 FUNCTION DISABLED", evaluator.Evaluate("[s([add(1,2)])]", wizCtx));
     }
+
+    [Fact]
+    public void Phase1_Currency_ConfigList_And_BaseRoomDbck_WorkDynamically()
+    {
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var altBase = db.CreateObject("AltBase", ObjectType.Room, god.Id);
+        var orphan = db.CreateObject("Orphan", ObjectType.Thing, god.Id);
+        orphan.Home = new Dbref(999);
+        orphan.Location = new Dbref(999);
+
+        var cfg = new MushConfiguration();
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+        dispatcher.Register(new ScoreCommandHandler(), "score");
+        dispatcher.Register(new PoorCommandHandler(), "@poor");
+        dispatcher.Register(new DbckCommandHandler(), "@dbck");
+
+        var functions = new PennMUSH.Core.MUSHcode.FunctionRegistry(db)
+        {
+            ConfigProvider = key => ConfigCatalog.Find(key)?.Read(cfg)
+        };
+        var evaluator = new PennMUSH.Core.MUSHcode.ExpressionEvaluator(functions.Dispatch, db);
+        var godCtx = new PennMUSH.Core.MUSHcode.EvaluationContext(god.Id, god.Id, god.Id, god.Location);
+
+        // config() with no args lists ConfigCatalog options
+        string allOpts = evaluator.Evaluate("[config()]", godCtx);
+        Assert.Contains("system_object", allOpts);
+        Assert.Contains("unsafe_eval_functions", allOpts);
+        Assert.Contains("money_singular", allOpts);
+
+        // money_singular / money_plural update score and @poor dynamically
+        dispatcher.Dispatch(god.Id, "@config/set money_singular=Credit", db);
+        dispatcher.Dispatch(god.Id, "@config/set money_plural=Credits", db);
+        Assert.Contains("You have 1000 credits.", dispatcher.Dispatch(god.Id, "score", db).Notifications);
+        Assert.Contains("Set 1 player(s) to 1 credit.", dispatcher.Dispatch(god.Id, "@poor 1", db).Notifications);
+        Assert.Contains("You have 1 credit.", dispatcher.Dispatch(god.Id, "score", db).Notifications);
+
+        // base_room fallback in @dbck when default_home is invalid
+        dispatcher.Dispatch(god.Id, "@config/set default_home=#999", db);
+        dispatcher.Dispatch(god.Id, $"@config/set base_room=#{altBase.Id.Value}", db);
+        dispatcher.Dispatch(god.Id, "@dbck", db);
+        Assert.Equal(altBase.Id, orphan.Home);
+        Assert.Equal(altBase.Id, orphan.Location);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Phase1_Server_GuestsAndPaycheck_RespectConfig()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), $"phase1_srv_{System.Guid.NewGuid():N}.db");
+        try
+        {
+            var server = new PennMUSH.Server.Engine.MUSHServer(dbPath);
+            server.Config.Paycheck = 75;
+            server.Config.Guests = true;
+            server.Config.MaxGuests = 1;
+
+            var alice = server.Database.CreateObject("Alice", ObjectType.Player, new Dbref(1));
+            alice.Owner = alice.Id;
+            alice.Pennies = 10;
+            PennMUSH.Core.Database.PasswordHash.Store(alice, "pass");
+            server.Database.MoveObject(alice.Id, new Dbref(0));
+
+            var conn1Out = new System.Collections.Generic.List<string>();
+            var conn1 = new PennMUSH.Server.Session.MUSHConnection(line => { conn1Out.Add(line); return System.Threading.Tasks.Task.CompletedTask; });
+            server.RegisterConnection(conn1);
+            await server.HandleInputAsync(conn1, "connect Alice pass");
+            Assert.Equal(85, alice.Pennies);
+            Assert.Contains(conn1Out, l => l.Contains("daily paycheck of 75 pennies"));
+
+            // Second login same day does not award paycheck again
+            var conn1b = new PennMUSH.Server.Session.MUSHConnection(_ => System.Threading.Tasks.Task.CompletedTask);
+            server.RegisterConnection(conn1b);
+            await server.HandleInputAsync(conn1b, "connect Alice pass");
+            Assert.Equal(85, alice.Pennies);
+
+            // Guest login works up to MaxGuests = 1
+            var g1Out = new System.Collections.Generic.List<string>();
+            var g1 = new PennMUSH.Server.Session.MUSHConnection(line => { g1Out.Add(line); return System.Threading.Tasks.Task.CompletedTask; });
+            server.RegisterConnection(g1);
+            await server.HandleInputAsync(g1, "connect guest");
+            Assert.True(g1.PlayerId.IsValid);
+
+            var g2Out = new System.Collections.Generic.List<string>();
+            var g2 = new PennMUSH.Server.Session.MUSHConnection(line => { g2Out.Add(line); return System.Threading.Tasks.Task.CompletedTask; });
+            server.RegisterConnection(g2);
+            await server.HandleInputAsync(g2, "connect guest");
+            Assert.False(g2.PlayerId.IsValid);
+            Assert.Contains(g2Out, l => l.Contains("all guest slots are currently in use"));
+
+            server.Stop();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(dbPath))
+                try { File.Delete(dbPath); } catch { }
+        }
+    }
 }

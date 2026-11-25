@@ -32,7 +32,9 @@ public class DbckCommandHandler : ICommandHandler
         var god = db.GetObject(new Dbref(1));
         Dbref godId = god != null && god.Type == ObjectType.Player ? god.Id : new Dbref(1);
         var home = db.GetObject(db.DefaultHomeId);
-        Dbref defaultHome = home != null && home.Type == ObjectType.Room ? home.Id : Dbref.Nothing;
+        var baseRoom = db.GetObject(db.BaseRoomId);
+        Dbref baseRoomId = baseRoom != null && baseRoom.Type == ObjectType.Room ? baseRoom.Id : Dbref.Nothing;
+        Dbref defaultHome = home != null && home.Type == ObjectType.Room ? home.Id : baseRoomId;
         var objects = new List<MUSHObject>(db.GetAllObjects());
 
         foreach (var obj in objects)
