@@ -80,6 +80,7 @@ public sealed class ParityRunner
 
         int passed = 0, mismatched = 0, missing = 0, skipped = 0;
         var failures = new List<ParityCaseResult>();
+        int executedSinceReconnect = 0;
 
         foreach (var c in suite.Cases)
         {
@@ -94,6 +95,13 @@ public sealed class ParityRunner
                 skipped++;
                 continue;
             }
+
+            if (executedSinceReconnect >= 30)
+            {
+                await _sandboxes.ReconnectAsync(ct);
+                executedSinceReconnect = 0;
+            }
+            executedSinceReconnect++;
 
             ParityCaseResult res;
             try
