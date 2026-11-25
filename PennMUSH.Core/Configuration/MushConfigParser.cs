@@ -288,6 +288,154 @@ public static class MushConfigParser
                 config.UnsafeEvalFunctions = ParseBool(value, false);
                 break;
 
+            case "safer_ufun":
+                config.SaferUfun = ParseBool(value, true);
+                break;
+
+            case "function_side_effects":
+                config.FunctionSideEffects = ParseBool(value, true);
+                break;
+
+            case "function_invocation_limit":
+                if (int.TryParse(value, out int invLimit)) config.FunctionInvocationLimit = invLimit;
+                break;
+
+            case "function_recursion_limit":
+                if (int.TryParse(value, out int recLimit)) config.FunctionRecursionLimit = recLimit;
+                break;
+
+            case "call_limit":
+                if (int.TryParse(value, out int callLimit)) config.CallLimit = callLimit;
+                break;
+
+            case "tiny_booleans":
+                config.TinyBooleans = ParseBool(value, false);
+                break;
+
+            case "tiny_math":
+                config.TinyMath = ParseBool(value, false);
+                break;
+
+            case "null_eq_zero":
+                config.NullEqZero = ParseBool(value, false);
+                break;
+
+            case "read_remote_desc":
+                config.ReadRemoteDesc = ParseBool(value, false);
+                break;
+
+            case "empty_attrs":
+                config.EmptyAttrs = ParseBool(value, true);
+                break;
+
+            case "object_cost":
+                if (int.TryParse(value, out int objCost)) config.ObjectCost = objCost;
+                break;
+
+            case "room_cost":
+                if (int.TryParse(value, out int roomCost)) config.RoomCost = roomCost;
+                break;
+
+            case "exit_cost":
+                if (int.TryParse(value, out int exitCost)) config.ExitCost = exitCost;
+                break;
+
+            case "link_cost":
+                if (int.TryParse(value, out int linkCost)) config.LinkCost = linkCost;
+                break;
+
+            case "find_cost":
+                if (int.TryParse(value, out int findCost)) config.FindCost = findCost;
+                break;
+
+            case "queue_cost":
+                if (int.TryParse(value, out int queueCost)) config.QueueCost = queueCost;
+                break;
+
+            case "quota_cost":
+                if (int.TryParse(value, out int quotaCost)) config.QuotaCost = quotaCost;
+                break;
+
+            case "max_pennies":
+                if (int.TryParse(value, out int maxPennies)) config.MaxPennies = maxPennies;
+                break;
+
+            case "max_aliases":
+                if (int.TryParse(value, out int maxAliases)) config.MaxAliases = maxAliases;
+                break;
+
+            case "max_attrs_per_obj":
+                if (int.TryParse(value, out int maxAttrs)) config.MaxAttrsPerObj = maxAttrs;
+                break;
+
+            case "max_channels":
+                if (int.TryParse(value, out int maxChannels)) config.MaxChannels = maxChannels;
+                break;
+
+            case "max_player_chans":
+                if (int.TryParse(value, out int maxPlayerChans)) config.MaxPlayerChans = maxPlayerChans;
+                break;
+
+            case "max_dbref":
+                if (int.TryParse(value, out int maxDbref)) config.MaxDbref = maxDbref;
+                break;
+
+            case "max_depth":
+                if (int.TryParse(value, out int maxDepth)) config.MaxDepth = maxDepth;
+                break;
+
+            case "max_parents":
+                if (int.TryParse(value, out int maxParents)) config.MaxParents = maxParents;
+                break;
+
+            case "max_named_qregs":
+                if (int.TryParse(value, out int maxQregs)) config.MaxNamedQregs = maxQregs;
+                break;
+
+            case "player_queue_limit":
+                if (int.TryParse(value, out int pQueueLimit)) config.PlayerQueueLimit = pQueueLimit;
+                break;
+
+            case "queue_chunk":
+                if (int.TryParse(value, out int queueChunk)) config.QueueChunk = queueChunk;
+                break;
+
+            case "mail_limit":
+                if (int.TryParse(value, out int mailLimit)) config.MailLimit = mailLimit;
+                break;
+
+            case "logins":
+                config.Logins = ParseBool(value, true);
+                break;
+
+            case "max_logins":
+                if (int.TryParse(value, out int maxLogins)) config.MaxLogins = maxLogins;
+                break;
+
+            case "connect_fail_limit":
+                if (int.TryParse(value, out int failLimit)) config.ConnectFailLimit = failLimit;
+                break;
+
+            case "idle_timeout":
+                config.IdleTimeout = ParseDurationSeconds(value, 0);
+                break;
+
+            case "unconnected_idle_timeout":
+                config.UnconnectedIdleTimeout = ParseDurationSeconds(value, 300);
+                break;
+
+            case "player_name_len":
+                if (int.TryParse(value, out int nameLen)) config.PlayerNameLen = nameLen;
+                break;
+
+            case "player_name_spaces":
+                config.PlayerNameSpaces = ParseBool(value, false);
+                break;
+
+            case "only_ascii_in_names":
+                config.OnlyAsciiInNames = ParseBool(value, true);
+                break;
+
             case "config_save":
                 config.ConfigSave = ParseBool(value, false);
                 break;
@@ -351,6 +499,39 @@ public static class MushConfigParser
         if (string.IsNullOrWhiteSpace(val)) return defaultValue;
         string v = val.Trim().ToLowerInvariant();
         return v is "yes" or "true" or "1" or "on";
+    }
+
+    private static int ParseDurationSeconds(string val, int fallback)
+    {
+        if (string.IsNullOrWhiteSpace(val)) return fallback;
+        string s = val.Trim().ToLowerInvariant();
+        if (int.TryParse(s, out int plain)) return plain;
+
+        int total = 0;
+        int num = 0;
+        bool hasDigit = false;
+        foreach (char c in s)
+        {
+            if (char.IsDigit(c))
+            {
+                num = num * 10 + (c - '0');
+                hasDigit = true;
+            }
+            else if (hasDigit)
+            {
+                total += c switch
+                {
+                    'd' => num * 86400,
+                    'h' => num * 3600,
+                    'm' => num * 60,
+                    's' => num,
+                    _ => 0
+                };
+                num = 0;
+                hasDigit = false;
+            }
+        }
+        return total + (hasDigit ? num : 0);
     }
 
     private static Dbref ParseDbref(string val, Dbref fallback)

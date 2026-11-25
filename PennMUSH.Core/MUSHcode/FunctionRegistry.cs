@@ -56,6 +56,26 @@ public class FunctionRegistry
     public bool UnsafeEvalFunctions { get; set; } = false;
     public Func<bool>? UnsafeEvalFunctionsProvider { get; set; }
     public bool IsUnsafeEvalEnabled => UnsafeEvalFunctionsProvider?.Invoke() ?? UnsafeEvalFunctions;
+    public bool SaferUfun { get; set; } = true;
+    public Func<bool>? SaferUfunProvider { get; set; }
+    public bool IsSaferUfunEnabled => SaferUfunProvider?.Invoke() ?? SaferUfun;
+    public Func<bool>? SideEffectsEnabledProvider { get; set; }
+    public bool IsSideEffectsEnabled => SideEffectsEnabledProvider?.Invoke() ?? SideEffectsEnabled;
+    public int FunctionInvocationLimit { get; set; } = 25000;
+    public Func<int>? FunctionInvocationLimitProvider { get; set; }
+    public int EffectiveInvocationLimit => FunctionInvocationLimitProvider?.Invoke() ?? FunctionInvocationLimit;
+    public int FunctionRecursionLimit { get; set; } = 50;
+    public Func<int>? FunctionRecursionLimitProvider { get; set; }
+    public int EffectiveRecursionLimit => FunctionRecursionLimitProvider?.Invoke() ?? FunctionRecursionLimit;
+    public bool TinyBooleans { get; set; } = false;
+    public Func<bool>? TinyBooleansProvider { get; set; }
+    public bool IsTinyBooleans => TinyBooleansProvider?.Invoke() ?? TinyBooleans;
+    public bool TinyMath { get; set; } = false;
+    public Func<bool>? TinyMathProvider { get; set; }
+    public bool IsTinyMath => TinyMathProvider?.Invoke() ?? TinyMath;
+    public bool NullEqZero { get; set; } = false;
+    public Func<bool>? NullEqZeroProvider { get; set; }
+    public bool IsNullEqZero => NullEqZeroProvider?.Invoke() ?? NullEqZero;
     public string MudName { get; set; } = "PennMUSH";
     public string MudUrl { get; set; } = string.Empty;
     public Func<IEnumerable<string>>? CommandNamesProvider { get; set; }
@@ -187,7 +207,12 @@ public class FunctionRegistry
 
     public string DispatchBuiltin(string functionName, EvaluationContext context, string[] args)
     {
-        if (_sideEffectFunctions.Contains(functionName) && (!SideEffectsEnabled || context.NoSideFX))
+        if (FunctionInvocationLimitProvider != null)
+            context.MaxInvocations = EffectiveInvocationLimit;
+        if (FunctionRecursionLimitProvider != null)
+            context.MaxRecursionDepth = EffectiveRecursionLimit;
+
+        if (_sideEffectFunctions.Contains(functionName) && (!IsSideEffectsEnabled || context.NoSideFX))
             return MushError.PermissionDenied.Text();
 
         if (_builtinGates.TryGetValue(functionName, out var gate))

@@ -311,4 +311,76 @@ public class ConfigWiringTests
                 try { File.Delete(dbPath); } catch { }
         }
     }
+
+    [Fact]
+    public void Phase2_SaferUfun_SideEffects_Limits_And_PlayerNaming_Work()
+    {
+        var tmpPath = Path.GetTempFileName();
+        MushConfiguration cfg;
+        try
+        {
+            File.WriteAllText(tmpPath, "safer_ufun yes\nidle_timeout 2m\nunconnected_idle_timeout 5m\nplayer_name_len 10\nlogins no\n");
+            cfg = MushConfigParser.ParseFile(tmpPath);
+        }
+        finally
+        {
+            File.Delete(tmpPath);
+        }
+
+        Assert.Equal(120, cfg.IdleTimeout);
+        Assert.Equal(300, cfg.UnconnectedIdleTimeout);
+        Assert.Equal(10, cfg.PlayerNameLen);
+        Assert.False(cfg.Logins);
+
+        var db = new ObjectDatabase
+        {
+            EmptyAttrs = false,
+            MaxAttrsPerObj = 1,
+            MaxParents = 1,
+            PlayerNameLen = 10,
+            PlayerNameSpaces = false,
+            OnlyAsciiInNames = true
+        };
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var wiz = db.CreateObject("WizardBob", ObjectType.Player, new Dbref(1));
+        wiz.AddFlag("WIZARD");
+        var mortal = db.CreateObject("Alice", ObjectType.Player, new Dbref(1));
+        var mortalThing = db.CreateObject("Box", ObjectType.Thing, mortal.Id);
+        var wizThing = db.CreateObject("WizBox", ObjectType.Thing, wiz.Id);
+        wizThing.AddFlag("VISUAL");
+        wizThing.AddFlag("TRUST");
+        wizThing.SetAttribute("SECRET", "hi", wiz.Id);
+
+        var functions = new PennMUSH.Core.MUSHcode.FunctionRegistry(db)
+        {
+            SaferUfunProvider = () => cfg.SaferUfun,
+            SideEffectsEnabledProvider = () => cfg.FunctionSideEffects
+        };
+        var evaluator = new PennMUSH.Core.MUSHcode.ExpressionEvaluator(functions.Dispatch, db);
+        functions.Evaluator = evaluator;
+        var mortalCtx = new PennMUSH.Core.MUSHcode.EvaluationContext(mortal.Id, mortal.Id, mortal.Id, mortal.Location);
+
+        // safer_ufun blocks mortal calling u() on higher-privilege object's attribute
+        Assert.Equal("#-1 PERMISSION DENIED", evaluator.Evaluate($"[u({wizThing.Id}/SECRET)]", mortalCtx));
+        cfg.SaferUfun = false;
+        Assert.Equal("hi", evaluator.Evaluate($"[u({wizThing.Id}/SECRET)]", mortalCtx));
+
+        // function_side_effects=no disables side-effect functions like set()
+        cfg.FunctionSideEffects = false;
+        Assert.Equal("#-1 PERMISSION DENIED", evaluator.Evaluate($"[set({mortalThing.Id},FOO:bar)]", mortalCtx));
+
+        // max_attrs_per_obj and empty_attrs
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new SetCommandHandler(), "@set");
+        dispatcher.Register(new ParentCommandHandler(), "@parent");
+        dispatcher.Dispatch(mortal.Id, $"@set #{mortalThing.Id.Value}=A:1", db);
+        Assert.Contains("Permission denied.", dispatcher.Dispatch(mortal.Id, $"@set #{mortalThing.Id.Value}=B:2", db).Notifications);
+        dispatcher.Dispatch(mortal.Id, $"@set #{mortalThing.Id.Value}=A:", db);
+        Assert.Null(mortalThing.GetAttribute("A"));
+
+        // player_name_len / player_name_spaces / only_ascii_in_names
+        Assert.False(PlayerCreator.OkPlayerName("TooLongPlayerName", db));
+        Assert.False(PlayerCreator.OkPlayerName("Two Words", db));
+        Assert.True(PlayerCreator.OkPlayerName("ShortName", db));
+    }
 }
