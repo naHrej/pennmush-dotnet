@@ -427,4 +427,39 @@ public class ConfigWiringTests
         dispatcher.Dispatch(god.Id, "@config/set link_to_object=yes", db);
         Assert.Contains("Linked.", dispatcher.Dispatch(god.Id, $"@link #{exit.Id.Value}=#{child.Id.Value}", db).Notifications);
     }
+
+    [Fact]
+    public void Phase4_Intervals_Mssp_HtmlScreens_And_Connlog_ParseAndResolve()
+    {
+        var tmpDir = Path.Combine(Path.GetTempPath(), "penn-p4-" + System.Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(tmpDir, "txt"));
+        try
+        {
+            string cnf = Path.Combine(tmpDir, "mush.cnf");
+            File.WriteAllText(cnf,
+                "dump_interval 30m\ndbck_interval 10m\npurge_interval 10m1s\nwarn_interval 1h\n" +
+                "http_per_second 5\nevent_handler #4\nuse_connlog yes\nconnlog_db log/custom_conn.db\n" +
+                "connect_html_file txt/custom_connect.html\nmssp ansi/1\nmssp XTERM 256 COLORS/1\n");
+            File.WriteAllText(Path.Combine(tmpDir, "txt", "custom_connect.html"), "<p>Hi</p>");
+
+            var cfg = MushConfigParser.ParseFile(cnf);
+            Assert.Equal(1800, cfg.DumpInterval);
+            Assert.Equal(600, cfg.DbckInterval);
+            Assert.Equal(601, cfg.PurgeInterval);
+            Assert.Equal(3600, cfg.WarnInterval);
+            Assert.Equal(5, cfg.HttpPerSecond);
+            Assert.Equal(new Dbref(4), cfg.EventHandler);
+            Assert.Equal("log/custom_conn.db", cfg.ConnlogDb);
+            Assert.Equal("1", cfg.MsspFields["ansi"]);
+            Assert.Equal("1", cfg.MsspFields["XTERM 256 COLORS"]);
+
+            string? resolvedHtml = GameScreenFiles.Resolve(tmpDir, cfg.ConnectFile, webSocket: true, cfg.ConnectHtmlFile);
+            Assert.NotNull(resolvedHtml);
+            Assert.EndsWith("custom_connect.html", resolvedHtml!);
+        }
+        finally
+        {
+            Directory.Delete(tmpDir, true);
+        }
+    }
 }

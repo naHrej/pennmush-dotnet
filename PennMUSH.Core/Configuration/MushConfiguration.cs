@@ -150,6 +150,49 @@ public class MushConfiguration
     public string ExitFlags { get; set; } = string.Empty;
     public string ThingFlags { get; set; } = "no_command";
 
+    // Phase 4: Intervals, Events, Logs, HTML Screens, Connlog, SSL, SQL, MSSP
+    public int HttpPerSecond { get; set; } = 3;
+    public Dbref EventHandler { get; set; } = Dbref.Nothing;
+    public string AccessFile { get; set; } = "access.cnf";
+    public int DumpInterval { get; set; } = 3600;
+    public int DbckInterval { get; set; } = 599;
+    public int PurgeInterval { get; set; } = 601;
+    public int WarnInterval { get; set; } = 3600;
+    public string ConnectHtmlFile { get; set; } = "txt/connect.html";
+    public string MotdHtmlFile { get; set; } = "txt/motd.html";
+    public string WizmotdHtmlFile { get; set; } = "txt/wizmotd.html";
+    public string NewuserHtmlFile { get; set; } = "txt/newuser.html";
+    public string QuitHtmlFile { get; set; } = "txt/quit.html";
+    public string DownHtmlFile { get; set; } = "txt/down.html";
+    public string FullHtmlFile { get; set; } = "txt/full.html";
+    public string GuestHtmlFile { get; set; } = "txt/guest.html";
+    public string RegisterHtmlFile { get; set; } = "txt/register.html";
+    public bool UseConnlog { get; set; } = true;
+    public string ConnlogDb { get; set; } = "connlog.db";
+    public string ErrorLog { get; set; } = "log/netmush.log";
+    public string ConnectLog { get; set; } = "log/connect.log";
+    public string WizardLog { get; set; } = "log/wizard.log";
+    public string CheckptLog { get; set; } = "log/checkpt.log";
+    public string TraceLog { get; set; } = "log/trace.log";
+    public string CommandLog { get; set; } = "log/command.log";
+    public bool LogCommands { get; set; } = false;
+    public bool LogForces { get; set; } = false;
+    public string LogWipePasswd { get; set; } = "zap!";
+    public int LogMaxSize { get; set; } = 100;
+    public string LogSizePolicy { get; set; } = "trim";
+    public bool Pueblo { get; set; } = false;
+    public string SqlPlatform { get; set; } = "disabled";
+    public string SqlHost { get; set; } = "127.0.0.1";
+    public string SqlUsername { get; set; } = "mush";
+    public string SqlPassword { get; set; } = "mush";
+    public string SslIpAddr { get; set; } = string.Empty;
+    public string SslCertificateFile { get; set; } = "server-cert.crt";
+    public string SslPrivateKeyFile { get; set; } = "server-key.crt";
+    public string SslCaFile { get; set; } = string.Empty;
+    public string SslCaDir { get; set; } = string.Empty;
+    public bool SslRequireClientCert { get; set; } = false;
+    public Dictionary<string, string> MsspFields { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     // Aliases & Restrictions
     public Dictionary<string, string> CommandAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FunctionAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -322,6 +365,21 @@ public class MushConfiguration
             case "use_muxcomm":
                 UseMuxcomm = enabled;
                 break;
+            case "use_connlog":
+                UseConnlog = enabled;
+                break;
+            case "log_commands":
+                LogCommands = enabled;
+                break;
+            case "log_forces":
+                LogForces = enabled;
+                break;
+            case "pueblo":
+                Pueblo = enabled;
+                break;
+            case "ssl_require_client_cert":
+                SslRequireClientCert = enabled;
+                break;
             default:
                 failure = KnownDirectives.Contains(key)
                     ? "That isn't an on/off option."
@@ -359,7 +417,15 @@ public class MushConfiguration
         "float_precision", "comma_exit_list", "ansi_names", "count_all", "monikers",
         "chan_cost", "chan_title_len", "noisy_cemit", "chat_strip_quote", "use_muxcomm", "channel_flags",
         "ancestor_room", "ancestor_thing", "ancestor_exit", "ancestor_player",
-        "player_flags", "room_flags", "exit_flags", "thing_flags"
+        "player_flags", "room_flags", "exit_flags", "thing_flags",
+        "http_per_second", "event_handler", "access_file", "dump_interval", "dbck_interval",
+        "purge_interval", "warn_interval", "connect_html_file", "motd_html_file", "wizmotd_html_file",
+        "newuser_html_file", "quit_html_file", "down_html_file", "full_html_file", "guest_html_file",
+        "register_create_html_file", "use_connlog", "connlog_db", "error_log", "connect_log",
+        "wizard_log", "checkpt_log", "trace_log", "command_log", "log_commands", "log_forces",
+        "log_wipe_passwd", "log_max_size", "log_size_policy", "pueblo", "sql_platform", "sql_host",
+        "sql_username", "sql_password", "ssl_ip_addr", "ssl_certificate_file", "ssl_private_key_file",
+        "ssl_ca_file", "ssl_ca_dir", "ssl_require_client_cert", "mssp"
     };
 }
 

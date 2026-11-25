@@ -596,6 +596,172 @@ public static class MushConfigParser
                 config.ThingFlags = AppendFlagList(config.ThingFlags, value);
                 break;
 
+            case "http_per_second":
+                if (int.TryParse(value, out int httpRate)) config.HttpPerSecond = httpRate;
+                break;
+
+            case "event_handler":
+                config.EventHandler = ParseDbref(value, Dbref.Nothing);
+                break;
+
+            case "access_file":
+                config.AccessFile = value;
+                break;
+
+            case "dump_interval":
+                config.DumpInterval = ParseDurationSeconds(value, 3600);
+                break;
+
+            case "dbck_interval":
+                config.DbckInterval = ParseDurationSeconds(value, 599);
+                break;
+
+            case "purge_interval":
+                config.PurgeInterval = ParseDurationSeconds(value, 601);
+                break;
+
+            case "warn_interval":
+                config.WarnInterval = ParseDurationSeconds(value, 3600);
+                break;
+
+            case "connect_html_file":
+                config.ConnectHtmlFile = value;
+                break;
+
+            case "motd_html_file":
+                config.MotdHtmlFile = value;
+                break;
+
+            case "wizmotd_html_file":
+                config.WizmotdHtmlFile = value;
+                break;
+
+            case "newuser_html_file":
+                config.NewuserHtmlFile = value;
+                break;
+
+            case "quit_html_file":
+                config.QuitHtmlFile = value;
+                break;
+
+            case "down_html_file":
+                config.DownHtmlFile = value;
+                break;
+
+            case "full_html_file":
+                config.FullHtmlFile = value;
+                break;
+
+            case "guest_html_file":
+                config.GuestHtmlFile = value;
+                break;
+
+            case "register_create_html_file":
+                config.RegisterHtmlFile = value;
+                break;
+
+            case "use_connlog":
+                config.UseConnlog = ParseBool(value, true);
+                break;
+
+            case "connlog_db":
+                config.ConnlogDb = value;
+                break;
+
+            case "error_log":
+                config.ErrorLog = value;
+                break;
+
+            case "connect_log":
+                config.ConnectLog = value;
+                break;
+
+            case "wizard_log":
+                config.WizardLog = value;
+                break;
+
+            case "checkpt_log":
+                config.CheckptLog = value;
+                break;
+
+            case "trace_log":
+                config.TraceLog = value;
+                break;
+
+            case "command_log":
+                config.CommandLog = value;
+                break;
+
+            case "log_commands":
+                config.LogCommands = ParseBool(value, false);
+                break;
+
+            case "log_forces":
+                config.LogForces = ParseBool(value, false);
+                break;
+
+            case "log_wipe_passwd":
+                config.LogWipePasswd = value;
+                break;
+
+            case "log_max_size":
+                if (int.TryParse(value, out int logMax)) config.LogMaxSize = logMax;
+                break;
+
+            case "log_size_policy":
+                config.LogSizePolicy = value;
+                break;
+
+            case "pueblo":
+                config.Pueblo = ParseBool(value, false);
+                break;
+
+            case "sql_platform":
+                config.SqlPlatform = value;
+                break;
+
+            case "sql_host":
+                config.SqlHost = value;
+                break;
+
+            case "sql_username":
+                config.SqlUsername = value;
+                break;
+
+            case "sql_password":
+                config.SqlPassword = value;
+                break;
+
+            case "ssl_ip_addr":
+                config.SslIpAddr = value;
+                break;
+
+            case "ssl_certificate_file":
+                config.SslCertificateFile = value;
+                break;
+
+            case "ssl_private_key_file":
+                config.SslPrivateKeyFile = value;
+                break;
+
+            case "ssl_ca_file":
+                config.SslCaFile = value;
+                break;
+
+            case "ssl_ca_dir":
+                config.SslCaDir = value;
+                break;
+
+            case "ssl_require_client_cert":
+                config.SslRequireClientCert = ParseBool(value, false);
+                break;
+
+            case "mssp":
+                int slashIdx = value.IndexOf('/');
+                if (slashIdx > 0)
+                    config.MsspFields[value[..slashIdx].Trim()] = value[(slashIdx + 1)..].Trim();
+                break;
+
             case "config_save":
                 config.ConfigSave = ParseBool(value, false);
                 break;

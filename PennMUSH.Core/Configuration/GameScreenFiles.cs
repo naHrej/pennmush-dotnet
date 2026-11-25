@@ -5,11 +5,20 @@ using System.IO;
 
 public static class GameScreenFiles
 {
-    public static string? Resolve(string gameDirectory, string configuredTextPath, bool webSocket)
+    public static string? Resolve(string gameDirectory, string configuredTextPath, bool webSocket, string? configuredHtmlPath = null)
     {
         string relative = configuredTextPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
         if (webSocket)
         {
+            if (!string.IsNullOrWhiteSpace(configuredHtmlPath))
+            {
+                string explicitHtml = Path.GetFullPath(Path.Combine(
+                    gameDirectory,
+                    configuredHtmlPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
+                if (File.Exists(explicitHtml))
+                    return explicitHtml;
+            }
+
             string htmlFull = Path.GetFullPath(Path.Combine(
                 gameDirectory,
                 "html",

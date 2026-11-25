@@ -205,7 +205,16 @@ public class MUSHServer
         Functions.Scheduler = Cron;
         Functions.Queue = Queue;
         Functions.SqlDatabase = Sql;
-        ConnectionLog.OpenFile(Path.Combine(GameDirectory, "connlog.db"));
+        if (Config.UseConnlog && !string.IsNullOrWhiteSpace(Config.ConnlogDb))
+        {
+            string connlogPath = Path.IsPathRooted(Config.ConnlogDb)
+                ? Config.ConnlogDb
+                : Path.Combine(GameDirectory, Config.ConnlogDb.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+            string? connlogDir = Path.GetDirectoryName(connlogPath);
+            if (!string.IsNullOrEmpty(connlogDir))
+                Directory.CreateDirectory(connlogDir);
+            ConnectionLog.OpenFile(connlogPath);
+        }
         Functions.ConnectionLog = ConnectionLog;
         Database.Changes.Suspend();
         try
@@ -568,7 +577,17 @@ public class MUSHServer
 
     private async Task<bool> SendScreenAsync(MUSHConnection conn, string configuredPath, CancellationToken ct = default)
     {
-        string? path = GameScreenFiles.Resolve(GameDirectory, configuredPath, conn.IsWebSocket);
+        string? configuredHtmlPath = configuredPath == Config.ConnectFile ? Config.ConnectHtmlFile
+            : configuredPath == Config.MotdFile ? Config.MotdHtmlFile
+            : configuredPath == Config.WizmotdFile ? Config.WizmotdHtmlFile
+            : configuredPath == Config.NewuserFile ? Config.NewuserHtmlFile
+            : configuredPath == Config.QuitFile ? Config.QuitHtmlFile
+            : configuredPath == Config.DownFile ? Config.DownHtmlFile
+            : configuredPath == Config.FullFile ? Config.FullHtmlFile
+            : configuredPath == Config.GuestFile ? Config.GuestHtmlFile
+            : configuredPath == Config.RegisterFile ? Config.RegisterHtmlFile
+            : null;
+        string? path = GameScreenFiles.Resolve(GameDirectory, configuredPath, conn.IsWebSocket, configuredHtmlPath);
         if (path == null)
             return false;
 
