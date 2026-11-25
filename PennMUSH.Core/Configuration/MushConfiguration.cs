@@ -57,6 +57,8 @@ public class MushConfiguration
     public int StartingMoney { get; set; } = 100;
     public bool UseQuota { get; set; } = true;
     public bool TinyTrimFun { get; set; } = false;
+    public bool ConfigSave { get; set; } = false;
+    public string? ConfigFilePath { get; set; }
     public int StartingQuota { get; set; } = 20;
     public int Paycheck { get; set; } = 50;
 
@@ -143,7 +145,7 @@ public class MushConfiguration
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",
         "full_file", "guest_file", "register_create_file", "colors_file", "dict_file",
         "help_command", "ahelp_command", "money_singular", "money_plural",
-        "starting_money", "paycheck", "use_quota", "starting_quota", "tiny_trim_fun"
+        "starting_money", "paycheck", "use_quota", "starting_quota", "tiny_trim_fun", "config_save"
     };
 }
 

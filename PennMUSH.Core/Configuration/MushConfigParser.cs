@@ -284,6 +284,10 @@ public static class MushConfigParser
                 config.TinyTrimFun = ParseBool(value, false);
                 break;
 
+            case "config_save":
+                config.ConfigSave = ParseBool(value, false);
+                break;
+
             default:
                 config.RawDirectives[directive] = value;
                 break;

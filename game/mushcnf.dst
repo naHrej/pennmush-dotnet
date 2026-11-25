@@ -1017,3 +1017,7 @@ include alias.cnf
 ###
 include restrict.cnf
 
+# Allow God to persist runtime @config/save changes back to mush.cnf?
+# This option cannot be changed in-game with @config/set or @config/save.
+config_save no
+

@@ -119,4 +119,55 @@ public class ConfigWiringTests
             Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    [Fact]
+    public void ConfigSave_IsGatedByConfigSaveDirective_AndPersistsWhenEnabled()
+    {
+        string tempFile = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tempFile, "# Header comment\nconfig_save yes\nmud_name OldMUSH\n");
+            var cfg = MushConfigParser.ParseFile(tempFile);
+            cfg.ConfigFilePath = tempFile;
+
+            Assert.True(cfg.ConfigSave);
+            // config_save cannot be changed via @config/set, @config/save, or TrySetSwitch
+            Assert.Null(ConfigCatalog.Find("config_save"));
+            Assert.False(cfg.TrySetSwitch("config_save", false, out _));
+
+            var db = new ObjectDatabase();
+            db.CreateObject("Room Zero", ObjectType.Room, new Dbref(1));
+            var god = db.CreateObject("One", ObjectType.Player, new Dbref(1));
+            god.AddFlag("WIZARD");
+            god.AddFlag("GOD");
+
+            var dispatcher = new CommandDispatcher();
+            dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+
+            var blocked = dispatcher.Dispatch(god.Id, "@config/set config_save=no", db);
+            Assert.DoesNotContain("Option set.", blocked.Notifications);
+            Assert.True(cfg.ConfigSave);
+
+            var blockedSave = dispatcher.Dispatch(god.Id, "@config/save config_save=no", db);
+            Assert.DoesNotContain("Option set and saved.", blockedSave.Notifications);
+            Assert.True(cfg.ConfigSave);
+
+            // Update existing directive and append a new one
+            var savedExisting = dispatcher.Dispatch(god.Id, "@config/save mud_name=NewMUSH", db);
+            Assert.Contains("Option set and saved.", savedExisting.Notifications);
+
+            var savedNew = dispatcher.Dispatch(god.Id, "@config/save starting_money=500", db);
+            Assert.Contains("Option set and saved.", savedNew.Notifications);
+
+            string contents = File.ReadAllText(tempFile);
+            Assert.Contains("# Header comment", contents);
+            Assert.Contains("mud_name NewMUSH", contents);
+            Assert.DoesNotContain("mud_name OldMUSH", contents);
+            Assert.Contains("starting_money 500", contents);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
 }
