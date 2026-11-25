@@ -56,7 +56,7 @@ public class HelpCommandTests
         try
         {
             File.WriteAllText(Path.Combine(dir, "system_object.md"),
-                "---\ntopics: system_object, $name\n---\n# System Object\n\nUse `<player>` or `@set $system/COMBAT=#42`.\n\n| Flag | Meaning |\n|---|---|\n| `SAFE` | Protected |\n");
+                "---\ntopics: system_object, $name\n---\n# System Object\n\n@lock[/<switch>] <object>=<key>\n\nUse `<player>` or `@set $system/COMBAT=#42`.\n\n| Flag | Meaning |\n|---|---|\n| `SAFE` | Protected |\n");
 
             var store = new HelpStore();
             store.LoadFromDirectory(dir);
@@ -67,12 +67,19 @@ public class HelpCommandTests
             var htmlDispatcher = new CommandDispatcher();
             htmlDispatcher.Register(new HelpCommandHandler(store, _ => true), "help");
             var htmlRes = htmlDispatcher.Dispatch(player, "help $name", db);
-            Assert.Contains(htmlRes.Notifications, n => n.Contains("<div class=\"help-topic\">") && n.Contains(">System Object</h1>") && n.Contains("<table>"));
+            Assert.Contains(htmlRes.Notifications, n =>
+                n.Contains("<div class=\"help-topic\">")
+                && n.Contains(">System Object</h1>")
+                && n.Contains("<table>")
+                && n.Contains("<span class=\"help-opt\">[</span>")
+                && n.Contains("<span class=\"help-arg\">&lt;switch&gt;</span>")
+                && n.Contains("<span class=\"help-arg\">&lt;object&gt;</span>")
+                && n.Contains("<span class=\"help-arg\">&lt;key&gt;</span>"));
 
             var plainDispatcher = new CommandDispatcher();
             plainDispatcher.Register(new HelpCommandHandler(store, _ => false), "help");
             var plainRes = plainDispatcher.Dispatch(player, "help system_object", db);
-            Assert.Contains(plainRes.Notifications, n => n.Contains("System Object") && n.Contains("<player>") && !n.Contains("<div class=\"help-topic\">"));
+            Assert.Contains(plainRes.Notifications, n => n.Contains("System Object") && n.Contains("@lock[/<switch>] <object>=<key>") && !n.Contains("<div class=\"help-topic\">"));
         }
         finally
         {

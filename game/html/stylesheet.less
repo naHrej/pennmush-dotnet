@@ -96,6 +96,9 @@
     border: 1px solid @screen-rule;
     border-radius: 4px;
     padding: 0.5em 0.7em;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
     overflow-x: auto;
 
     code {
@@ -130,5 +133,15 @@
     border: 0;
     border-top: 1px solid @screen-rule;
     margin: 0.6em 0;
+  }
+
+  .help-arg {
+    color: @screen-accent;
+    font-style: italic;
+  }
+
+  .help-opt {
+    color: @screen-dim;
+    font-weight: 600;
   }
 }
