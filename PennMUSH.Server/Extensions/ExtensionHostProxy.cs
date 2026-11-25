@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.MUSHcode;
@@ -24,6 +25,7 @@ public class ExtensionHostProxy : IExtensionHost
     private readonly List<string> _registeredFunctions = new();
     private readonly List<string> _registeredTickServices = new();
     private readonly List<string> _registeredProtocolHandlers = new();
+    private readonly List<string> _registeredAttributeFlags = new();
 
     public ObjectDatabase Database => _server.Database;
     public CommandDispatcher Dispatcher => _server.Dispatcher;
@@ -88,6 +90,20 @@ public class ExtensionHostProxy : IExtensionHost
     {
         _manager.UnregisterProtocolHandlerInternal(typePrefix);
         _registeredProtocolHandlers.Remove(typePrefix);
+    }
+
+    public bool RegisterAttributeFlag(string flagName)
+    {
+        if (!StandardAttributes.RegisterCustomFlag(flagName))
+            return false;
+        _registeredAttributeFlags.Add(flagName);
+        return true;
+    }
+
+    public bool UnregisterAttributeFlag(string flagName)
+    {
+        _registeredAttributeFlags.RemoveAll(f => f.Equals(flagName, StringComparison.OrdinalIgnoreCase));
+        return StandardAttributes.UnregisterCustomFlag(flagName);
     }
 
     public void BroadcastNotification(Notification notification)
@@ -161,5 +177,11 @@ public class ExtensionHostProxy : IExtensionHost
             try { _manager.UnregisterProtocolHandlerInternal(proto); } catch { }
         }
         _registeredProtocolHandlers.Clear();
+
+        foreach (var attrFlag in _registeredAttributeFlags)
+        {
+            try { StandardAttributes.UnregisterCustomFlag(attrFlag); } catch { }
+        }
+        _registeredAttributeFlags.Clear();
     }
 }

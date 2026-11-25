@@ -30,6 +30,9 @@ public interface IExtensionHost
     void RegisterProtocolHandler(string typePrefix, IProtocolHandler handler);
     void UnregisterProtocolHandler(string typePrefix);
 
+    bool RegisterAttributeFlag(string flagName);
+    bool UnregisterAttributeFlag(string flagName);
+
     void BroadcastNotification(Notification notification);
     void NotifyPlayer(Dbref player, string message);
     Task SendProtocolEnvelopeAsync(Dbref player, string type, object payload);

@@ -234,7 +234,7 @@ public class MUSHObject
         _owner = owner;
     }
 
-    public AttributeErrorCode SetAttribute(string name, string value, Dbref setter, AttributeFlags flags = AttributeFlags.None, bool wizardOverride = false)
+    public AttributeErrorCode SetAttribute(string name, string value, Dbref setter, AttributeFlags flags = AttributeFlags.None, bool wizardOverride = false, IEnumerable<string>? customFlags = null)
     {
         if (!AttributeEntry.IsValidName(name))
             return AttributeErrorCode.BadName;
@@ -249,10 +249,12 @@ public class MUSHObject
             existing.Value = value;
             existing.Creator = setter;
             existing.Flags = flags;
+            if (customFlags != null)
+                existing.SetCustomFlags(customFlags);
         }
         else
         {
-            _attributes[name] = new AttributeEntry(name.ToUpperInvariant(), value, setter, flags);
+            _attributes[name] = new AttributeEntry(name.ToUpperInvariant(), value, setter, flags, customFlags);
         }
 
         NoteAttributeValue();
@@ -483,6 +485,28 @@ public class MUSHObject
             NoteAttributeValue();
             Touch();
         }
+    }
+
+    public bool AddAttributeCustomFlag(string name, string flag)
+    {
+        if (_attributes.TryGetValue(name, out var existing) && existing.AddCustomFlag(flag))
+        {
+            NoteAttributeValue();
+            Touch();
+            return true;
+        }
+        return false;
+    }
+
+    public bool RemoveAttributeCustomFlag(string name, string flag)
+    {
+        if (_attributes.TryGetValue(name, out var existing) && existing.RemoveCustomFlag(flag))
+        {
+            NoteAttributeValue();
+            Touch();
+            return true;
+        }
+        return false;
     }
 
     public bool RemoveAttribute(string name)

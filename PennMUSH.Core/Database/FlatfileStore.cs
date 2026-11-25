@@ -88,7 +88,10 @@ public static class FlatfileStore
 
             foreach (var attr in obj.Attributes)
             {
-                writer.WriteLine($"]{attr.Name}^{attr.Creator.Value}^{(int)attr.Flags}");
+                if (attr.CustomFlags.Count > 0)
+                    writer.WriteLine($"]{attr.Name}^{attr.Creator.Value}^{(int)attr.Flags}^{string.Join(' ', attr.CustomFlags)}");
+                else
+                    writer.WriteLine($"]{attr.Name}^{attr.Creator.Value}^{(int)attr.Flags}");
                 writer.WriteLine($"\"{attr.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
             }
 
@@ -349,12 +352,7 @@ public static class FlatfileStore
 
                         if (line.StartsWith(']'))
                         {
-                            var parts = line.Substring(1).Split('^');
-                            string attrName = parts[0];
-                            int attrCreator = parts.Length > 1 && int.TryParse(parts[1], out int c) ? c : owner;
-                            int attrFlags = parts.Length > 2 && int.TryParse(parts[2], out int f) ? f : 0;
-                            string attrVal = ReadString(reader);
-                            obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), (AttributeFlags)attrFlags);
+                            ParseBracketAttribute(reader, line, obj, owner);
                         }
                         else if (line.StartsWith("> "))
                         {
@@ -417,12 +415,7 @@ public static class FlatfileStore
                         }
                         else if (line.StartsWith(']'))
                         {
-                            var parts = line.Substring(1).Split('^');
-                            string attrName = parts[0];
-                            int attrCreator = parts.Length > 1 && int.TryParse(parts[1], out int c) ? c : owner;
-                            int attrFlags = parts.Length > 2 && int.TryParse(parts[2], out int f) ? f : 0;
-                            string attrVal = ReadString(reader);
-                            obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), (AttributeFlags)attrFlags);
+                            ParseBracketAttribute(reader, line, obj, obj.Owner.Value);
                         }
                     }
 
@@ -541,14 +534,14 @@ public static class FlatfileStore
         {
             string attrName = ReadLabeledValue(reader, "name");
             int attrCreator = ParseDbrefId(ReadLabeledValue(reader, "owner"));
-            AttributeFlags attrFlags = ParseAttributeFlags(ReadLabeledValue(reader, "flags"));
+            AttributeFlags attrFlags = ParseAttributeFlags(ReadLabeledValue(reader, "flags"), out var customFlags);
             var (nextLabel, nextVal) = ReadLabeledField(reader);
             if (nextLabel == "derefs")
             {
                 (nextLabel, nextVal) = ReadLabeledField(reader);
             }
             string attrVal = nextLabel == "value" ? nextVal : string.Empty;
-            obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), attrFlags);
+            obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), attrFlags, customFlags: customFlags);
         }
 
         return obj;
@@ -630,12 +623,26 @@ public static class FlatfileStore
         return result;
     }
 
-    private static AttributeFlags ParseAttributeFlags(string text)
+    private static void ParseBracketAttribute(TextReader reader, string line, MUSHObject obj, int fallbackCreator)
+    {
+        var parts = line.Substring(1).Split('^');
+        string attrName = parts[0];
+        int attrCreator = parts.Length > 1 && int.TryParse(parts[1], out int c) ? c : fallbackCreator;
+        int attrFlags = parts.Length > 2 && int.TryParse(parts[2], out int f) ? f : 0;
+        string[]? customFlags = parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3])
+            ? parts[3].Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            : null;
+        string attrVal = ReadString(reader);
+        obj.SetAttribute(attrName, attrVal, new Dbref(attrCreator), (AttributeFlags)attrFlags, customFlags: customFlags);
+    }
+
+    private static AttributeFlags ParseAttributeFlags(string text, out List<string>? customFlags)
     {
         AttributeFlags result = AttributeFlags.None;
+        customFlags = null;
         foreach (string token in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
-            result |= token.ToLowerInvariant() switch
+            AttributeFlags bit = token.ToLowerInvariant() switch
             {
                 "quiet" => AttributeFlags.Quiet,
                 "internal" => AttributeFlags.Internal,
@@ -668,6 +675,15 @@ public static class FlatfileStore
                 "aahear" => AttributeFlags.AHear,
                 _ => AttributeFlags.None
             };
+            if (bit != AttributeFlags.None)
+            {
+                result |= bit;
+            }
+            else if (StandardAttributes.IsCustomFlag(token))
+            {
+                customFlags ??= new List<string>();
+                customFlags.Add(token);
+            }
         }
         return result;
     }

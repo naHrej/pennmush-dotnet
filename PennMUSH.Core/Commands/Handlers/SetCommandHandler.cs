@@ -53,15 +53,25 @@ public class SetCommandHandler : ICommandHandler
             {
                 bool negateAttrFlag = token.StartsWith('!');
                 string flagToken = negateAttrFlag ? token[1..] : token;
-                if (!StandardAttributes.TryFindSetFlag(flagToken, out var bit))
+                if (StandardAttributes.TryFindSetFlag(flagToken, out var bit))
+                {
+                    if (negateAttrFlag)
+                        attrTarget.RemoveAttributeFlags(attrEntry.Name, bit);
+                    else
+                        attrTarget.AddAttributeFlags(attrEntry.Name, bit);
+                }
+                else if (StandardAttributes.IsCustomFlag(flagToken))
+                {
+                    if (negateAttrFlag)
+                        attrTarget.RemoveAttributeCustomFlag(attrEntry.Name, flagToken);
+                    else
+                        attrTarget.AddAttributeCustomFlag(attrEntry.Name, flagToken);
+                }
+                else
                 {
                     context.Notify(Feedback.IDontRecognizeThatFlag);
                     return false;
                 }
-                if (negateAttrFlag)
-                    attrTarget.RemoveAttributeFlags(attrEntry.Name, bit);
-                else
-                    attrTarget.AddAttributeFlags(attrEntry.Name, bit);
             }
             context.Notify(Feedback.Set);
             return true;
