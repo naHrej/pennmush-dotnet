@@ -279,8 +279,12 @@ public static class StringFunctions
         string text = args[0];
         string search = args.Length > 1 && !string.IsNullOrEmpty(args[1]) ? args[1] : " ";
 
-        int idx = text.IndexOf(search, StringComparison.Ordinal);
-        return idx >= 0 ? text.Substring(0, idx) : text;
+        string needle = AnsiString.Strip(search);
+        var glyphs = AnsiString.Parse(text, out _);
+        string visible = new string(glyphs.Select(g => g.Char).ToArray());
+        int idx = visible.IndexOf(needle, StringComparison.Ordinal);
+        if (idx < 0) return text;
+        return idx == 0 ? string.Empty : AnsiString.Substring(text, 0, idx);
     }
 
     public static string After(EvaluationContext ctx, string[] args)
@@ -289,8 +293,13 @@ public static class StringFunctions
         string text = args[0];
         string search = args.Length > 1 && !string.IsNullOrEmpty(args[1]) ? args[1] : " ";
 
-        int idx = text.IndexOf(search, StringComparison.Ordinal);
-        return idx >= 0 ? text.Substring(idx + search.Length) : string.Empty;
+        string needle = AnsiString.Strip(search);
+        var glyphs = AnsiString.Parse(text, out _);
+        string visible = new string(glyphs.Select(g => g.Char).ToArray());
+        int idx = visible.IndexOf(needle, StringComparison.Ordinal);
+        if (idx < 0) return string.Empty;
+        int start = idx + needle.Length;
+        return AnsiString.Substring(text, start, glyphs.Count - start);
     }
 
     public static string LPos(EvaluationContext ctx, string[] args)
