@@ -117,7 +117,7 @@ pennmush-dotnet/
 │   ├── Network/                   # TelnetListenerService
 │   ├── Session/                   # ConnectionDirectory & MUSHConnection
 │   └── Program.cs                 # Kestrel endpoints & host wiring
-├── PennMUSH.Core.Tests/           # xUnit suite (469 tests across 95 test files)
+├── PennMUSH.Core.Tests/           # xUnit suite (504 passing unit tests)
 ├── game/                          # Default runtime data (mush.cnf, alias.cnf, restrict.cnf, txt/, html/)
 ├── plugins/                       # External plugin DLL drop-in directory
 └── docs/
