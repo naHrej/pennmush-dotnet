@@ -32,7 +32,7 @@ public interface IExtensionHost
     void RegisterProtocolHandler(string typePrefix, IProtocolHandler handler);
     void UnregisterProtocolHandler(string typePrefix);
 
-    bool RegisterAttributeFlag(string flagName);
+    bool RegisterAttributeFlag(string flagName, string? shortName = null);
     bool UnregisterAttributeFlag(string flagName);
 
     void CapturePlayerInput(Dbref player, Func<string, bool> onLine);

@@ -273,7 +273,7 @@ public class ExamineCommandHandler : ICommandHandler
                 if (!AttributePermissions.CanRead(execObj, target, attr, target))
                     continue;
                 if (MatchesAttributePattern(attr.Name, attrPattern))
-                    matched.Add($"{attr.Name} [{attr.Creator}{AttrFlagLetters(attr)}]: {attr.Value}");
+                    matched.Add(FormatAttributeLine(attr, useHashPrefix: false));
             }
             if (matched.Count > 0)
                 context.Notify(string.Join("\n", matched), escapeHtml: true);
@@ -349,7 +349,7 @@ public class ExamineCommandHandler : ICommandHandler
             {
                 if (!AttributePermissions.CanRead(execObj, target, attr, target))
                     continue;
-                sb.AppendLine($"{attr.Name} [#{attr.Creator.Value}{AttrFlagLetters(attr)}]: {attr.Value}");
+                sb.AppendLine(FormatAttributeLine(attr, useHashPrefix: true));
             }
 
             var contents = db.GetContents(target.Id).ToList();
@@ -432,8 +432,25 @@ public class ExamineCommandHandler : ICommandHandler
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Safe)) sb.Append('S');
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Regexp)) sb.Append('R');
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Case)) sb.Append('C');
-        if (attr.CustomFlags.Count > 0)
-            sb.Append(' ').Append(string.Join(' ', attr.CustomFlags));
         return sb.ToString();
+    }
+
+    internal static string FormatAttributeLine(PennMUSH.Core.Attributes.AttributeEntry attr, bool useHashPrefix)
+    {
+        string creator = useHashPrefix ? $"#{attr.Creator.Value}" : attr.Creator.ToString();
+        string header = $"{attr.Name} [{creator}{AttrFlagLetters(attr)}]:";
+        if (attr.CustomFlags.Count == 0)
+            return $"{header} {attr.Value}";
+
+        var badges = new List<string>();
+        foreach (string flag in attr.CustomFlags)
+        {
+            if (PennMUSH.Core.Attributes.StandardAttributes.TryGetCustomFlagShortName(flag, out string shortName))
+                badges.Add($"\x1b[1;34m({shortName})\x1b[0m");
+        }
+
+        return badges.Count > 0
+            ? $"{header} {string.Join(' ', badges)} {attr.Value}"
+            : $"{header} {attr.Value}";
     }
 }

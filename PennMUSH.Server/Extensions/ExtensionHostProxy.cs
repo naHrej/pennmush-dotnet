@@ -106,9 +106,9 @@ public class ExtensionHostProxy : IExtensionHost
         _registeredProtocolHandlers.Remove(typePrefix);
     }
 
-    public bool RegisterAttributeFlag(string flagName)
+    public bool RegisterAttributeFlag(string flagName, string? shortName = null)
     {
-        if (!StandardAttributes.RegisterCustomFlag(flagName))
+        if (!StandardAttributes.RegisterCustomFlag(flagName, shortName))
             return false;
         _registeredAttributeFlags.Add(flagName);
         return true;

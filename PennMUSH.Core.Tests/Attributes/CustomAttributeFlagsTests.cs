@@ -136,7 +136,7 @@ public class CustomAttributeFlagsTests
     public void Examine_DisplaysCustomAttributeFlags_And_PlayerDollarCommandsMatch()
     {
         const string flag = "custom_tag";
-        StandardAttributes.RegisterCustomFlag(flag);
+        StandardAttributes.RegisterCustomFlag(flag, "tag");
         try
         {
             var db = new ObjectDatabase();
@@ -152,10 +152,10 @@ public class CustomAttributeFlagsTests
             dispatcher.Register(new PemitCommandHandler(), "@pemit");
 
             var exObj = dispatcher.Dispatch(god.Id, "examine me", db);
-            Assert.Contains(exObj.Notifications, n => n.Contains("MYATTR [#1v custom_tag]: hello", StringComparison.Ordinal));
+            Assert.Contains(exObj.Notifications, n => n.Contains("MYATTR [#1v]: \x1b[1;34m(tag)\x1b[0m hello", StringComparison.Ordinal));
 
             var exAttr = dispatcher.Dispatch(god.Id, "examine me/MYATTR", db);
-            Assert.Contains(exAttr.Notifications, n => n.Contains("MYATTR [#1v custom_tag]: hello", StringComparison.Ordinal));
+            Assert.Contains(exAttr.Notifications, n => n.Contains("MYATTR [#1v]: \x1b[1;34m(tag)\x1b[0m hello", StringComparison.Ordinal));
 
             var cmdCtx = dispatcher.Dispatch(god.Id, "+ping world", db);
             Assert.Single(cmdCtx.TargetedNotifications);
