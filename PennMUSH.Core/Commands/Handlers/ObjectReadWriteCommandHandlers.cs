@@ -452,7 +452,7 @@ public class AttributeLockCommandHandler : ICommandHandler
         }
 
         bool locked = flags.HasFlag(AttributeFlags.Locked);
-        context.Notify(locked ? Feedback.IsLocked2 : Feedback.IsUnlocked, ("value", entry.Name));
+        context.Notify(locked ? "Attribute locked." : "Attribute unlocked.");
         return true;
     }
 }

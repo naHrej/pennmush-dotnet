@@ -251,8 +251,14 @@ public class TriggerCommandHandler : ICommandHandler
         {
             var res = _dispatcher.Dispatch(target.Id, code, db);
             foreach (var note in res.TargetedNotifications) context.TargetedNotifications.Add(note);
-            foreach (var note in res.Notifications) context.Notifications.Add(note);
+            if (target.Id == context.Executor)
+                foreach (var note in res.Notifications) context.Notifications.Add(note);
+            else
+                foreach (var note in res.Notifications) context.NotifyTarget(target.Id, note);
         }
+
+        if (!context.Switches.Contains("quiet"))
+            context.Notify($"{target.Name} - Triggered.");
 
         return true;
     }

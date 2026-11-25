@@ -60,7 +60,7 @@ public class UseCommandHandler : ICommandHandler
         if (string.IsNullOrWhiteSpace(action))
             action = thing.GetAttribute("RUNOUT")?.Value;
         if (!string.IsNullOrWhiteSpace(action))
-            _queue.Enqueue(context.Executor, context.Enactor, action);
+            _queue.Enqueue(thing.Id, context.Enactor, action);
 
         return true;
     }
