@@ -391,14 +391,21 @@ public class CommandDispatcher
     private bool TryMatchCommandListener(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
     {
         int matched = 0;
+        var checkedLocal = new HashSet<Dbref>();
 
-        // Tier 1: Local objects (contents of location, location itself, executor's inventory)
+        // Tier 1: Executor itself, contents of location, location itself, executor's inventory
+        if (checkedLocal.Add(executor.Id))
+            matched += MatchObjectListeners(executor, executor, input, db, context);
+
         if (executor.Location.IsValid)
         {
             foreach (var item in db.GetContents(executor.Location))
-                matched += MatchObjectListeners(item, executor, input, db, context);
+            {
+                if (checkedLocal.Add(item.Id))
+                    matched += MatchObjectListeners(item, executor, input, db, context);
+            }
 
-            if (executor.Location != executor.Id)
+            if (executor.Location != executor.Id && checkedLocal.Add(executor.Location))
             {
                 var loc = db.GetObject(executor.Location);
                 if (loc != null)
@@ -409,7 +416,10 @@ public class CommandDispatcher
         if (executor.Location != executor.Id)
         {
             foreach (var item in db.GetContents(executor.Id))
-                matched += MatchObjectListeners(item, executor, input, db, context);
+            {
+                if (checkedLocal.Add(item.Id))
+                    matched += MatchObjectListeners(item, executor, input, db, context);
+            }
         }
 
         if (matched > 0)
