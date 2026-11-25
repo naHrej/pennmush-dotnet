@@ -99,9 +99,9 @@ public class AttributeSetCommandTests
         var mortal = Player(_mortal);
         var set = Run(_mortal, "&KEEP`MID`LEAF me=3");
         Assert.Equal($"{mortal.Name}/KEEP`MID`LEAF - Set.", Single(set));
-        Assert.Equal(" ", mortal.GetAttribute("KEEP")!.Value);
+        Assert.Equal("", mortal.GetAttribute("KEEP")!.Value);
         Assert.Equal(AttributeFlags.Root, mortal.GetAttribute("KEEP")!.Flags);
-        Assert.Equal(" ", mortal.GetAttribute("KEEP`MID")!.Value);
+        Assert.Equal("", mortal.GetAttribute("KEEP`MID")!.Value);
         Assert.Equal(AttributeFlags.Root, mortal.GetAttribute("KEEP`MID")!.Flags);
         Assert.Equal("3", mortal.GetAttribute("KEEP`MID`LEAF")!.Value);
         Assert.Equal(AttributeFlags.None, mortal.GetAttribute("KEEP`MID`LEAF")!.Flags);
@@ -217,7 +217,7 @@ public class AttributeSetCommandTests
         var lamp = _db.CreateObject("Lamp", ObjectType.Thing, _mortal);
         var ctx = Run(_mortal, $"@set #{lamp.Id.Value}=FOO`BAR:leaf");
         Assert.Equal("Set.", Single(ctx));
-        Assert.Equal(" ", lamp.GetAttribute("FOO")!.Value);
+        Assert.Equal("", lamp.GetAttribute("FOO")!.Value);
         Assert.True(lamp.GetAttribute("FOO")!.Flags.HasFlag(AttributeFlags.Root));
         Assert.Equal("leaf", lamp.GetAttribute("FOO`BAR")!.Value);
     }

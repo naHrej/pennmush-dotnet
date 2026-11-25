@@ -14,7 +14,7 @@ public readonly record struct AttributeWriteResult(bool Ok, string Message)
 
 public static class AttributeWriter
 {
-    private const string BranchValue = " ";
+    private const string BranchValue = "";
 
     public static AttributeWriteResult Apply(MUSHObject actor, MUSHObject target, string rawName, string? value)
     {
