@@ -432,6 +432,8 @@ public class ExamineCommandHandler : ICommandHandler
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Safe)) sb.Append('S');
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Regexp)) sb.Append('R');
         if (attr.Flags.HasFlag(PennMUSH.Core.Attributes.AttributeFlags.Case)) sb.Append('C');
+        if (attr.CustomFlags.Count > 0)
+            sb.Append(' ').Append(string.Join(' ', attr.CustomFlags));
         return sb.ToString();
     }
 }

@@ -6,6 +6,7 @@ using PennMUSH.Core.Attributes;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Types;
 using Xunit;
 
@@ -46,7 +47,7 @@ public class CustomAttributeFlagsTests
             god.Owner = god.Id;
             god.SetAttribute("HP", "100", god.Id);
 
-            var dispatcher = new CommandDispatcher();
+            var dispatcher = new CommandDispatcher(new ExpressionEvaluator());
             dispatcher.Register(new SetCommandHandler(), "@set");
             dispatcher.Register(new DecompileCommandHandler(), "@decompile");
 
@@ -128,6 +129,47 @@ public class CustomAttributeFlagsTests
             StandardAttributes.UnregisterCustomFlag(flagB);
             if (Directory.Exists(tempDir))
                 Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Examine_DisplaysCustomAttributeFlags_And_PlayerDollarCommandsMatch()
+    {
+        const string flag = "custom_tag";
+        StandardAttributes.RegisterCustomFlag(flag);
+        try
+        {
+            var db = new ObjectDatabase();
+            var room = db.CreateObject("Room Zero", ObjectType.Room, new Dbref(1));
+            var god = db.CreateObject("One", ObjectType.Player, new Dbref(1));
+            god.Owner = god.Id;
+            god.Location = room.Id; // Intentionally not linked in room.Contents (matches WorldBootstrapper)
+            god.SetAttribute("MYATTR", "hello", god.Id, AttributeFlags.Visual, customFlags: new[] { flag });
+            god.SetAttribute("CMD_TEST", "$+ping *:@pemit %#=Pong:%0", god.Id);
+
+            var dispatcher = new CommandDispatcher(new ExpressionEvaluator());
+            dispatcher.Register(new ExamineCommandHandler(), "examine", "ex");
+            dispatcher.Register(new PemitCommandHandler(), "@pemit");
+
+            var exObj = dispatcher.Dispatch(god.Id, "examine me", db);
+            Assert.Contains(exObj.Notifications, n => n.Contains("MYATTR [#1v custom_tag]: hello", StringComparison.Ordinal));
+
+            var exAttr = dispatcher.Dispatch(god.Id, "examine me/MYATTR", db);
+            Assert.Contains(exAttr.Notifications, n => n.Contains("MYATTR [#1v custom_tag]: hello", StringComparison.Ordinal));
+
+            var cmdCtx = dispatcher.Dispatch(god.Id, "+ping world", db);
+            Assert.Single(cmdCtx.TargetedNotifications);
+            Assert.Equal("Pong:world", cmdCtx.TargetedNotifications[0].Message);
+
+            // Also verify no double-execution when player IS in room.Contents
+            db.MoveObject(god.Id, room.Id);
+            var cmdCtx2 = dispatcher.Dispatch(god.Id, "+ping again", db);
+            Assert.Single(cmdCtx2.TargetedNotifications);
+            Assert.Equal("Pong:again", cmdCtx2.TargetedNotifications[0].Message);
+        }
+        finally
+        {
+            StandardAttributes.UnregisterCustomFlag(flag);
         }
     }
 }
