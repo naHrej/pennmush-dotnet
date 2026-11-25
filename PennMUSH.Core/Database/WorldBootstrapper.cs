@@ -45,6 +45,7 @@ public static class WorldBootstrapper
         sysObj.AddFlag("VISUAL");
         sysObj.AddFlag("NO_COMMAND");
         sysObj.SetAttribute("DESCRIBE", "Global object registry. Set attributes like NAME=#dbref to register $name references.", god.Id);
+        sysObj.SetAttribute("SYSTEM", sysObj.Id.ToString(), god.Id);
 
         return god;
     }
