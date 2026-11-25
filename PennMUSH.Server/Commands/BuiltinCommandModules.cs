@@ -204,6 +204,11 @@ public sealed class AliasAndRestrictionModule : ICommandModule
             dispatcher.ReserveAlias(reserved);
         foreach (var (alias, orig) in services.Config.FunctionAliases)
             services.Functions.AddAlias(orig, alias);
+        foreach (var (fn, rules) in services.Config.FunctionRestrictions)
+        {
+            foreach (var rule in rules)
+                services.Functions.TryRestrict(fn, rule.Restriction);
+        }
 
         dispatcher.AddRestriction("buy", "nogagged", null);
         foreach (var (cmd, rules) in services.Config.CommandRestrictions)

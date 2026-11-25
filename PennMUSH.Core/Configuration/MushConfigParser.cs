@@ -284,6 +284,10 @@ public static class MushConfigParser
                 config.TinyTrimFun = ParseBool(value, false);
                 break;
 
+            case "unsafe_eval_functions":
+                config.UnsafeEvalFunctions = ParseBool(value, false);
+                break;
+
             case "config_save":
                 config.ConfigSave = ParseBool(value, false);
                 break;

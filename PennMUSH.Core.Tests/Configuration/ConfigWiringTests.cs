@@ -170,4 +170,46 @@ public class ConfigWiringTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public void UnsafeEvalFunctions_DisabledByDefault_CapsObjEvalAndFn_AndAllowsWhenEnabled()
+    {
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var wiz = db.CreateObject("WizardBob", ObjectType.Player, new Dbref(1));
+        wiz.AddFlag("WIZARD");
+        var wizThing = db.CreateObject("WizThing", ObjectType.Thing, wiz.Id);
+
+        var cfg = new MushConfiguration();
+        Assert.False(cfg.UnsafeEvalFunctions);
+
+        var functions = new PennMUSH.Core.MUSHcode.FunctionRegistry(db)
+        {
+            UnsafeEvalFunctionsProvider = () => cfg.UnsafeEvalFunctions
+        };
+        var evaluator = new PennMUSH.Core.MUSHcode.ExpressionEvaluator(functions.Dispatch, db);
+        functions.Evaluator = evaluator;
+
+        var wizCtx = new PennMUSH.Core.MUSHcode.EvaluationContext(wiz.Id, wiz.Id, wiz.Id, wiz.Location);
+
+        // s() is disabled by default
+        Assert.Equal("#-1 FUNCTION DISABLED", evaluator.Evaluate("[s([add(1,2)])]", wizCtx));
+
+        // objeval() works on equal-or-lower privilege objects (wiz -> wizThing)
+        Assert.Equal(wizThing.Id.ToString(), evaluator.Evaluate($"[objeval({wizThing.Id},%!)]", wizCtx));
+
+        // objeval() and fn() cannot escalate above caller's privilege tier (wiz -> god #1)
+        Assert.Equal("#-1 PERMISSION DENIED", evaluator.Evaluate($"[objeval({god.Id},%!)]", wizCtx));
+        Assert.Equal("#-1 PERMISSION DENIED", evaluator.Evaluate($"[fn({god.Id}/add,1,2)]", wizCtx));
+
+        // Enabling unsafe_eval_functions via TrySetSwitch (or @config/set) restores s() and unrestricted objeval/fn
+        Assert.True(cfg.TrySetSwitch("unsafe_eval_functions", true, out _));
+        Assert.Equal("3", evaluator.Evaluate("[s([add(1,2)])]", wizCtx));
+        Assert.Equal(god.Id.ToString(), evaluator.Evaluate($"[objeval({god.Id},%!)]", wizCtx));
+        Assert.Equal("3", evaluator.Evaluate($"[fn({god.Id}/add,1,2)]", wizCtx));
+
+        // restrict_function via TryRestrict works as well
+        Assert.True(functions.TryRestrict("s", "nobody"));
+        Assert.Equal("#-1 FUNCTION DISABLED", evaluator.Evaluate("[s([add(1,2)])]", wizCtx));
+    }
 }

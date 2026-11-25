@@ -27,6 +27,9 @@ public static class AttributePermissions
     public static bool CanSeeAll(MUSHObject? looker)
         => looker != null && (looker.IsGod || looker.IsWizard || looker.IsRoyalty || looker.HasPower("See_All"));
 
+    public static int PrivilegeRank(MUSHObject? obj)
+        => obj == null ? -1 : obj.IsGod ? 3 : obj.IsWizard ? 2 : obj.IsRoyalty ? 1 : 0;
+
     public static bool CanExamine(MUSHObject? looker, MUSHObject? target)
         => looker != null && target != null && (Controls(looker, target) || CanSeeAll(looker) || target.HasFlag("VISUAL"));
 

@@ -208,6 +208,8 @@ public class MUSHServer
         Functions.UseQuotaProvider = () => Config.UseQuota;
         Functions.StartingQuota = Config.StartingQuota;
         Functions.StartingQuotaProvider = () => Config.StartingQuota;
+        Functions.UnsafeEvalFunctions = Config.UnsafeEvalFunctions;
+        Functions.UnsafeEvalFunctionsProvider = () => Config.UnsafeEvalFunctions;
         Evaluator = new ExpressionEvaluator(Functions.Dispatch, Functions.Database);
         Functions.Evaluator = Evaluator;
 
