@@ -500,7 +500,7 @@ public class CommandDispatcher
             var current = queue.Dequeue();
             bool isSelf = current.Id == candidate.Id;
 
-            foreach (var listener in current.Listeners)
+            foreach (var listener in current.Listeners.ToArray())
             {
                 if (!listener.Command)
                     continue;
