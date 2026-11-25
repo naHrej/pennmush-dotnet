@@ -10,7 +10,7 @@ PennMUSH .NET supports lock-free, hot-reloadable `.NET 10` plugins via `PennMUSH
 - **`ExtensionManager`** (`PennMUSH.Server/Extensions/ExtensionManager.cs`):
   - Scans plugin candidate paths at startup (ignoring `PennMUSH.Core*`, `PennMUSH.Server*`, `PennMUSH.Extensions*`).
   - Attaches a `FileSystemWatcher` (`*.dll`, 500 ms debounce) to reload updated plugins live (`ReloadExtension` → `Unload` → `GC.Collect` → `LoadExtension`) or auto-load new ones with zero player disconnects.
-- **`ExtensionHostProxy`** (`PennMUSH.Server/Extensions/ExtensionHostProxy.cs`): Tracks every command, function, tick service, and protocol handler registered by a plugin and automatically unregisters all of them inside `Cleanup()` on unload/reload.
+- **`ExtensionHostProxy`** (`PennMUSH.Server/Extensions/ExtensionHostProxy.cs`): Tracks every command, function, tick service, protocol handler, custom attribute flag, player input capture, and `ObjectDestroyed` handler registered by a plugin and automatically unregisters/cleans up all of them inside `Cleanup()` on unload/reload.
 
 ### Default Plugin Search Directories
 `MUSHServer` searches:
@@ -44,11 +44,15 @@ Capabilities exposed to plugins by `ExtensionHostProxy`:
 
 | Member | Purpose |
 |---|---|
-| `Database`, `Dispatcher`, `Functions`, `Queue`, `Cron` | Direct access to core engine subsystems |
+| `Database`, `Dispatcher`, `Functions`, `Evaluator`, `Queue`, `Cron` | Direct access to core engine subsystems (including softcode `ExpressionEvaluator`) |
+| `DataDirectory` | Dedicated per-plugin data directory (`<GameDirectory>/plugins/data/<ExtensionName>`) |
 | `RegisterCommand(handler, params aliases)` / `UnregisterCommand(name)` | Add or remove custom player commands |
 | `RegisterFunction(name, fn)` / `UnregisterFunction(name)` | Add or remove custom MUSHcode functions |
 | `RegisterTickService(service)` / `UnregisterTickService(name)` | Schedule background periodic ticks |
 | `RegisterProtocolHandler(prefix, handler)` / `UnregisterProtocolHandler(prefix)` | Intercept MUjs `ProtocolEnvelope` messages matching `type.StartsWith(prefix)` |
+| `RegisterAttributeFlag(flagName)` / `UnregisterAttributeFlag(flagName)` | Register custom named attribute flags (`AttributeEntry.CustomFlags`, persisted without consuming the 32-bit `AttributeFlags` bitmask) |
+| `CapturePlayerInput(player, onLine)` / `ReleasePlayerInput(player)` | Intercept raw lines from `player` (preserving indentation and blank lines) before command dispatch until `onLine` returns `false`, `ReleasePlayerInput` is called, or the player disconnects |
+| `OnObjectDestroyed(handler)` | Subscribe to `ObjectDatabase.ObjectDestroyed` with automatic unsubscription on unload |
 | `BroadcastNotification(notification)` | Dispatch room/player/broadcast notifications |
 | `NotifyPlayer(player, message)` | Send a line to all connections for `player` |
 | `SendProtocolEnvelopeAsync(player, type, payload)` | Send a JSON `ProtocolEnvelope` to `player` |
