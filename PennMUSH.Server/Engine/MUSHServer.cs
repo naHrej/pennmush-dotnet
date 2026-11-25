@@ -127,7 +127,19 @@ public class MUSHServer
             MaxPennies = Config.MaxPennies,
             PlayerNameLen = Config.PlayerNameLen,
             PlayerNameSpaces = Config.PlayerNameSpaces,
-            OnlyAsciiInNames = Config.OnlyAsciiInNames
+            OnlyAsciiInNames = Config.OnlyAsciiInNames,
+            LinkToObject = Config.LinkToObject,
+            ReallySafe = Config.ReallySafe,
+            CommaExitList = Config.CommaExitList,
+            ExPublicAttribs = Config.ExPublicAttribs,
+            FlagsOnExamine = Config.FlagsOnExamine,
+            Startups = Config.Startups,
+            ChanTitleLen = Config.ChanTitleLen,
+            MaxChannels = Config.MaxChannels,
+            AncestorRoom = Config.AncestorRoom,
+            AncestorThing = Config.AncestorThing,
+            AncestorExit = Config.AncestorExit,
+            AncestorPlayer = Config.AncestorPlayer
         };
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));

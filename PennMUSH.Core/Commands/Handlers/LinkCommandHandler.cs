@@ -45,6 +45,11 @@ public class LinkCommandHandler : ICommandHandler
             context.Notify(Feedback.ICantSeeThatDestination);
             return false;
         }
+        if (!db.LinkToObject && destObj.Type != ObjectType.Room)
+        {
+            context.Notify(Feedback.PermissionDenied);
+            return false;
+        }
 
         db.LinkExit(exitObj.Id, destRef);
         context.Notify(Feedback.Linked);

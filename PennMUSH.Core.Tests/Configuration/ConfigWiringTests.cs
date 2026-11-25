@@ -383,4 +383,48 @@ public class ConfigWiringTests
         Assert.False(PlayerCreator.OkPlayerName("Two Words", db));
         Assert.True(PlayerCreator.OkPlayerName("ShortName", db));
     }
+
+    [Fact]
+    public void Phase3_Ancestors_LinkToObject_And_RepeatedFlags_Work()
+    {
+        var tmpPath = Path.GetTempFileName();
+        MushConfiguration cfg;
+        try
+        {
+            File.WriteAllText(tmpPath, "player_flags enter_ok\nplayer_flags ansi\nancestor_thing #2\nfloat_precision 4\nlink_to_object no\n");
+            cfg = MushConfigParser.ParseFile(tmpPath);
+        }
+        finally
+        {
+            File.Delete(tmpPath);
+        }
+
+        Assert.Contains("enter_ok", cfg.PlayerFlags);
+        Assert.Contains("ansi", cfg.PlayerFlags);
+        Assert.Equal(new Dbref(2), cfg.AncestorThing);
+        Assert.Equal(4, cfg.FloatPrecision);
+        Assert.False(cfg.LinkToObject);
+        Assert.True(cfg.TrySetSwitch("use_muxcomm", true, out _));
+        Assert.True(cfg.UseMuxcomm);
+
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var ancestor = db.CreateObject("ThingAncestor", ObjectType.Thing, god.Id);
+        ancestor.SetAttribute("GREETING", "Hello from ancestor", god.Id);
+        var child = db.CreateObject("PlainThing", ObjectType.Thing, god.Id);
+        var exit = db.CreateObject("out", ObjectType.Exit, god.Id);
+
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+        dispatcher.Register(new LinkCommandHandler(), "@link");
+
+        // Configure ancestor_thing and link_to_object via @config/set
+        dispatcher.Dispatch(god.Id, $"@config/set ancestor_thing=#{ancestor.Id.Value}", db);
+        Assert.Equal("Hello from ancestor", child.GetAttribute("GREETING", db)?.Value);
+
+        dispatcher.Dispatch(god.Id, "@config/set link_to_object=no", db);
+        Assert.Contains("Permission denied.", dispatcher.Dispatch(god.Id, $"@link #{exit.Id.Value}=#{child.Id.Value}", db).Notifications);
+        dispatcher.Dispatch(god.Id, "@config/set link_to_object=yes", db);
+        Assert.Contains("Linked.", dispatcher.Dispatch(god.Id, $"@link #{exit.Id.Value}=#{child.Id.Value}", db).Notifications);
+    }
 }

@@ -106,6 +106,50 @@ public class MushConfiguration
     public bool PlayerNameSpaces { get; set; } = false;
     public bool OnlyAsciiInNames { get; set; } = true;
 
+    // Phase 3: World, Command & Display Behavior
+    public bool ExitsConnectRooms { get; set; } = false;
+    public bool LinkToObject { get; set; } = true;
+    public bool OwnerQueues { get; set; } = false;
+    public bool PossessiveGet { get; set; } = true;
+    public bool PossessiveGetD { get; set; } = false;
+    public bool ReallySafe { get; set; } = true;
+    public bool DestroyPossessions { get; set; } = true;
+    public bool Adestroy { get; set; } = false;
+    public bool Amail { get; set; } = false;
+    public bool Startups { get; set; } = true;
+    public bool RoomConnects { get; set; } = true;
+    public bool PlayerListen { get; set; } = true;
+    public bool PlayerAhear { get; set; } = true;
+    public bool NoisyWhisper { get; set; } = false;
+    public bool FullInvis { get; set; } = false;
+    public bool WizNoAenter { get; set; } = false;
+    public bool SilentPemit { get; set; } = false;
+    public int WhisperLoudness { get; set; } = 100;
+    public bool ZoneControlZmpOnly { get; set; } = true;
+    public bool ExPublicAttribs { get; set; } = true;
+    public bool FlagsOnExamine { get; set; } = true;
+    public int FloatPrecision { get; set; } = 6;
+    public bool CommaExitList { get; set; } = true;
+    public bool AnsiNames { get; set; } = true;
+    public bool CountAll { get; set; } = false;
+    public string Monikers { get; set; } = string.Empty;
+
+    // Phase 3: Chat, Ancestors & Default Flags
+    public int ChanCost { get; set; } = 1000;
+    public int ChanTitleLen { get; set; } = 80;
+    public bool NoisyCemit { get; set; } = false;
+    public bool ChatStripQuote { get; set; } = true;
+    public bool UseMuxcomm { get; set; } = false;
+    public string ChannelFlags { get; set; } = "player";
+    public Dbref AncestorRoom { get; set; } = Dbref.Nothing;
+    public Dbref AncestorThing { get; set; } = Dbref.Nothing;
+    public Dbref AncestorExit { get; set; } = Dbref.Nothing;
+    public Dbref AncestorPlayer { get; set; } = Dbref.Nothing;
+    public string PlayerFlags { get; set; } = "enter_ok ansi no_command";
+    public string RoomFlags { get; set; } = "no_command";
+    public string ExitFlags { get; set; } = string.Empty;
+    public string ThingFlags { get; set; } = "no_command";
+
     // Aliases & Restrictions
     public Dictionary<string, string> CommandAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FunctionAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -200,6 +244,84 @@ public class MushConfiguration
             case "only_ascii_in_names":
                 OnlyAsciiInNames = enabled;
                 break;
+            case "exits_connect_rooms":
+                ExitsConnectRooms = enabled;
+                break;
+            case "link_to_object":
+                LinkToObject = enabled;
+                break;
+            case "owner_queues":
+                OwnerQueues = enabled;
+                break;
+            case "possessive_get":
+                PossessiveGet = enabled;
+                break;
+            case "possessive_get_d":
+                PossessiveGetD = enabled;
+                break;
+            case "really_safe":
+                ReallySafe = enabled;
+                break;
+            case "destroy_possessions":
+                DestroyPossessions = enabled;
+                break;
+            case "adestroy":
+                Adestroy = enabled;
+                break;
+            case "amail":
+                Amail = enabled;
+                break;
+            case "startups":
+                Startups = enabled;
+                break;
+            case "room_connects":
+                RoomConnects = enabled;
+                break;
+            case "player_listen":
+                PlayerListen = enabled;
+                break;
+            case "player_ahear":
+                PlayerAhear = enabled;
+                break;
+            case "noisy_whisper":
+                NoisyWhisper = enabled;
+                break;
+            case "full_invis":
+                FullInvis = enabled;
+                break;
+            case "wiz_noaenter":
+                WizNoAenter = enabled;
+                break;
+            case "silent_pemit":
+                SilentPemit = enabled;
+                break;
+            case "zone_control_zmp_only":
+                ZoneControlZmpOnly = enabled;
+                break;
+            case "ex_public_attribs":
+                ExPublicAttribs = enabled;
+                break;
+            case "flags_on_examine":
+                FlagsOnExamine = enabled;
+                break;
+            case "comma_exit_list":
+                CommaExitList = enabled;
+                break;
+            case "ansi_names":
+                AnsiNames = enabled;
+                break;
+            case "count_all":
+                CountAll = enabled;
+                break;
+            case "noisy_cemit":
+                NoisyCemit = enabled;
+                break;
+            case "chat_strip_quote":
+                ChatStripQuote = enabled;
+                break;
+            case "use_muxcomm":
+                UseMuxcomm = enabled;
+                break;
             default:
                 failure = KnownDirectives.Contains(key)
                     ? "That isn't an on/off option."
@@ -229,7 +351,15 @@ public class MushConfiguration
         "max_pennies", "max_aliases", "max_attrs_per_obj", "max_channels", "max_player_chans", "max_dbref",
         "max_depth", "max_parents", "max_named_qregs", "player_queue_limit", "queue_chunk", "mail_limit",
         "logins", "max_logins", "connect_fail_limit", "idle_timeout", "unconnected_idle_timeout",
-        "player_name_len", "player_name_spaces", "only_ascii_in_names"
+        "player_name_len", "player_name_spaces", "only_ascii_in_names",
+        "exits_connect_rooms", "link_to_object", "owner_queues", "possessive_get", "possessive_get_d",
+        "really_safe", "destroy_possessions", "adestroy", "amail", "startups", "room_connects",
+        "player_listen", "player_ahear", "noisy_whisper", "full_invis", "wiz_noaenter", "silent_pemit",
+        "whisper_loudness", "zone_control_zmp_only", "ex_public_attribs", "flags_on_examine",
+        "float_precision", "comma_exit_list", "ansi_names", "count_all", "monikers",
+        "chan_cost", "chan_title_len", "noisy_cemit", "chat_strip_quote", "use_muxcomm", "channel_flags",
+        "ancestor_room", "ancestor_thing", "ancestor_exit", "ancestor_player",
+        "player_flags", "room_flags", "exit_flags", "thing_flags"
     };
 }
 

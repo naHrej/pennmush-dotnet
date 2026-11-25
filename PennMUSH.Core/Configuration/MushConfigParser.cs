@@ -436,6 +436,166 @@ public static class MushConfigParser
                 config.OnlyAsciiInNames = ParseBool(value, true);
                 break;
 
+            case "exits_connect_rooms":
+                config.ExitsConnectRooms = ParseBool(value, false);
+                break;
+
+            case "link_to_object":
+                config.LinkToObject = ParseBool(value, true);
+                break;
+
+            case "owner_queues":
+                config.OwnerQueues = ParseBool(value, false);
+                break;
+
+            case "possessive_get":
+                config.PossessiveGet = ParseBool(value, true);
+                break;
+
+            case "possessive_get_d":
+                config.PossessiveGetD = ParseBool(value, false);
+                break;
+
+            case "really_safe":
+                config.ReallySafe = ParseBool(value, true);
+                break;
+
+            case "destroy_possessions":
+                config.DestroyPossessions = ParseBool(value, true);
+                break;
+
+            case "adestroy":
+                config.Adestroy = ParseBool(value, false);
+                break;
+
+            case "amail":
+                config.Amail = ParseBool(value, false);
+                break;
+
+            case "startups":
+                config.Startups = ParseBool(value, true);
+                break;
+
+            case "room_connects":
+                config.RoomConnects = ParseBool(value, true);
+                break;
+
+            case "player_listen":
+                config.PlayerListen = ParseBool(value, true);
+                break;
+
+            case "player_ahear":
+                config.PlayerAhear = ParseBool(value, true);
+                break;
+
+            case "noisy_whisper":
+                config.NoisyWhisper = ParseBool(value, false);
+                break;
+
+            case "full_invis":
+                config.FullInvis = ParseBool(value, false);
+                break;
+
+            case "wiz_noaenter":
+                config.WizNoAenter = ParseBool(value, false);
+                break;
+
+            case "silent_pemit":
+                config.SilentPemit = ParseBool(value, false);
+                break;
+
+            case "whisper_loudness":
+                if (int.TryParse(value, out int whisperLoud)) config.WhisperLoudness = whisperLoud;
+                break;
+
+            case "zone_control_zmp_only":
+                config.ZoneControlZmpOnly = ParseBool(value, true);
+                break;
+
+            case "ex_public_attribs":
+                config.ExPublicAttribs = ParseBool(value, true);
+                break;
+
+            case "flags_on_examine":
+                config.FlagsOnExamine = ParseBool(value, true);
+                break;
+
+            case "float_precision":
+                if (int.TryParse(value, out int floatPrec)) config.FloatPrecision = floatPrec;
+                break;
+
+            case "comma_exit_list":
+                config.CommaExitList = ParseBool(value, true);
+                break;
+
+            case "ansi_names":
+                config.AnsiNames = ParseBool(value, true);
+                break;
+
+            case "count_all":
+                config.CountAll = ParseBool(value, false);
+                break;
+
+            case "monikers":
+                config.Monikers = value;
+                break;
+
+            case "chan_cost":
+                if (int.TryParse(value, out int chanCost)) config.ChanCost = chanCost;
+                break;
+
+            case "chan_title_len":
+                if (int.TryParse(value, out int chanTitleLen)) config.ChanTitleLen = chanTitleLen;
+                break;
+
+            case "noisy_cemit":
+                config.NoisyCemit = ParseBool(value, false);
+                break;
+
+            case "chat_strip_quote":
+                config.ChatStripQuote = ParseBool(value, true);
+                break;
+
+            case "use_muxcomm":
+                config.UseMuxcomm = ParseBool(value, false);
+                break;
+
+            case "channel_flags":
+                config.ChannelFlags = value;
+                break;
+
+            case "ancestor_room":
+                config.AncestorRoom = ParseDbref(value, Dbref.Nothing);
+                break;
+
+            case "ancestor_thing":
+                config.AncestorThing = ParseDbref(value, Dbref.Nothing);
+                break;
+
+            case "ancestor_exit":
+                config.AncestorExit = ParseDbref(value, Dbref.Nothing);
+                break;
+
+            case "ancestor_player":
+                config.AncestorPlayer = ParseDbref(value, Dbref.Nothing);
+                break;
+
+            case "player_flags":
+                config.PlayerFlags = AppendFlagList(config.PlayerFlags, value);
+                break;
+
+            case "room_flags":
+                config.RoomFlags = AppendFlagList(config.RoomFlags, value);
+                break;
+
+            case "exit_flags":
+                config.ExitFlags = AppendFlagList(config.ExitFlags, value);
+                break;
+
+            case "thing_flags":
+                config.ThingFlags = AppendFlagList(config.ThingFlags, value);
+                break;
+
             case "config_save":
                 config.ConfigSave = ParseBool(value, false);
                 break;
@@ -492,6 +652,12 @@ public static class MushConfigParser
                 list.Add(new RestrictionRule(tokens[i], errorMessage));
             }
         }
+    }
+
+    private static string AppendFlagList(string existing, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return existing;
+        return string.IsNullOrWhiteSpace(existing) ? value.Trim() : $"{existing} {value.Trim()}";
     }
 
     private static bool ParseBool(string val, bool defaultValue)
