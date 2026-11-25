@@ -15,6 +15,9 @@ public class ObjectDatabase
     /// <summary>Raised when a player moves, including a direct location write. Not raised while a database is loading.</summary>
     public Action<MUSHObject, Dbref, Dbref>? PlayerLocationChanged { get; set; }
 
+    /// <summary>Raised when an object is destroyed/recycled.</summary>
+    public event Action<Dbref>? ObjectDestroyed;
+
     public int Count => _objects.Count;
     public Dbref Top => new Dbref(_objects.Count);
 
@@ -134,6 +137,7 @@ public class ObjectDatabase
 
         existing.Type = ObjectType.Garbage;
         existing.Name = "Garbage";
+        ObjectDestroyed?.Invoke(id);
         return true;
     }
 

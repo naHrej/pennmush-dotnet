@@ -2,6 +2,7 @@ namespace PennMUSH.Server.Extensions;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -27,12 +28,24 @@ public class ExtensionHostProxy : IExtensionHost
     private readonly List<string> _registeredProtocolHandlers = new();
     private readonly List<string> _registeredAttributeFlags = new();
     private readonly HashSet<Dbref> _capturedInputPlayers = new();
+    private readonly List<Action<Dbref>> _objectDestroyedHandlers = new();
 
     public ObjectDatabase Database => _server.Database;
     public CommandDispatcher Dispatcher => _server.Dispatcher;
     public FunctionRegistry Functions => _server.Functions;
+    public ExpressionEvaluator Evaluator => _server.Evaluator;
     public ActionQueue Queue => _server.Queue;
     public CronScheduler Cron => _server.Cron;
+    public string DataDirectory
+    {
+        get
+        {
+            string safeName = string.Concat(_extensionName.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "extension";
+            return Path.Combine(_server.GameDirectory, "plugins", "data", safeName);
+        }
+    }
 
     public ExtensionHostProxy(ExtensionManager manager, MUSHServer server, string extensionName)
     {
@@ -126,6 +139,13 @@ public class ExtensionHostProxy : IExtensionHost
         _server.ReleasePlayerInput(player);
     }
 
+    public void OnObjectDestroyed(Action<Dbref> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        _objectDestroyedHandlers.Add(handler);
+        _server.Database.ObjectDestroyed += handler;
+    }
+
     public void BroadcastNotification(Notification notification)
     {
         _server.DispatchNotification(notification);
@@ -209,5 +229,11 @@ public class ExtensionHostProxy : IExtensionHost
             try { _server.ReleasePlayerInput(captured); } catch { }
         }
         _capturedInputPlayers.Clear();
+
+        foreach (var handler in _objectDestroyedHandlers)
+        {
+            try { _server.Database.ObjectDestroyed -= handler; } catch { }
+        }
+        _objectDestroyedHandlers.Clear();
     }
 }
