@@ -71,6 +71,18 @@ public class ConfigCommandHandler : ICommandHandler
         db.PlayerNameLen = _config.PlayerNameLen;
         db.PlayerNameSpaces = _config.PlayerNameSpaces;
         db.OnlyAsciiInNames = _config.OnlyAsciiInNames;
+        db.LinkToObject = _config.LinkToObject;
+        db.ReallySafe = _config.ReallySafe;
+        db.CommaExitList = _config.CommaExitList;
+        db.ExPublicAttribs = _config.ExPublicAttribs;
+        db.FlagsOnExamine = _config.FlagsOnExamine;
+        db.Startups = _config.Startups;
+        db.ChanTitleLen = _config.ChanTitleLen;
+        db.MaxChannels = _config.MaxChannels;
+        db.AncestorRoom = _config.AncestorRoom;
+        db.AncestorThing = _config.AncestorThing;
+        db.AncestorExit = _config.AncestorExit;
+        db.AncestorPlayer = _config.AncestorPlayer;
         if (!save)
         {
             context.Notify("Option set.");

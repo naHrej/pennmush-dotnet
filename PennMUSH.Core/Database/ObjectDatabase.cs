@@ -56,6 +56,28 @@ public class ObjectDatabase
     public bool PlayerNameSpaces { get; set; } = false;
     public bool OnlyAsciiInNames { get; set; } = true;
 
+    public bool LinkToObject { get; set; } = true;
+    public bool ReallySafe { get; set; } = true;
+    public bool CommaExitList { get; set; } = true;
+    public bool ExPublicAttribs { get; set; } = true;
+    public bool FlagsOnExamine { get; set; } = true;
+    public bool Startups { get; set; } = true;
+    public int ChanTitleLen { get; set; } = 80;
+    public int MaxChannels { get; set; } = 200;
+    public Dbref AncestorRoom { get; set; } = Dbref.Nothing;
+    public Dbref AncestorThing { get; set; } = Dbref.Nothing;
+    public Dbref AncestorExit { get; set; } = Dbref.Nothing;
+    public Dbref AncestorPlayer { get; set; } = Dbref.Nothing;
+
+    public Dbref GetAncestor(ObjectType type) => type switch
+    {
+        ObjectType.Room => AncestorRoom,
+        ObjectType.Thing => AncestorThing,
+        ObjectType.Exit => AncestorExit,
+        ObjectType.Player => AncestorPlayer,
+        _ => Dbref.Nothing
+    };
+
     public string FormatMoneyUnit(int amount)
         => (amount == 1 ? MoneySingular : MoneyPlural).ToLowerInvariant();
 

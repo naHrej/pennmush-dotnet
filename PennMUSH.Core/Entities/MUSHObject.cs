@@ -277,8 +277,25 @@ public class MUSHObject
             return entry;
         }
 
-        if (db == null || _parents.Count == 0)
+        if (db == null)
             return null;
+
+        if (_parents.Count == 0)
+        {
+            var ancestorId = db.GetAncestor(Type);
+            if (!ancestorId.IsValid || ancestorId == Id)
+                return null;
+            var ancestor = db.GetObject(ancestorId);
+            if (ancestor == null)
+                return null;
+            var ancAttr = ancestor.GetAttribute(name);
+            if (ancAttr != null && !ancAttr.Flags.HasFlag(AttributeFlags.Private))
+            {
+                sourceObj = ancestor;
+                return ancAttr;
+            }
+            return null;
+        }
 
         _inherited ??= new Dictionary<string, InheritedAttribute>(StringComparer.OrdinalIgnoreCase);
         if (_inherited.TryGetValue(name, out var cached))
