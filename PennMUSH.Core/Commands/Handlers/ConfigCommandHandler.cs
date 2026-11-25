@@ -23,12 +23,12 @@ public class ConfigCommandHandler : ICommandHandler
             return false;
 
         if (context.Switches.Contains("set") || context.Switches.Contains("save"))
-            return Set(context, actor.IsWizard, actor.IsGod);
+            return Set(context, db, actor.IsWizard, actor.IsGod);
 
         return List(context, actor.IsRoyalty);
     }
 
-    private bool Set(CommandContext context, bool wizard, bool god)
+    private bool Set(CommandContext context, ObjectDatabase db, bool wizard, bool god)
     {
         bool save = context.Switches.Contains("save");
         if (!wizard || (save && !god))
@@ -46,6 +46,7 @@ public class ConfigCommandHandler : ICommandHandler
             context.Notify(Feedback.CouldntSetThatOption);
             return false;
         }
+        db.SystemObjectId = _config.SystemObject;
         context.Notify(save
             ? "Option set but not saved (Saves disabled.)"
             : "Option set.");

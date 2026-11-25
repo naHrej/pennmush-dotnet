@@ -102,7 +102,7 @@ public class MUSHServer
             GameDirectory = Directory.GetCurrentDirectory();
         }
 
-        Database = new ObjectDatabase();
+        Database = new ObjectDatabase { SystemObjectId = Config.SystemObject };
         Database.PlayerLocationChanged = (player, _, to) => Relocate(player, to);
         string? dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath));
         if (!string.IsNullOrEmpty(dbDir))

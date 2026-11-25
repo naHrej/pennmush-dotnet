@@ -160,6 +160,10 @@ public static class MushConfigParser
                 config.MasterRoom = ParseDbref(value, new Dbref(2));
                 break;
 
+            case "system_object":
+                config.SystemObject = ParseDbref(value, new Dbref(3));
+                break;
+
             case "player_start":
                 config.PlayerStart = ParseDbref(value, new Dbref(0));
                 break;
