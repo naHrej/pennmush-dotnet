@@ -598,7 +598,7 @@ public class MUSHObject
         return removed;
     }
 
-    public bool IsGod => Id.Value == 1;
+    public bool IsGod => Id.Value == 1 || HasFlag("GOD");
     public bool IsWizard => IsGod || HasFlag("WIZARD");
     public bool IsRoyalty => IsWizard || HasFlag("ROYALTY");
 

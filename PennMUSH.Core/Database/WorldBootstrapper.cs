@@ -21,6 +21,7 @@ public static class WorldBootstrapper
         god.Pennies = 1000;
         god.Warnings = WarningBits.Normal;
         god.AddFlag("WIZARD");
+        god.AddFlag("GOD");
         god.SetAttribute("DESCRIBE", "You see Number One.", god.Id, PennMUSH.Core.Attributes.StandardAttributes.DefaultFlags("DESCRIBE"), wizardOverride: true);
         god.SetAttribute("LAST", "Wed Jan 01 00:00:00 1970", god.Id, PennMUSH.Core.Attributes.StandardAttributes.DefaultFlags("LAST"), wizardOverride: true);
         god.SetAttribute("LASTFAILED", " ", god.Id, PennMUSH.Core.Attributes.StandardAttributes.DefaultFlags("LASTFAILED"), wizardOverride: true);
