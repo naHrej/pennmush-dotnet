@@ -19,6 +19,7 @@ public static class FlagTable
         // Canonical Flags from hdrs/flag_tab.h
         RegisterFlag(new FlagDefinition { Name = "CHOWN_OK", Letter = 'C', TargetType = ObjectType.None, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "DARK", Letter = 'D', TargetType = ObjectType.None, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
+        RegisterFlag(new FlagDefinition { Name = "GOD", Letter = '\0', TargetType = ObjectType.Player, Permissions = FlagPrivileges.God | FlagPrivileges.Log, NegatePermissions = FlagPrivileges.God });
         RegisterFlag(new FlagDefinition { Name = "GOING", Letter = 'G', TargetType = ObjectType.None, Permissions = FlagPrivileges.Internal, NegatePermissions = FlagPrivileges.Internal });
         RegisterFlag(new FlagDefinition { Name = "HAVEN", Letter = 'H', TargetType = ObjectType.Player, Permissions = FlagPrivileges.Any, NegatePermissions = FlagPrivileges.Any });
         RegisterFlag(new FlagDefinition { Name = "TRUST", Letter = 'I', TargetType = ObjectType.None, Permissions = FlagPrivileges.Inherit, NegatePermissions = FlagPrivileges.Inherit });
@@ -186,6 +187,12 @@ public static class FlagTable
 
         if (executor.IsGod)
             return true;
+
+        if (perms.HasFlag(FlagPrivileges.God))
+        {
+            error = "Permission denied.";
+            return false;
+        }
 
         if (perms.HasFlag(FlagPrivileges.Wizard) && !executor.IsWizard)
         {
