@@ -78,6 +78,7 @@ public class TelnetListenerService : BackgroundService
             var stream = tcpClient.GetStream();
             byte[] buffer = new byte[2048];
             var lineBuilder = new StringBuilder();
+            bool prevWasCr = false;
 
             while (!stoppingToken.IsCancellationRequested && tcpClient.Connected)
             {
@@ -93,19 +94,31 @@ public class TelnetListenerService : BackgroundService
                     await conn.SendRawAsync(pending, stoppingToken);
                 }
 
-                // Process line breaks
+                // Process line breaks (\r\n, \n, or standalone \r)
                 for (int i = 0; i < processed.Length; i++)
                 {
                     char c = processed[i];
-                    if (c == '\r') continue;
-                    if (c == '\n')
+                    if (c == '\r')
                     {
+                        prevWasCr = true;
+                        string line = lineBuilder.ToString();
+                        lineBuilder.Clear();
+                        await _host.HandleInputAsync(conn, line);
+                    }
+                    else if (c == '\n')
+                    {
+                        if (prevWasCr)
+                        {
+                            prevWasCr = false;
+                            continue;
+                        }
                         string line = lineBuilder.ToString();
                         lineBuilder.Clear();
                         await _host.HandleInputAsync(conn, line);
                     }
                     else
                     {
+                        prevWasCr = false;
                         lineBuilder.Append(c);
                     }
                 }
