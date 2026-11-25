@@ -42,7 +42,10 @@ public static class TextFormatFunctions
         if (!hasAnsi)
             return args[1];
 
-        return $"{sgrOpen}{args[1]}{sgrClose}";
+        string body = sgrClose == "\x1B[0m"
+            ? args[1].Replace("\x1B[0m", $"\x1B[0m{sgrOpen}", StringComparison.Ordinal)
+            : args[1];
+        return $"{sgrOpen}{body}{sgrClose}";
     }
 
     public static string ColorsFunc(EvaluationContext ctx, string[] args)

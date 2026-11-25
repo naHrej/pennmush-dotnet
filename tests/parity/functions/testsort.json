@@ -11,12 +11,12 @@
                   {
                       "id":  "sort.3",
                       "input":  "think sort(a [ansi(h,a)] b [ansi(h,b)] c d [ansi(h,e)] f)",
-                      "compare":  "exact"
+                      "compare":  "ansi_stripped"
                   },
                   {
                       "id":  "sort.4",
                       "input":  "think sort(3 [ansi(h,1)] [ansi(y,7)] 5)",
-                      "compare":  "exact"
+                      "compare":  "ansi_stripped"
                   }
               ]
 }

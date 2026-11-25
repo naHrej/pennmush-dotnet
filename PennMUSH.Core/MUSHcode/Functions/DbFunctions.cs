@@ -1328,7 +1328,7 @@ public static class DbFunctions
     {
         if (args.Length == 0 || reg.Database == null) return MushError.Nothing.Text();
         var (obj, lockType) = ResolveLockSpec(reg, ctx, args[0]);
-        if (obj == null) return MushError.Nothing.Text();
+        if (obj == null) return "0";
 
         var looker = reg.Database.GetObject(ctx.Executor);
         if (args.Length >= 2)
@@ -1370,7 +1370,7 @@ public static class DbFunctions
 
         var obj = ResolveObj(reg, ctx, args[0].Substring(0, slash));
         string attrName = args[0].Substring(slash + 1).Trim();
-        if (obj == null) return MushError.Nothing.Text();
+        if (obj == null) return "0";
 
         var looker = reg.Database.GetObject(ctx.Executor);
         var attr = looker != null
@@ -1415,7 +1415,7 @@ public static class DbFunctions
     {
         if (args.Length < 2 || reg.Database == null) return "0";
         var obj = ResolveObj(reg, ctx, args[0]);
-        if (obj == null) return MushError.Nothing.Text();
+        if (obj == null) return "0";
 
         string spec = args[1].Trim();
         if (string.IsNullOrEmpty(spec)) return "0";
@@ -1447,7 +1447,7 @@ public static class DbFunctions
     {
         if (args.Length < 2 || reg.Database == null) return "0";
         var obj = ResolveObj(reg, ctx, args[0]);
-        if (obj == null) return MushError.Nothing.Text();
+        if (obj == null) return "0";
 
         var tokens = args[1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length == 0) return "0";
@@ -1484,7 +1484,7 @@ public static class DbFunctions
     {
         if (args.Length < 2 || reg.Database == null) return "0";
         var obj = ResolveObj(reg, ctx, args[0]);
-        if (obj == null) return MushError.Nothing.Text();
+        if (obj == null) return "0";
 
         var tokens = args[1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length == 0) return "0";
