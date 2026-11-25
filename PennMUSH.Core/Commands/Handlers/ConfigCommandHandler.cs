@@ -41,7 +41,9 @@ public class ConfigCommandHandler : ICommandHandler
             context.Notify(Feedback.WhatDidYouWantToSet);
             return false;
         }
-        if (!ConfigCatalog.TrySet(_config, context.LeftArg.Trim(), context.RightArg))
+        string optionName = context.LeftArg.Trim();
+        var option = ConfigCatalog.Find(optionName);
+        if (option == null || !ConfigCatalog.TrySet(_config, optionName, context.RightArg))
         {
             context.Notify(Feedback.CouldntSetThatOption);
             return false;
@@ -51,9 +53,23 @@ public class ConfigCommandHandler : ICommandHandler
         db.DefaultHomeId = _config.DefaultHome;
         db.BaseRoomId = _config.BaseRoom;
         db.PlayerStartId = _config.PlayerStart;
-        context.Notify(save
-            ? "Option set but not saved (Saves disabled.)"
-            : "Option set.");
+        if (!save)
+        {
+            context.Notify("Option set.");
+            return true;
+        }
+
+        if (!_config.ConfigSave || string.IsNullOrWhiteSpace(_config.ConfigFilePath) || !System.IO.File.Exists(_config.ConfigFilePath))
+        {
+            context.Notify("Option set but not saved (Saves disabled.)");
+            return true;
+        }
+
+        string formattedValue = option.Kind == ConfigKind.YesNo
+            ? (option.Read(_config) == "Yes" ? "yes" : "no")
+            : option.Read(_config);
+        MushConfigWriter.SaveOption(_config.ConfigFilePath, option.Name, formattedValue);
+        context.Notify("Option set and saved.");
         return true;
     }
 

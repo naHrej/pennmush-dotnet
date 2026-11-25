@@ -94,6 +94,7 @@ public class MUSHServer
         if (resolvedConfig != null && File.Exists(resolvedConfig))
         {
             Config = MushConfigParser.ParseFile(resolvedConfig);
+            Config.ConfigFilePath = resolvedConfig;
             GameDirectory = Path.GetDirectoryName(Path.GetFullPath(resolvedConfig)) ?? Directory.GetCurrentDirectory();
         }
         else
