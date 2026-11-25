@@ -662,10 +662,7 @@ public class MessageCommandHandler : ICommandHandler
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         string rightTrimmed = context.RightArg.Trim();
-        int comma = rightTrimmed.IndexOf(',');
-        string attrSpec = comma >= 0 ? rightTrimmed.Substring(0, comma).Trim() : rightTrimmed;
-        if (string.IsNullOrWhiteSpace(context.LeftArg)
-            || !CopyAttributeCommandHandler.TrySplitAttr(attrSpec, out var objectName, out var attrName))
+        if (string.IsNullOrWhiteSpace(context.LeftArg) || string.IsNullOrWhiteSpace(rightTrimmed))
         {
             context.Notify(Feedback.UsageMessageRemitOemitTargetObjectAttribute);
             return false;
@@ -675,24 +672,67 @@ public class MessageCommandHandler : ICommandHandler
         int slash = leftSpec.IndexOf('/');
         string objSpec = slash >= 0 ? leftSpec.Substring(0, slash).Trim() : leftSpec;
         var target = db.MatchObject(context.Executor, objSpec);
-        var holder = db.MatchObject(context.Executor, objectName);
-        if (target == null || holder == null)
+        if (target == null)
         {
             context.Notify(Feedback.ICantFindThat);
             return false;
         }
 
-        var entry = holder.GetAttribute(attrName, db);
-        if (entry == null)
+        string[] parts = rightTrimmed.Split(',');
+        string text;
+        if (parts.Length == 1)
         {
-            context.Notify(Feedback.NoSuchAttribute);
-            return false;
+            if (!CopyAttributeCommandHandler.TrySplitAttr(parts[0].Trim(), out var objectName, out var attrName))
+            {
+                context.Notify(Feedback.UsageMessageRemitOemitTargetObjectAttribute);
+                return false;
+            }
+            var holder = db.MatchObject(context.Executor, objectName);
+            if (holder == null)
+            {
+                context.Notify(Feedback.ICantFindThat);
+                return false;
+            }
+            var entry = holder.GetAttribute(attrName, db);
+            if (entry == null)
+            {
+                context.Notify(Feedback.NoSuchAttribute);
+                return false;
+            }
+            text = _evaluator != null
+                ? _evaluator.Evaluate(entry.Value, new EvaluationContext(context.Executor, context.Enactor))
+                : entry.Value;
         }
-
-        string[]? msgArgs = comma >= 0 ? rightTrimmed.Substring(comma + 1).Split(',') : null;
-        string text = entry.Value;
-        if (_evaluator != null)
-            text = _evaluator.Evaluate(text, new EvaluationContext(context.Executor, context.Enactor, args: msgArgs));
+        else
+        {
+            // PennMUSH C syntax: @message <targets>=<default_msg>,<obj>/<attr>[,<arg0>,...]
+            string defaultMsg = parts[0];
+            string attrSpec = parts[1].Trim();
+            string[] msgArgs = parts.Skip(2).ToArray();
+            if (CopyAttributeCommandHandler.TrySplitAttr(attrSpec, out var objectName, out var attrName))
+            {
+                var holder = db.MatchObject(context.Executor, objectName);
+                var entry = holder?.GetAttribute(attrName, db);
+                if (entry != null)
+                {
+                    text = _evaluator != null
+                        ? _evaluator.Evaluate(entry.Value, new EvaluationContext(context.Executor, context.Enactor, args: msgArgs))
+                        : entry.Value;
+                }
+                else
+                {
+                    text = _evaluator != null
+                        ? _evaluator.Evaluate(defaultMsg, new EvaluationContext(context.Executor, context.Enactor, args: msgArgs))
+                        : defaultMsg;
+                }
+            }
+            else
+            {
+                text = _evaluator != null
+                    ? _evaluator.Evaluate(defaultMsg, new EvaluationContext(context.Executor, context.Enactor, args: msgArgs))
+                    : defaultMsg;
+            }
+        }
 
         if (context.Switches.Contains("remit"))
         {
