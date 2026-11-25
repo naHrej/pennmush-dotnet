@@ -126,7 +126,7 @@ public class TelnetListenerService : BackgroundService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning("Telnet client disconnected unexpectedly: {Message}", ex.Message);
+            _logger.LogWarning(ex, "Telnet client disconnected unexpectedly: {Message}", ex.Message);
         }
         finally
         {
