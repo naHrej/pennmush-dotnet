@@ -18,6 +18,12 @@ public class ChatCommandHandler : ICommandHandler
         _evaluator = evaluator;
     }
 
+    internal bool MatchesChannel(PennMUSH.Core.Entities.MUSHObject executor, string chName, ObjectDatabase db)
+    {
+        var ch = _channels.MatchJoinedChannel(executor.Id, chName, out bool ambiguous);
+        return ambiguous || (ch != null && ch.Visible(executor, db));
+    }
+
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
         var executor = db.GetObject(context.Executor);

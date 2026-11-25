@@ -309,6 +309,23 @@ public static partial class StandardAttributes
         return true;
     }
 
+    public static bool TryFindSetFlag(string name, out AttributeFlags bit)
+    {
+        bit = AttributeFlags.None;
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        string trimmed = name.Trim();
+        foreach (var (flagName, flagBit) in SetNames)
+        {
+            if (flagName.Equals(trimmed, StringComparison.OrdinalIgnoreCase))
+            {
+                bit = flagBit;
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static readonly (string Name, AttributeFlags Bit)[] SetNames =
     {
         ("no_command", AttributeFlags.NoProg),

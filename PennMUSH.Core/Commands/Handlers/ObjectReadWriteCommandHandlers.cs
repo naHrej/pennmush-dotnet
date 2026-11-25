@@ -737,20 +737,48 @@ public class FindCommandHandler : ICommandHandler
         var hits = visible
             .GroupBy(obj => obj.Id.Value)
             .Select(group => group.First())
-            .Where(obj => obj.Type != ObjectType.None)
+            .Where(obj => obj.Type != ObjectType.None && obj.Type != ObjectType.Exit)
             .Where(obj => low < 0 || (obj.Id.Value >= low && obj.Id.Value <= high))
-            .Where(obj => name.Length == 0 || obj.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+            .Where(obj => name.Length == 0 || MatchesWordPrefix(obj.Name, name))
             .OrderBy(obj => obj.Id.Value)
             .ToList();
 
         if (hits.Count == 0)
         {
-            context.Notify(Feedback.NothingFound);
+            context.Notify("*** 0 objects found ***");
             return true;
         }
 
-        context.Notify(string.Join("\n", hits.Select(obj => $"{obj.Name} ({obj.Id})")));
+        var lines = hits.Select(obj => $"{obj.Name}({obj.Id}{FlagLetters(obj)})").ToList();
+        lines.Add($"*** {hits.Count} objects found ***");
+        context.Notify(string.Join("\n", lines));
         return true;
+    }
+
+    private static bool MatchesWordPrefix(string target, string prefix)
+    {
+        if (target.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return true;
+        int idx = 0;
+        while ((idx = target.IndexOf(' ', idx)) >= 0)
+        {
+            idx++;
+            if (idx < target.Length && target.AsSpan(idx).StartsWith(prefix.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    internal static string FlagLetters(MUSHObject obj)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (string flagName in obj.Flags)
+        {
+            var def = PennMUSH.Core.Flags.FlagTable.FindFlag(flagName);
+            if (def != null && def.Letter != ' ')
+                sb.Append(def.Letter);
+        }
+        return sb.ToString();
     }
 
     private static bool TryRange(string text, out int low, out int high)
@@ -784,7 +812,7 @@ public class WhereIsCommandHandler : ICommandHandler
         var target = db.FindPlayer(context.Arguments.Trim());
         if (target == null || target.Type != ObjectType.Player)
         {
-            context.Notify(Feedback.ICantFindThatPlayer);
+            context.Notify("That player does not seem to exist.");
             return false;
         }
 

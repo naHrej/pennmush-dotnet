@@ -19,17 +19,58 @@ public class SetCommandHandler : ICommandHandler
             return false;
         }
 
-        var target = db.MatchObject(context.Executor, context.LeftArg);
-        if (target == null)
-        {
-            context.Notify(Feedback.ICantSeeThatHere);
-            return false;
-        }
-
         var executorObj = db.GetObject(context.Executor);
         if (executorObj == null)
         {
             context.Notify(Feedback.PermissionDenied);
+            return false;
+        }
+
+        int slash = context.LeftArg.IndexOf('/');
+        if (slash != -1)
+        {
+            string objPart = context.LeftArg[..slash].Trim();
+            string attrPart = context.LeftArg[(slash + 1)..].Trim();
+            var attrTarget = db.MatchObject(context.Executor, objPart);
+            if (attrTarget == null)
+            {
+                context.Notify(Feedback.ICantSeeThatHere);
+                return false;
+            }
+            if (!executorObj.IsWizard && executorObj.Id != attrTarget.Owner)
+            {
+                context.Notify(Feedback.PermissionDenied);
+                return false;
+            }
+            var attrEntry = attrTarget.GetAttribute(attrPart);
+            if (attrEntry == null)
+            {
+                context.Notify(Feedback.NoSuchAttribute);
+                return false;
+            }
+
+            foreach (string token in context.RightArg.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                bool negateAttrFlag = token.StartsWith('!');
+                string flagToken = negateAttrFlag ? token[1..] : token;
+                if (!StandardAttributes.TryFindSetFlag(flagToken, out var bit))
+                {
+                    context.Notify(Feedback.IDontRecognizeThatFlag);
+                    return false;
+                }
+                if (negateAttrFlag)
+                    attrTarget.RemoveAttributeFlags(attrEntry.Name, bit);
+                else
+                    attrTarget.AddAttributeFlags(attrEntry.Name, bit);
+            }
+            context.Notify(Feedback.Set);
+            return true;
+        }
+
+        var target = db.MatchObject(context.Executor, context.LeftArg);
+        if (target == null)
+        {
+            context.Notify(Feedback.ICantSeeThatHere);
             return false;
         }
 

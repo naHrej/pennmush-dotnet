@@ -221,43 +221,35 @@ public class CommandDispatcher
         if (execObj != null && execObj.Location.IsValid)
         {
             var exitObj = db.FindExit(execObj.Location, context.CommandName);
-            var goLookup = _commandTable.Lookup("go");
-            if (exitObj != null && goLookup.Status == CommandLookupStatus.Found && goLookup.Handler != null)
-            {
-                var goCtx = new CommandContext
-                {
-                    Executor = executor,
-                    Enactor = executor,
-                    RawCommand = input,
-                    CommandName = "go",
-                    Arguments = context.CommandName,
-                    LeftArg = context.CommandName
-                };
-                goLookup.Handler.Execute(goCtx, db);
-                foreach (var note in goCtx.TargetedNotifications)
-                    context.TargetedNotifications.Add(note);
-                foreach (var note in goCtx.Notifications)
-                    context.Notifications.Add(note);
+            if (exitObj != null && TryDispatchGo(execObj, input, context.CommandName, db, context))
                 return context;
-            }
         }
 
-        // 2. Check $command:action listeners (local room, inventory, self, Master Room)
-        if (execObj != null && TryMatchCommandListener(execObj, input, db, context))
+        // 2. Check EALIAS / LALIAS for mobile executors (Players and Things)
+        if (execObj != null && execObj.Location.IsValid && (execObj.Type == ObjectType.Player || execObj.Type == ObjectType.Thing))
+        {
+            if (TryMatchEnterLeaveAlias(execObj, input, db, context))
+                return context;
+        }
+
+        // 3. Tiered $command:action listeners (local -> zone -> Master Room #2)
+        if (execObj != null && !execObj.HasFlag("GAGGED") && TryMatchCommandListener(execObj, input, db, context))
         {
             return context;
         }
 
-        // 3. Check channel prefix (+channel message or +channel/who).
-        // A one-word message has no space or '=' inside the argument, so any argument counts.
-        if (context.CommandName.StartsWith('+') && context.CommandName.Length > 1
+        // 4. Check channel prefix (+channel message or +channel/who) only if a matching channel exists.
+        if (execObj != null
+            && context.CommandName.StartsWith('+') && context.CommandName.Length > 1
             && (context.Switches.Count > 0 || context.Arguments.Length > 0))
         {
             string chName = context.CommandName.Substring(1);
             var chanLookup = _commandTable.Lookup("@channel");
             var chatLookup = _commandTable.Lookup("@chat");
+            bool matchesChannel = chatLookup.Handler is Handlers.ChatCommandHandler chatHandler
+                && chatHandler.MatchesChannel(execObj, chName, db);
 
-            if (context.Switches.Count > 0 && chanLookup.Status == CommandLookupStatus.Found && chanLookup.Handler != null)
+            if (matchesChannel && context.Switches.Count > 0 && chanLookup.Status == CommandLookupStatus.Found && chanLookup.Handler != null)
             {
                 var chCtx = new CommandContext
                 {
@@ -275,7 +267,7 @@ public class CommandDispatcher
                 foreach (var note in chCtx.Notifications) context.Notifications.Add(note);
                 return context;
             }
-            else if (chatLookup.Status == CommandLookupStatus.Found && chatLookup.Handler != null)
+            else if (matchesChannel && chatLookup.Status == CommandLookupStatus.Found && chatLookup.Handler != null)
             {
                 var chatCtx = new CommandContext
                 {
@@ -294,70 +286,213 @@ public class CommandDispatcher
             }
         }
 
-        // 4. Unrecognized command
+        // 5. Unrecognized command
         context.Notify(Feedback.HuhTypeHelpForHelp);
         return context;
     }
 
-    private bool TryMatchCommandListener(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
+    private bool TryDispatchGo(MUSHObject execObj, string input, string exitTarget, ObjectDatabase db, CommandContext context)
     {
-        var candidates = new List<MUSHObject>();
-        var seen = new HashSet<Dbref>();
+        var goLookup = _commandTable.Lookup("go");
+        if (goLookup.Status != CommandLookupStatus.Found || goLookup.Handler == null)
+            return false;
 
-        void AddCandidate(MUSHObject? obj)
+        var goCtx = new CommandContext
         {
-            if (obj != null && seen.Add(obj.Id))
-                candidates.Add(obj);
+            Executor = execObj.Id,
+            Enactor = execObj.Id,
+            RawCommand = input,
+            CommandName = "go",
+            Arguments = exitTarget,
+            LeftArg = exitTarget
+        };
+        if (CheckRestrictions(execObj, "go", goCtx))
+        {
+            goLookup.Handler.Execute(goCtx, db);
         }
+        foreach (var note in goCtx.TargetedNotifications)
+            context.TargetedNotifications.Add(note);
+        foreach (var note in goCtx.Notifications)
+            context.Notifications.Add(note);
+        return true;
+    }
 
-        // Current room
-        if (executor.Location.IsValid)
+    private bool TryMatchEnterLeaveAlias(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
+    {
+        string trimmed = input.Trim();
+        if (trimmed.Length == 0)
+            return false;
+
+        // Check EALIAS on objects in executor's location
+        var enterLookup = _commandTable.Lookup("enter");
+        if (enterLookup.Status == CommandLookupStatus.Found && enterLookup.Handler != null)
         {
-            AddCandidate(db.GetObject(executor.Location));
-
-            // Objects in room
             foreach (var item in db.GetContents(executor.Location))
             {
-                if (item.Id != executor.Id)
-                    AddCandidate(item);
+                if (item.Id == executor.Id)
+                    continue;
+                string? ealias = item.GetAttribute("EALIAS")?.Value;
+                if (!string.IsNullOrWhiteSpace(ealias) && MatchesAliasList(ealias, trimmed))
+                {
+                    var enterCtx = new CommandContext
+                    {
+                        Executor = executor.Id,
+                        Enactor = executor.Id,
+                        RawCommand = $"enter #{item.Id.Value}",
+                        CommandName = "enter",
+                        Arguments = $"#{item.Id.Value}"
+                    };
+                    if (CheckRestrictions(executor, "enter", enterCtx))
+                        enterLookup.Handler.Execute(enterCtx, db);
+                    foreach (var note in enterCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
+                    foreach (var note in enterCtx.Notifications) context.Notifications.Add(note);
+                    return true;
+                }
             }
         }
 
-        // Executor's inventory
-        foreach (var item in db.GetContents(executor.Id))
-            AddCandidate(item);
-
-        // Self
-        AddCandidate(executor);
-
-        // Master Room (#2) globals
-        var masterRoom = new Dbref(2);
-        foreach (var item in db.GetContents(masterRoom))
+        // Check LALIAS on executor's location if it is not a room
+        var loc = db.GetObject(executor.Location);
+        var leaveLookup = _commandTable.Lookup("leave");
+        if (loc != null && loc.Type != ObjectType.Room && leaveLookup.Status == CommandLookupStatus.Found && leaveLookup.Handler != null)
         {
-            AddCandidate(item);
-        }
-
-        foreach (var candidate in candidates)
-        {
-            if (candidate.HasFlag("NO_COMMAND") || candidate.HasFlag("HALT"))
-                continue;
-
-            foreach (var listener in candidate.Listeners)
+            string? lalias = loc.GetAttribute("LALIAS")?.Value;
+            if (!string.IsNullOrWhiteSpace(lalias) && MatchesAliasList(lalias, trimmed))
             {
-                if (!listener.Command)
-                    continue;
-                if (TryMatchListenerPattern(listener, input, out var captures))
+                var leaveCtx = new CommandContext
                 {
-                    ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
-                    return true;
-                }
+                    Executor = executor.Id,
+                    Enactor = executor.Id,
+                    RawCommand = "leave",
+                    CommandName = "leave",
+                    Arguments = string.Empty
+                };
+                if (CheckRestrictions(executor, "leave", leaveCtx))
+                    leaveLookup.Handler.Execute(leaveCtx, db);
+                foreach (var note in leaveCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
+                foreach (var note in leaveCtx.Notifications) context.Notifications.Add(note);
+                return true;
             }
         }
 
         return false;
     }
 
-    private static bool TryMatchListenerPattern(StoredListener listener, string input, out string[] captures)
+    private static bool MatchesAliasList(string aliasList, string input)
+    {
+        foreach (string part in aliasList.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (part.Trim().Equals(input, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
+    private bool TryMatchCommandListener(MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
+    {
+        int matched = 0;
+
+        // Tier 1: Local objects (contents of location, location itself, executor's inventory)
+        if (executor.Location.IsValid)
+        {
+            foreach (var item in db.GetContents(executor.Location))
+                matched += MatchObjectListeners(item, executor, input, db, context);
+
+            if (executor.Location != executor.Id)
+            {
+                var loc = db.GetObject(executor.Location);
+                if (loc != null)
+                    matched += MatchObjectListeners(loc, executor, input, db, context);
+            }
+        }
+
+        if (executor.Location != executor.Id)
+        {
+            foreach (var item in db.GetContents(executor.Id))
+                matched += MatchObjectListeners(item, executor, input, db, context);
+        }
+
+        if (matched > 0)
+            return true;
+
+        // Tier 2: Zones (location's zone, then executor's personal zone)
+        var locationObj = executor.Location.IsValid ? db.GetObject(executor.Location) : null;
+        if (locationObj != null && locationObj.Zone.IsValid)
+        {
+            var locZone = db.GetObject(locationObj.Zone);
+            if (locZone != null)
+            {
+                if (locZone.Type == ObjectType.Room)
+                {
+                    var zoneExit = db.FindExit(locZone.Id, context.CommandName);
+                    if (zoneExit != null && TryDispatchGo(executor, input, context.CommandName, db, context))
+                        return true;
+
+                    foreach (var item in db.GetContents(locZone.Id))
+                        matched += MatchObjectListeners(item, executor, input, db, context);
+                }
+                else
+                {
+                    matched += MatchObjectListeners(locZone, executor, input, db, context);
+                }
+            }
+        }
+
+        if (matched == 0 && executor.Zone.IsValid && (locationObj == null || executor.Zone != locationObj.Zone))
+        {
+            var execZone = db.GetObject(executor.Zone);
+            if (execZone != null)
+            {
+                if (execZone.Type == ObjectType.Room)
+                {
+                    foreach (var item in db.GetContents(execZone.Id))
+                        matched += MatchObjectListeners(item, executor, input, db, context);
+                }
+                else
+                {
+                    matched += MatchObjectListeners(execZone, executor, input, db, context);
+                }
+            }
+        }
+
+        if (matched > 0)
+            return true;
+
+        // Tier 3: Master Room (#2) global exits and global $ commands
+        var masterRoom = new Dbref(2);
+        if (executor.Location != masterRoom)
+        {
+            var globalExit = db.FindExit(masterRoom, context.CommandName);
+            if (globalExit != null && TryDispatchGo(executor, input, context.CommandName, db, context))
+                return true;
+
+            foreach (var item in db.GetContents(masterRoom))
+                matched += MatchObjectListeners(item, executor, input, db, context);
+        }
+
+        return matched > 0;
+    }
+
+    private int MatchObjectListeners(MUSHObject candidate, MUSHObject executor, string input, ObjectDatabase db, CommandContext context)
+    {
+        if (candidate.HasFlag("NO_COMMAND") || candidate.HasFlag("HALT"))
+            return 0;
+
+        int matched = 0;
+        foreach (var listener in candidate.Listeners)
+        {
+            if (!listener.Command)
+                continue;
+            if (TryMatchListenerPattern(listener, input, out var captures))
+            {
+                ExecuteListenerAction(candidate, executor, listener.Action, captures, db, context);
+                matched++;
+            }
+        }
+        return matched;
+    }
+
+    internal static bool TryMatchListenerPattern(StoredListener listener, string input, out string[] captures)
     {
         if (!listener.Regexp)
             return PatternMatcher.Match(listener.Pattern, input, out captures);
@@ -391,19 +526,33 @@ public class CommandDispatcher
         }
     }
 
-    private void ExecuteListenerAction(MUSHObject listener, MUSHObject enactor, string action, string[] captures, ObjectDatabase db, CommandContext context)
+    internal void ExecuteListenerAction(MUSHObject listener, MUSHObject enactor, string action, string[] captures, ObjectDatabase db, CommandContext context)
     {
         foreach (string piece in Handlers.IncludeCommandHandler.SplitCommands(action))
         {
             string trimmed = piece.TrimStart();
-            string firstToken = trimmed.Split(' ', 2)[0].Split('/')[0];
+            if (trimmed.Length == 0)
+                continue;
+
+            int firstSpace = trimmed.IndexOf(' ');
+            string firstWord = firstSpace >= 0 ? trimmed[..firstSpace] : trimmed;
+            int slash = firstWord.IndexOf('/');
+            string cmdHead = slash >= 0 ? firstWord[..slash] : firstWord;
+
             bool isCommand = trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&')
-                || _commandTable.Lookup(firstToken).Status == CommandLookupStatus.Found;
+                || _commandTable.Lookup(cmdHead).Status == CommandLookupStatus.Found;
             if (isCommand)
             {
                 var subCtx = DispatchQueued(listener.Id, piece, db, enactor.Id, captures);
                 foreach (var note in subCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
-                foreach (var note in subCtx.Notifications) context.Notifications.Add(note);
+                if (listener.Id == enactor.Id)
+                {
+                    foreach (var note in subCtx.Notifications) context.Notifications.Add(note);
+                }
+                else
+                {
+                    foreach (var note in subCtx.Notifications) context.NotifyTarget(listener.Id, note);
+                }
             }
             else if (_evaluator != null)
             {
