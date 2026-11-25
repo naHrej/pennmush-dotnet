@@ -1,5 +1,6 @@
 namespace PennMUSH.Core.Attributes;
 
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using PennMUSH.Core.Database;
 using PennMUSH.Core.Entities;
@@ -15,6 +16,7 @@ public static partial class StandardAttributes
 
     private static readonly Dictionary<string, Restriction> Restrictions = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Dbref> Creators = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, string> CustomSetFlags = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly (string Name, AttributeFlags Bit)[] ViewNames =
     {
@@ -65,6 +67,45 @@ public static partial class StandardAttributes
 
     public static string DescribeFlags(AttributeFlags flags)
         => string.Join(' ', ViewNames.Where(entry => flags.HasFlag(entry.Bit)).Select(entry => entry.Name));
+
+    public static string DescribeFlags(AttributeFlags flags, IEnumerable<string>? customFlags)
+    {
+        var parts = ViewNames.Where(entry => flags.HasFlag(entry.Bit)).Select(entry => entry.Name);
+        if (customFlags != null)
+            parts = parts.Concat(customFlags);
+        return string.Join(' ', parts);
+    }
+
+    public static bool RegisterCustomFlag(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        string normalized = name.Trim().ToLowerInvariant();
+        if (normalized is "none" or "branch")
+            return false;
+        foreach (char c in normalized)
+        {
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '-')
+                return false;
+        }
+        if (SetNames.Any(entry => entry.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase)) ||
+            ViewNames.Any(entry => entry.Name.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        CustomSetFlags[normalized] = normalized;
+        return true;
+    }
+
+    public static bool UnregisterCustomFlag(string name)
+        => !string.IsNullOrWhiteSpace(name) && CustomSetFlags.TryRemove(name.Trim(), out _);
+
+    public static bool IsCustomFlag(string name)
+        => !string.IsNullOrWhiteSpace(name) && CustomSetFlags.ContainsKey(name.Trim());
+
+    public static IReadOnlyCollection<string> GetCustomFlags()
+        => CustomSetFlags.Values.ToArray();
 
     public static bool TryParseFlags(string text, out AttributeFlags flags)
     {

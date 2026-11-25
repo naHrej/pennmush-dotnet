@@ -274,7 +274,7 @@ public class DecompileCommandHandler : ICommandHandler
     private static string AttributeFlagText(AttributeEntry attr, AttrFlagMode flagMode)
     {
         var stored = attr.Flags & ~AttributeFlags.Root;
-        if (flagMode == AttrFlagMode.SkipDefaults && StandardAttributes.ExistsExact(attr.Name))
+        if (flagMode == AttrFlagMode.SkipDefaults && attr.CustomFlags.Count == 0 && StandardAttributes.ExistsExact(attr.Name))
         {
             var standard = StandardAttributes.FlagsOf(attr.Name);
             var withoutBuiltins = standard & ~AttributeFlags.PrefixMatch & ~AttributeFlags.Root;
@@ -282,7 +282,7 @@ public class DecompileCommandHandler : ICommandHandler
                 return "";
         }
 
-        return StandardAttributes.DescribeFlags(stored);
+        return StandardAttributes.DescribeFlags(stored, attr.CustomFlags);
     }
 
     private static bool CanRead(ObjectDatabase db, MUSHObject actor, MUSHObject target, AttributeEntry attr)

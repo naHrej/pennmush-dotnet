@@ -51,7 +51,7 @@ public class SqliteStore : IDisposable
                 warnings = excluded.warnings,
                 created_at = excluded.created_at,
                 modified_at = excluded.modified_at;");
-        _insertAttribute = Prepare("INSERT INTO attributes (object_id, name, value, setter, flags) VALUES ($id, $name, $val, $setter, $flags);");
+        _insertAttribute = Prepare("INSERT INTO attributes (object_id, name, value, setter, flags, custom_flags) VALUES ($id, $name, $val, $setter, $flags, $custom_flags);");
         _insertFlag = Prepare("INSERT INTO flags (object_id, flag) VALUES ($id, $flag);");
         _insertPower = Prepare("INSERT INTO powers (object_id, power) VALUES ($id, $power);");
         _insertParent = Prepare("INSERT INTO parents (object_id, parent_id, priority) VALUES ($id, $pid, $prio);");
@@ -93,6 +93,7 @@ public class SqliteStore : IDisposable
                 value TEXT NOT NULL,
                 setter INTEGER NOT NULL,
                 flags INTEGER NOT NULL,
+                custom_flags TEXT,
                 PRIMARY KEY (object_id, name)
             );
 
@@ -147,6 +148,17 @@ public class SqliteStore : IDisposable
         try
         {
             alter.ExecuteNonQuery();
+        }
+        catch (SqliteException)
+        {
+            // The column is already present on a database created with this schema.
+        }
+
+        using var alterAttr = _connection.CreateCommand();
+        alterAttr.CommandText = "ALTER TABLE attributes ADD COLUMN custom_flags TEXT";
+        try
+        {
+            alterAttr.ExecuteNonQuery();
         }
         catch (SqliteException)
         {
@@ -257,12 +269,16 @@ public class SqliteStore : IDisposable
 
         foreach (var attr in obj.Attributes)
         {
+            object customFlagsVal = attr.CustomFlags.Count > 0
+                ? string.Join(' ', attr.CustomFlags)
+                : DBNull.Value;
             Bind(_insertAttribute, tx,
                 ("$id", obj.Id.Value),
                 ("$name", attr.Name),
                 ("$val", attr.Value),
                 ("$setter", attr.Creator.Value),
-                ("$flags", (int)attr.Flags));
+                ("$flags", (int)attr.Flags),
+                ("$custom_flags", customFlagsVal));
             _insertAttribute.ExecuteNonQuery();
         }
 
@@ -436,18 +452,22 @@ public class SqliteStore : IDisposable
         // Load attributes
         using (var aCmd = _connection.CreateCommand())
         {
-            aCmd.CommandText = "SELECT object_id, name, value, setter, flags FROM attributes;";
+            aCmd.CommandText = "SELECT object_id, name, value, setter, flags, custom_flags FROM attributes;";
             using var aReader = aCmd.ExecuteReader();
             while (aReader.Read())
             {
                 var obj = db.GetObject(new Dbref(aReader.GetInt32(0)));
                 if (obj != null)
                 {
+                    string[]? customFlags = aReader.IsDBNull(5)
+                        ? null
+                        : aReader.GetString(5).Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     obj.SetAttribute(
                         aReader.GetString(1),
                         aReader.GetString(2),
                         new Dbref(aReader.GetInt32(3)),
-                        (PennMUSH.Core.Attributes.AttributeFlags)aReader.GetInt32(4)
+                        (PennMUSH.Core.Attributes.AttributeFlags)aReader.GetInt32(4),
+                        customFlags: customFlags
                     );
                 }
             }
