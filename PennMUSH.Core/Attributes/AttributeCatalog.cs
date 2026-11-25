@@ -16,7 +16,7 @@ public static partial class StandardAttributes
 
     private static readonly Dictionary<string, Restriction> Restrictions = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, Dbref> Creators = new(StringComparer.Ordinal);
-    private static readonly ConcurrentDictionary<string, string> CustomSetFlags = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, string?> CustomSetFlags = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly (string Name, AttributeFlags Bit)[] ViewNames =
     {
@@ -76,7 +76,7 @@ public static partial class StandardAttributes
         return string.Join(' ', parts);
     }
 
-    public static bool RegisterCustomFlag(string name)
+    public static bool RegisterCustomFlag(string name, string? shortName = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             return false;
@@ -94,8 +94,22 @@ public static partial class StandardAttributes
             return false;
         }
 
-        CustomSetFlags[normalized] = normalized;
+        string? normalizedShort = string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
+        CustomSetFlags[normalized] = normalizedShort;
         return true;
+    }
+
+    public static bool TryGetCustomFlagShortName(string name, out string shortName)
+    {
+        shortName = string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        if (CustomSetFlags.TryGetValue(name.Trim(), out string? found) && !string.IsNullOrEmpty(found))
+        {
+            shortName = found;
+            return true;
+        }
+        return false;
     }
 
     public static bool UnregisterCustomFlag(string name)
@@ -105,7 +119,7 @@ public static partial class StandardAttributes
         => !string.IsNullOrWhiteSpace(name) && CustomSetFlags.ContainsKey(name.Trim());
 
     public static IReadOnlyCollection<string> GetCustomFlags()
-        => CustomSetFlags.Values.ToArray();
+        => CustomSetFlags.Keys.ToArray();
 
     public static bool TryParseFlags(string text, out AttributeFlags flags)
     {
