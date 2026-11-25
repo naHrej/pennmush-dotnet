@@ -602,6 +602,8 @@ public static class LogicFunctions
             if (obj == null) return MushError.NoMatch.Text();
             if (actor == null || (!PennMUSH.Core.Attributes.AttributePermissions.Controls(actor, obj) && !PennMUSH.Core.Attributes.AttributePermissions.CanSeeAll(actor)))
                 return MushError.PermissionDenied.Text();
+            if (!registry.IsUnsafeEvalEnabled && PennMUSH.Core.Attributes.AttributePermissions.PrivilegeRank(obj) > PennMUSH.Core.Attributes.AttributePermissions.PrivilegeRank(actor))
+                return MushError.PermissionDenied.Text();
             targetCtx = ctx.CreateChildContext(obj.Id, ctx.Executor, ctx.Arguments);
         }
 

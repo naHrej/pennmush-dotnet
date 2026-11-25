@@ -841,9 +841,11 @@ public static class DbFunctions
         var target = reg.Database?.GetObject(dbref) ?? reg.Database?.MatchObject(ctx.Executor, targetSpec);
         var actor = reg.Database?.GetObject(ctx.Executor);
 
-        Dbref evalAs = (target != null && actor != null && AttributePermissions.Controls(actor, target))
-            ? target.Id
-            : ctx.Executor;
+        bool canControl = target != null && actor != null && AttributePermissions.Controls(actor, target);
+        if (canControl && !reg.IsUnsafeEvalEnabled && AttributePermissions.PrivilegeRank(target) > AttributePermissions.PrivilegeRank(actor))
+            return MushError.PermissionDenied.Text();
+
+        Dbref evalAs = canControl ? target!.Id : ctx.Executor;
 
         var childCtx = ctx.CreateChildContext(evalAs, ctx.Executor, ctx.Arguments);
         return reg.Evaluator.Evaluate(args[1], childCtx);
@@ -877,6 +879,7 @@ public static class DbFunctions
 
     public static string SFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
+        if (!reg.IsUnsafeEvalEnabled) return MushError.FunctionDisabled.Text();
         if (args.Length == 0 || reg.Evaluator == null) return string.Empty;
         return reg.Evaluator.Evaluate(args[0], ctx);
     }

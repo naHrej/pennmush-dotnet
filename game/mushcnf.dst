@@ -1021,3 +1021,8 @@ include restrict.cnf
 # This option cannot be changed in-game with @config/set or @config/save.
 config_save no
 
+# Allow unsafe dynamic string-evaluation functions such as s() and allow
+# objeval()/fn() to evaluate under a target object with higher privileges
+# than the caller? Disabled (no) by default.
+unsafe_eval_functions no
+

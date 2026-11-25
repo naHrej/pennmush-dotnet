@@ -53,6 +53,9 @@ public class FunctionRegistry
     public Func<int>? StartingQuotaProvider { get; set; }
     public bool IsQuotaEnabled => UseQuotaProvider?.Invoke() ?? UseQuota;
     public int EffectiveStartingQuota => StartingQuotaProvider?.Invoke() ?? StartingQuota;
+    public bool UnsafeEvalFunctions { get; set; } = false;
+    public Func<bool>? UnsafeEvalFunctionsProvider { get; set; }
+    public bool IsUnsafeEvalEnabled => UnsafeEvalFunctionsProvider?.Invoke() ?? UnsafeEvalFunctions;
     public string MudName { get; set; } = "PennMUSH";
     public string MudUrl { get; set; } = string.Empty;
     public Func<IEnumerable<string>>? CommandNamesProvider { get; set; }
@@ -157,6 +160,17 @@ public class FunctionRegistry
             _builtinGates[name] = gate;
         }
         return gate;
+    }
+
+    public bool TryRestrict(string name, string restriction)
+    {
+        if (_soft.TryGetValue(name, out var soft))
+            return FunctionRestrictions.Apply(soft.Gate, restriction);
+
+        if (_functions.ContainsKey(name))
+            return FunctionRestrictions.Apply(BuiltinGate(name), restriction);
+
+        return false;
     }
 
     public string Dispatch(string functionName, EvaluationContext context, string[] args)

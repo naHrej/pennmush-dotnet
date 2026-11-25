@@ -93,6 +93,7 @@ public static class ConfigCatalog
             Number("paycheck", "limits", c => c.Paycheck, (c, v) => c.Paycheck = v),
             Number("starting_money", "limits", c => c.StartingMoney, (c, v) => c.StartingMoney = v),
             Number("starting_quota", "limits", c => c.StartingQuota, (c, v) => c.StartingQuota = v),
+            YesNo("unsafe_eval_functions", "limits", c => c.UnsafeEvalFunctions, (c, v) => c.UnsafeEvalFunctions = v),
             YesNo("use_quota", "limits", c => c.UseQuota, (c, v) => c.UseQuota = v),
             Text("colors_file", "messages", c => c.ColorsFile, (c, v) => c.ColorsFile = v),
             Text("connect_file", "messages", c => c.ConnectFile, (c, v) => c.ConnectFile = v),
