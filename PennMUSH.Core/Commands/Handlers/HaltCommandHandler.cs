@@ -55,8 +55,10 @@ public class HaltCommandHandler : ICommandHandler
             return false;
         }
 
-        int count = _queue.Halt(target);
-        context.Notify(Feedback.HaltedProcessEs, ("value", $"{count}"));
+        _queue.Halt(target);
+        context.Notify($"Halted: {targetObj.Name}({targetObj.Id})");
+        if (targetObj.Id == context.Executor)
+            context.Notify("All of your objects have been halted.");
         return true;
     }
 }

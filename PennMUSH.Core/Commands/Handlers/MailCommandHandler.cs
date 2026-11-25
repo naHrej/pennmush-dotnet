@@ -137,6 +137,10 @@ public class MailCommandHandler : ICommandHandler
             {
                 targetObj = db.GetObject(targetRef);
             }
+            else if (context.LeftArg.Trim().Equals("me", StringComparison.OrdinalIgnoreCase))
+            {
+                targetObj = executor;
+            }
             else
             {
                 // Find player by name

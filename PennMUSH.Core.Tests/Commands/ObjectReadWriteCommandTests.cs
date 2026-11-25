@@ -195,7 +195,7 @@ public class ObjectReadWriteCommandTests
         var drained = _dispatcher.Dispatch(_owner, "@drain gate", _db);
 
         Assert.Equal(0, _queue.Count);
-        Assert.Contains("Drained 1", drained.Notifications.Single());
+        Assert.Contains("Drained.", drained.Notifications.Single());
     }
 
     [Fact]

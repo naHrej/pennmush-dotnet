@@ -25,8 +25,9 @@ public class AllHaltCommandHandler : ICommandHandler
             return false;
         }
 
-        int count = _queue.AllHalt();
-        context.Notify(Feedback.HaltedAllProcessEsInTheQueue, ("value", $"{count}"));
+        _queue.AllHalt();
+        context.Notify($"Your objects have been globally halted by {execObj.Name}");
+        context.Notify($"Halted: {execObj.Name}({execObj.Id})");
         return true;
     }
 }
