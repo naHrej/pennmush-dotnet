@@ -35,6 +35,7 @@ Every entity in `ObjectDatabase` is an instance of `MUSHObject` (`PennMUSH.Core/
   - `#0` — **Room Zero** (Limbo, default `player_start`, `base_room`, `default_home`)
   - `#1` — **One** (`Player`, `WIZARD` + `IsGod`, `1000` pennies, `WarningBits.Normal`)
   - `#2` — **Master Room** (default `master_room`)
+  - `#3` — **System Object** (`Thing`, `SAFE` + `VISUAL`, global `$name` object registry)
   - Default `Public` channel (`ChannelFlags.Public | ChannelFlags.Player`, owned by `#1`).
 
 ### Object Matching Resolution (`ObjectDatabase.MatchObject`)
@@ -42,7 +43,8 @@ When matching `<name>` relative to `<executor>` (`PennMUSH.Core/Database/ObjectD
 1. `"here"` → executor's `Location`
 2. `"me"` → executor
 3. `"*<player>"` → global `FindPlayer` lookup
-4. `#<n>` or plain `<n>` → direct `GetObject(new Dbref(n))`
+4. `"$<name>"` → global `ResolveGlobalObject` lookup (reads attribute `<NAME>` on `SystemObjectId` `#3` and parses its `#dbref`)
+5. `#<n>` or plain `<n>` → direct `GetObject(new Dbref(n))`
 5. Current room's contents (`FindInContents` exact, then prefix match)
 6. Current room itself (exact, then prefix match)
 7. Exits in current room (`FindExit`, splitting exit names on `;`)
