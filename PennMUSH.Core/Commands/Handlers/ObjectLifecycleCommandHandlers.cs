@@ -264,12 +264,17 @@ public class CloneCommandHandler : ICommandHandler
 
         string cloneName = string.IsNullOrWhiteSpace(context.RightArg) ? target.Name : context.RightArg.Trim();
         var clone = db.CreateObject(cloneName, target.Type, context.Executor);
-        clone.Location = execObj.Location;
+        db.MoveObject(clone.Id, execObj.Location);
         clone.Home = target.Home.IsValid ? target.Home : execObj.Location;
 
-        // Copy flags
+        bool preserve = context.Switches.Contains("preserve") && execObj.IsWizard;
+        // Copy flags (strip privileged flags unless /preserve by a wizard)
         foreach (var flag in target.Flags)
+        {
+            if (!preserve && (flag.Equals("WIZARD", StringComparison.OrdinalIgnoreCase) || flag.Equals("ROYALTY", StringComparison.OrdinalIgnoreCase)))
+                continue;
             clone.AddFlag(flag);
+        }
 
         // Copy attributes
         foreach (var attr in target.Attributes)

@@ -39,7 +39,9 @@ public static class AttributeSetCommandHandler
 
         bool hasValue = context.Arguments != null && context.Arguments.Contains('=') && context.RightArg.Length > 0;
         var written = AttributeWriter.Apply(actor, target, name, hasValue ? context.RightArg : null);
-        if (written.Message.Length > 0)
+        if (context.CommandName.Equals("@alias", System.StringComparison.OrdinalIgnoreCase) && written.Ok)
+            context.Notify(hasValue ? "Alias set." : "Alias removed.");
+        else if (written.Message.Length > 0)
             context.Notify(written.Message);
         return true;
     }

@@ -342,14 +342,30 @@ public static class Section9And18Functions
         }
 
         string newName = args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]) ? args[1].Trim() : src.Name;
+        bool preserve = args.Length > 3
+            && args[3].Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(s => s.Equals("preserve", StringComparison.OrdinalIgnoreCase))
+            && (actor?.IsWizard ?? false);
+
         var clone = reg.Database.CreateObject(newName, src.Type, ctx.Executor);
-        foreach (string f in src.Flags) clone.AddFlag(f);
+        foreach (string f in src.Flags)
+        {
+            if (!preserve && (f.Equals("WIZARD", StringComparison.OrdinalIgnoreCase) || f.Equals("ROYALTY", StringComparison.OrdinalIgnoreCase)))
+                continue;
+            clone.AddFlag(f);
+        }
         foreach (var a in src.Attributes)
         {
             if (!a.Flags.HasFlag(AttributeFlags.NoCopy))
                 clone.SetAttribute(a.Name, a.Value, ctx.Executor, a.Flags);
         }
-        if (src.Location.IsValid) reg.Database.MoveObject(clone.Id, src.Location);
+        Dbref dest = actor != null && actor.Location.IsValid ? actor.Location : src.Location;
+        if (args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]))
+        {
+            var destObj = ResolveObj(reg, ctx, args[2].Trim());
+            if (destObj != null)
+                dest = destObj.Id;
+        }
+        if (dest.IsValid) reg.Database.MoveObject(clone.Id, dest);
         return clone.Id.ToString();
     }
 

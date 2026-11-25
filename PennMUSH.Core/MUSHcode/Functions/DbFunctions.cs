@@ -402,8 +402,7 @@ public static class DbFunctions
     public static string HasFlagFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -432,8 +431,7 @@ public static class DbFunctions
     public static string HasPowerFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length < 2 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -445,8 +443,7 @@ public static class DbFunctions
     public static string FlagsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -475,8 +472,7 @@ public static class DbFunctions
     public static string LflagsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -486,8 +482,7 @@ public static class DbFunctions
     public static string PowersFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -497,8 +492,7 @@ public static class DbFunctions
     public static string ConFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -508,8 +502,7 @@ public static class DbFunctions
     public static string ExitsFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -519,8 +512,7 @@ public static class DbFunctions
     public static string ParentFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -530,8 +522,7 @@ public static class DbFunctions
     public static string LparentFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -541,8 +532,7 @@ public static class DbFunctions
     public static string ZoneFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -552,8 +542,7 @@ public static class DbFunctions
     public static string LzoneFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -602,8 +591,7 @@ public static class DbFunctions
     public static string RlocFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -625,8 +613,7 @@ public static class DbFunctions
     public static string RoomFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -662,8 +649,7 @@ public static class DbFunctions
     public static string WhereFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -682,8 +668,7 @@ public static class DbFunctions
     public static string HomeFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
@@ -936,8 +921,7 @@ public static class DbFunctions
     public static string ObjIdFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
-        var dbref = ParseDbref(args[0], ctx);
-        var obj = reg.Database.GetObject(dbref);
+        var obj = ResolveObj(reg, ctx, args[0]);
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
