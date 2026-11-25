@@ -83,7 +83,7 @@ public class ComprehensiveCommandTests
             // 5. whisper (in-room)
             await server.HandleInputAsync(aliceConn, "whisper Bob=Psst, over here.");
             Assert.Contains(aliceOutputs, o => o.Contains("You whisper, \"Psst, over here.\" to Bob."));
-            Assert.Contains(bobOutputs, o => o.Contains("Alice whispers, \"Psst, over here.\""));
+            Assert.Contains(bobOutputs, o => o.Contains("Alice whispers: Psst, over here."));
             Assert.DoesNotContain(charlieOutputs, o => o.Contains("Psst"));
 
             aliceOutputs.Clear();

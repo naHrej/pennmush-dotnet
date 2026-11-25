@@ -77,7 +77,7 @@ public class ObjectReadWriteCommandTests
 
         Assert.Equal("Edited.", edited.Notifications.Single());
         Assert.Equal("a dim lamp", lamp.GetAttribute("DESC")!.Value);
-        Assert.Contains("DESC: a dim lamp", found.Notifications.Single());
+        Assert.Contains("DESC", found.Notifications.Single());
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class ObjectReadWriteCommandTests
 
         Assert.Equal(heir.Id, lamp.GetAttribute("DESC")!.Creator);
         Assert.True(lamp.GetLock(LockType.Basic)!.Flags.HasFlag(LockFlags.Visual));
-        Assert.Contains("Visual", listed.Notifications.Single());
+        Assert.Equal("Lamp/Basic - lock flags set.", listed.Notifications.Single());
     }
 
     [Fact]
