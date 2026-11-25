@@ -396,7 +396,10 @@ public class CommandDispatcher
         foreach (string piece in Handlers.IncludeCommandHandler.SplitCommands(action))
         {
             string trimmed = piece.TrimStart();
-            if (trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&'))
+            string firstToken = trimmed.Split(' ', 2)[0].Split('/')[0];
+            bool isCommand = trimmed.StartsWith('@') || trimmed.StartsWith('"') || trimmed.StartsWith(':') || trimmed.StartsWith(';') || trimmed.StartsWith('&')
+                || _commandTable.Lookup(firstToken).Status == CommandLookupStatus.Found;
+            if (isCommand)
             {
                 var subCtx = DispatchQueued(listener.Id, piece, db, enactor.Id, captures);
                 foreach (var note in subCtx.TargetedNotifications) context.TargetedNotifications.Add(note);
@@ -525,10 +528,10 @@ public class CommandDispatcher
 
         string left = args;
         string right = string.Empty;
-        int eqIndex = args.IndexOf('=');
+        int eqIndex = FindUnescapedEquals(args);
         if (eqIndex != -1)
         {
-            left = args.Substring(0, eqIndex).Trim();
+            left = args.Substring(0, eqIndex).Replace(@"\=", "=").Trim();
             right = args.Substring(eqIndex + 1).Trim();
         }
 
@@ -543,5 +546,20 @@ public class CommandDispatcher
             LeftArg = left,
             RightArg = right
         };
+    }
+
+    private static int FindUnescapedEquals(string s)
+    {
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                i++;
+                continue;
+            }
+            if (s[i] == '=')
+                return i;
+        }
+        return -1;
     }
 }

@@ -654,8 +654,11 @@ public class MessageCommandHandler : ICommandHandler
 
     public bool Execute(CommandContext context, ObjectDatabase db)
     {
+        string rightTrimmed = context.RightArg.Trim();
+        int comma = rightTrimmed.IndexOf(',');
+        string attrSpec = comma >= 0 ? rightTrimmed.Substring(0, comma).Trim() : rightTrimmed;
         if (string.IsNullOrWhiteSpace(context.LeftArg)
-            || !CopyAttributeCommandHandler.TrySplitAttr(context.RightArg, out var objectName, out var attrName))
+            || !CopyAttributeCommandHandler.TrySplitAttr(attrSpec, out var objectName, out var attrName))
         {
             context.Notify(Feedback.UsageMessageRemitOemitTargetObjectAttribute);
             return false;
@@ -679,9 +682,10 @@ public class MessageCommandHandler : ICommandHandler
             return false;
         }
 
+        string[]? msgArgs = comma >= 0 ? rightTrimmed.Substring(comma + 1).Split(',') : null;
         string text = entry.Value;
         if (_evaluator != null)
-            text = _evaluator.Evaluate(text, new EvaluationContext(context.Executor, context.Enactor));
+            text = _evaluator.Evaluate(text, new EvaluationContext(context.Executor, context.Enactor, args: msgArgs));
 
         if (context.Switches.Contains("remit"))
         {
