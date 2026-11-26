@@ -21,6 +21,9 @@ public class ObjectDatabase
     /// <summary>Dbref of the System Object used for global $name object resolution (default #3).</summary>
     public Dbref SystemObjectId { get; set; } = new Dbref(3);
 
+    /// <summary>Dbref of the global speech mogrifier object for say/pose/semipose (default #-1).</summary>
+    public Dbref SpeechMogrifierId { get; set; } = Dbref.Nothing;
+
     /// <summary>Dbref of the Master Room used for global exits and $commands (default #2).</summary>
     public Dbref MasterRoomId { get; set; } = new Dbref(2);
 

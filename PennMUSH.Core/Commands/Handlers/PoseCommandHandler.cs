@@ -28,8 +28,17 @@ public class PoseCommandHandler : ICommandHandler
         bool noSpace = context.CommandName.Equals(";", StringComparison.Ordinal)
             || context.CommandName.Equals("semipose", StringComparison.OrdinalIgnoreCase)
             || context.Switches.Contains("nospace");
-        string spoken = SpeechMod.Apply(db, _evaluator, context.Executor, context.Arguments, noSpace ? ";" : ":");
+        string token = noSpace ? ";" : ":";
+        string spoken = SpeechMod.Apply(db, _evaluator, context.Executor, context.Arguments, token);
         string message = noSpace ? $"{name}{spoken}" : $"{name} {spoken}";
+
+        string? mogrified = FormatAttributes.MogrifySpeech(db, _evaluator, execObj, token, spoken, message, message);
+        if (mogrified != null)
+        {
+            if (string.IsNullOrEmpty(mogrified))
+                return true;
+            message = mogrified;
+        }
 
         if (execObj != null && execObj.Location.IsValid)
         {

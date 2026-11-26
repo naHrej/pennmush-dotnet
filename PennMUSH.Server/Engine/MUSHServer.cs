@@ -106,6 +106,7 @@ public class MUSHServer
         Database = new ObjectDatabase
         {
             SystemObjectId = Config.SystemObject,
+            SpeechMogrifierId = Config.SpeechMogrifier,
             MasterRoomId = Config.MasterRoom,
             DefaultHomeId = Config.DefaultHome,
             BaseRoomId = Config.BaseRoom,
@@ -332,17 +333,30 @@ public class MUSHServer
         ("restrict.cnf", "restrictcnf.dst"),
     ];
 
+    private static readonly object DefaultConfigCopyLock = new();
+
     public static void EnsureDefaultConfigFiles(string? directory)
     {
         if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
             return;
 
-        foreach (var (cnfFile, dstFile) in DefaultConfigTemplates)
+        lock (DefaultConfigCopyLock)
         {
-            string cnfPath = Path.Combine(directory, cnfFile);
-            string dstPath = Path.Combine(directory, dstFile);
-            if (!File.Exists(cnfPath) && File.Exists(dstPath))
-                File.Copy(dstPath, cnfPath);
+            foreach (var (cnfFile, dstFile) in DefaultConfigTemplates)
+            {
+                string cnfPath = Path.Combine(directory, cnfFile);
+                string dstPath = Path.Combine(directory, dstFile);
+                if (!File.Exists(cnfPath) && File.Exists(dstPath))
+                {
+                    try
+                    {
+                        File.Copy(dstPath, cnfPath);
+                    }
+                    catch (IOException) when (File.Exists(cnfPath))
+                    {
+                    }
+                }
+            }
         }
     }
 

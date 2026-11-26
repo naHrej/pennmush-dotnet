@@ -1026,3 +1026,7 @@ config_save no
 # than the caller? Disabled (no) by default.
 unsafe_eval_functions no
 
+# Optional dbref of a global speech mogrifier object for say, pose, and semipose
+# (evaluates MOGRIFYSAY, MOGRIFYPOSE, MOGRIFYSEMIPOSE, or MOGRIFY). #-1 disables.
+speech_mogrifier #-1
+

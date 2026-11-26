@@ -36,13 +36,29 @@ public class SayCommandHandler : ICommandHandler
 
         message = SpeechMod.Apply(db, _evaluator, context.Executor, message, "\"");
 
-        context.Notify(Feedback.YouSayValue, ("value", $"{message}"));
-
         var execObj = db.GetObject(context.Executor);
+        string name = execObj != null ? execObj.Name : context.Executor.ToString();
+        string selfLine = Feedback.YouSayValue.Text(("value", $"{message}"));
+        string roomLine = Feedback.ValueSaysValue.Text(("value", $"{name}"), ("value2", $"{message}"));
+
+        string? mogrified = FormatAttributes.MogrifySpeech(db, _evaluator, execObj, "\"", message, roomLine, selfLine);
+        if (mogrified != null)
+        {
+            if (string.IsNullOrEmpty(mogrified))
+                return true;
+
+            if (execObj != null && execObj.Location.IsValid)
+                context.NotifyRoom(execObj.Location, mogrified);
+            else
+                context.Notify(mogrified);
+            return true;
+        }
+
+        context.Notify(selfLine);
+
         if (execObj != null && execObj.Location.IsValid)
         {
-            string name = execObj.Name;
-            context.NotifyExcept(execObj.Location, context.Executor, Feedback.ValueSaysValue.Text(("value", $"{name}"), ("value2", $"{message}")));
+            context.NotifyExcept(execObj.Location, context.Executor, roomLine);
         }
 
         return true;
