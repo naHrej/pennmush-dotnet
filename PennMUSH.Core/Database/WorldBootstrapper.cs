@@ -16,7 +16,7 @@ public static class WorldBootstrapper
 
         // #1 - God (Master Wizard / One)
         var god = db.CreateObject("One", ObjectType.Player, new Dbref(1));
-        god.Location = roomZero.Id;
+        db.MoveObject(god.Id, roomZero.Id);
         god.Home = roomZero.Id;
         god.Pennies = 1000;
         god.Warnings = WarningBits.Normal;
