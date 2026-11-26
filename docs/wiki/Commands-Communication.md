@@ -42,6 +42,11 @@ Evaluates `<message>` (unless `/noeval` is passed), applies the executor's `SPEE
 
 Applies `SPEECHMOD` (`;`, or `:` with space unless `;`, `semipose`, or `/nospace`), formats `"<Name><action>"` or `"<Name> <action>"`, and broadcasts to the executor's room (`PoseCommandHandler.cs`).
 
+### Global Speech Mogrifier (`speech_mogrifier`)
+Configured via `speech_mogrifier <dbref>` in `mush.cnf` or `@config/set speech_mogrifier=<dbref>` (default `#-1`). When set to a valid object, `say`, `pose`, and `semipose` evaluate `MOGRIFYSAY` / `MOGRIFYPOSE` / `MOGRIFYSEMIPOSE` (falling back to `MOGRIFY`) on that object (`FormatAttributes.MogrifySpeech`) with:
+- `%0` = token (`"`, `:`, `;`), `%1` = speaker name, `%2` = spoken text (after `SPEECHMOD`), `%3` = default room line, `%4` = default self line, `%5` = speaker `#dbref`, `%6` = location `#dbref`.
+- A non-empty result replaces the full output for both speaker and room; an empty result suppresses it.
+
 ### `whisper <player>=<message>`
 `Aliases: w`
 

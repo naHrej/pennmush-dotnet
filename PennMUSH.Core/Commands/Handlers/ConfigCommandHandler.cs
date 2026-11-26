@@ -49,6 +49,7 @@ public class ConfigCommandHandler : ICommandHandler
             return false;
         }
         db.SystemObjectId = _config.SystemObject;
+        db.SpeechMogrifierId = _config.SpeechMogrifier;
         db.MasterRoomId = _config.MasterRoom;
         db.DefaultHomeId = _config.DefaultHome;
         db.BaseRoomId = _config.BaseRoom;

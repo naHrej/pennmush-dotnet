@@ -94,4 +94,55 @@ public static class FormatAttributes
                 context.NotifyTarget(id, line, speaker: sender, spoofable: spoofable);
         }
     }
+
+    public static string? MogrifySpeech(
+        ObjectDatabase db,
+        ExpressionEvaluator? evaluator,
+        MUSHObject? speaker,
+        string token,
+        string spokenText,
+        string roomDefault,
+        string selfDefault)
+    {
+        if (speaker == null || !db.SpeechMogrifierId.IsValid)
+            return null;
+
+        var mogrifier = db.GetObject(db.SpeechMogrifierId);
+        if (mogrifier == null)
+            return null;
+
+        string[] candidates = token switch
+        {
+            "\"" => ["MOGRIFYSAY", "MOGRIFY"],
+            ";" => ["MOGRIFYSEMIPOSE", "MOGRIFYPOSE", "MOGRIFY"],
+            _ => ["MOGRIFYPOSE", "MOGRIFY"]
+        };
+
+        string? attrName = null;
+        foreach (string name in candidates)
+        {
+            if (mogrifier.GetAttribute(name, db) != null)
+            {
+                attrName = name;
+                break;
+            }
+        }
+        if (attrName == null)
+            return null;
+
+        return Evaluate(
+            db,
+            evaluator,
+            mogrifier,
+            speaker.Id,
+            speaker.Id,
+            attrName,
+            token,
+            speaker.Name,
+            spokenText,
+            roomDefault,
+            selfDefault,
+            speaker.Id.ToString(),
+            speaker.Location.ToString());
+    }
 }

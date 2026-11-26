@@ -462,4 +462,36 @@ public class ConfigWiringTests
             Directory.Delete(tmpDir, true);
         }
     }
+
+    [Fact]
+    public void SpeechMogrifier_FormatsSayPoseAndSemiposeGlobally()
+    {
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var mog = db.CreateObject("SpeechMog", ObjectType.Thing, god.Id);
+        mog.SetAttribute("MOGRIFYSAY", "\\[%1\\] %2", god.Id);
+        mog.SetAttribute("MOGRIFYPOSE", "* %1 %2", god.Id);
+        mog.SetAttribute("MOGRIFYSEMIPOSE", "* %1%2", god.Id);
+
+        var cfg = new MushConfiguration();
+        var functions = new PennMUSH.Core.MUSHcode.FunctionRegistry(db);
+        var evaluator = new PennMUSH.Core.MUSHcode.ExpressionEvaluator(functions.Dispatch, db);
+        var dispatcher = new CommandDispatcher(evaluator);
+        dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+        dispatcher.Register(new SayCommandHandler(evaluator), "say", "\"");
+        dispatcher.Register(new PoseCommandHandler(evaluator), "pose", ":", ";", "semipose");
+
+        // Configure speech_mogrifier via @config/set
+        dispatcher.Dispatch(god.Id, $"@config/set speech_mogrifier=#{mog.Id.Value}", db);
+        Assert.Equal(mog.Id, db.SpeechMogrifierId);
+
+        var sayRes = dispatcher.Dispatch(god.Id, "say hello", db);
+        Assert.Contains("[One] hello", sayRes.Notifications);
+
+        var poseRes = dispatcher.Dispatch(god.Id, "pose waves.", db);
+        Assert.Contains("* One waves.", poseRes.Notifications);
+
+        var semiRes = dispatcher.Dispatch(god.Id, ";'s eyes narrow.", db);
+        Assert.Contains("* One's eyes narrow.", semiRes.Notifications);
+    }
 }
