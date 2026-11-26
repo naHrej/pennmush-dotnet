@@ -14,6 +14,7 @@ public class GlobalObjectReferenceTests
     {
         var db = new ObjectDatabase();
         var god = WorldBootstrapper.GenerateBaseWorld(db);
+        Assert.Contains(db.GetContents(new Dbref(0)), o => o.Id == god.Id);
 
         var sysObj = db.GetObject(new Dbref(3));
         Assert.NotNull(sysObj);
