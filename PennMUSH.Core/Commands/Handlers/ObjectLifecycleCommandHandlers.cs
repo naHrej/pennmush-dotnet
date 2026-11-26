@@ -532,7 +532,10 @@ public class StatsCommandHandler : ICommandHandler
         foreach (var obj in db.GetAllObjects())
         {
             foreach (string flag in obj.Flags)
-                counts[flag] = counts.TryGetValue(flag, out int count) ? count + 1 : 1;
+            {
+                string display = PennMUSH.Core.Flags.FlagTable.DisplayName(flag);
+                counts[display] = counts.TryGetValue(display, out int count) ? count + 1 : 1;
+            }
         }
 
         if (counts.Count == 0)

@@ -197,6 +197,7 @@ public class MushConfiguration
     // Aliases & Restrictions
     public Dictionary<string, string> CommandAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FunctionAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> FlagRenames { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> ReservedAliases { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, List<RestrictionRule>> CommandRestrictions { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, List<RestrictionRule>> FunctionRestrictions { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -394,7 +395,7 @@ public class MushConfiguration
 
     private static readonly HashSet<string> KnownDirectives = new(StringComparer.OrdinalIgnoreCase)
     {
-        "include", "command_alias", "function_alias", "reserve_alias", "restrict_command",
+        "include", "command_alias", "function_alias", "flag_rename", "reserve_alias", "restrict_command",
         "restrict_function", "restrict_name", "names_file", "mud_name", "mud_url", "port",
         "ssl_port", "ip_addr", "use_ws", "ws_url", "use_dns", "player_creation", "guests",
         "max_guests", "max_players", "master_room", "system_object", "speech_mogrifier", "player_start", "base_room", "default_home",

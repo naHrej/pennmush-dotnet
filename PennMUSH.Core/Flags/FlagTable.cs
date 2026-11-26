@@ -9,6 +9,7 @@ using PennMUSH.Core.Types;
 public static class FlagTable
 {
     private static readonly Dictionary<string, FlagDefinition> FlagsByName = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, FlagDefinition> FlagsByInternalName = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, FlagDefinition> PowersByName = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, string> FlagAliases = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, string> PowerAliases = new(StringComparer.OrdinalIgnoreCase);
@@ -122,6 +123,7 @@ public static class FlagTable
     private static void RegisterFlag(FlagDefinition def)
     {
         FlagsByName[def.Name] = def;
+        FlagsByInternalName[def.InternalName] = def;
         AllFlags.Add(def);
     }
 
@@ -139,6 +141,19 @@ public static class FlagTable
         if (FlagAliases.TryGetValue(name, out var aliasTarget))
             name = aliasTarget;
         return FlagsByName.TryGetValue(name, out var def) ? def : null;
+    }
+
+    public static FlagDefinition? FindFlagByInternalName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        return FlagsByInternalName.TryGetValue(name, out var def) ? def : null;
+    }
+
+    public static string DisplayName(string storedFlagName)
+    {
+        if (string.IsNullOrWhiteSpace(storedFlagName)) return string.Empty;
+        var def = FindFlagByInternalName(storedFlagName) ?? FindFlag(storedFlagName);
+        return def != null ? def.Name : storedFlagName;
     }
 
     public static FlagDefinition? FindFlagByLetter(char letter, ObjectType type)
@@ -218,7 +233,28 @@ public static class FlagTable
     public static void AddFlag(FlagDefinition def)
     {
         FlagsByName[def.Name] = def;
+        FlagsByInternalName[def.InternalName] = def;
         AllFlags.Add(def);
+    }
+
+    public static void RenameFlag(FlagDefinition flag, string newName)
+    {
+        string oldName = flag.Name;
+        string canonicalNew = newName.Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(canonicalNew) || oldName.Equals(canonicalNew, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Ensure InternalName is preserved before mutating Name.
+        string internalName = flag.InternalName;
+        FlagsByInternalName[internalName] = flag;
+
+        FlagsByName.Remove(oldName);
+        FlagAliases.Remove(oldName);
+        foreach (string alias in AliasesOf(oldName).ToList())
+            FlagAliases[alias] = canonicalNew;
+
+        flag.Name = canonicalNew;
+        FlagsByName[canonicalNew] = flag;
     }
 
     public static void AddAlias(string alias, string canonical)
@@ -245,6 +281,7 @@ public static class FlagTable
     {
         AllFlags.Remove(def);
         FlagsByName.Remove(def.Name);
+        FlagsByInternalName.Remove(def.InternalName);
         foreach (string alias in AliasesOf(def.Name).ToList())
             FlagAliases.Remove(alias);
     }

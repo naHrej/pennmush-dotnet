@@ -75,6 +75,12 @@ public static class MushConfigParser
                 ParseAlias(value, config.FunctionAliases);
                 break;
 
+            case "flag_rename":
+                var renameTokens = value.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                if (renameTokens.Length >= 2)
+                    config.FlagRenames[renameTokens[0]] = renameTokens[1];
+                break;
+
             case "reserve_alias":
                 if (!string.IsNullOrEmpty(value))
                 {

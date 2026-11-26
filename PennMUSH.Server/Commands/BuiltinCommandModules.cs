@@ -204,6 +204,12 @@ public sealed class AliasAndRestrictionModule : ICommandModule
             dispatcher.ReserveAlias(reserved);
         foreach (var (alias, orig) in services.Config.FunctionAliases)
             services.Functions.AddAlias(orig, alias);
+        foreach (var (oldFlag, newFlag) in services.Config.FlagRenames)
+        {
+            var flagDef = PennMUSH.Core.Flags.FlagTable.FindFlag(oldFlag);
+            if (flagDef != null && PennMUSH.Core.Flags.FlagTable.FindFlag(newFlag) == null)
+                PennMUSH.Core.Flags.FlagTable.RenameFlag(flagDef, newFlag);
+        }
         foreach (var (fn, rules) in services.Config.FunctionRestrictions)
         {
             foreach (var rule in rules)

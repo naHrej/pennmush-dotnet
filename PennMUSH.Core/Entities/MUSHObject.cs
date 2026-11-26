@@ -564,8 +564,8 @@ public class MUSHObject
     public bool HasFlag(string flagName)
     {
         if (string.IsNullOrWhiteSpace(flagName)) return false;
-        var f = FlagTable.FindFlag(flagName);
-        return _flags.Contains(f != null ? f.Name : flagName.ToUpperInvariant());
+        var f = FlagTable.FindFlag(flagName) ?? FlagTable.FindFlagByInternalName(flagName);
+        return _flags.Contains(f != null ? f.InternalName : flagName.ToUpperInvariant());
     }
 
     public bool HasPower(string powerName)
@@ -578,8 +578,8 @@ public class MUSHObject
     public bool AddFlag(string flagName)
     {
         if (string.IsNullOrWhiteSpace(flagName)) return false;
-        var f = FlagTable.FindFlag(flagName);
-        string canonical = f != null ? f.Name : flagName.ToUpperInvariant();
+        var f = FlagTable.FindFlag(flagName) ?? FlagTable.FindFlagByInternalName(flagName);
+        string canonical = f != null ? f.InternalName : flagName.ToUpperInvariant();
         bool added = _flags.Add(canonical);
         if (added) Touch();
         return added;
@@ -588,8 +588,8 @@ public class MUSHObject
     public bool RemoveFlag(string flagName)
     {
         if (string.IsNullOrWhiteSpace(flagName)) return false;
-        var f = FlagTable.FindFlag(flagName);
-        string canonical = f != null ? f.Name : flagName.ToUpperInvariant();
+        var f = FlagTable.FindFlag(flagName) ?? FlagTable.FindFlagByInternalName(flagName);
+        string canonical = f != null ? f.InternalName : flagName.ToUpperInvariant();
         bool removed = _flags.Remove(canonical);
         if (removed) Touch();
         return removed;

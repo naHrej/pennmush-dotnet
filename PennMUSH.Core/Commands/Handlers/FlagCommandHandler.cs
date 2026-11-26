@@ -50,6 +50,8 @@ public class FlagCommandHandler : ICommandHandler
             return Add(context, actor);
         if (context.Switches.Contains("delete"))
             return Delete(context, db, actor);
+        if (context.Switches.Contains("rename"))
+            return Rename(context, actor);
         if (context.Switches.Contains("alias"))
             return Alias(context, actor);
         if (context.Switches.Contains("restrict"))
@@ -394,6 +396,41 @@ public class FlagCommandHandler : ICommandHandler
         string name = flag.Name;
         FlagTable.RemoveFlag(flag);
         context.Notify(Feedback.FlagDeleted, ("flag", $"{name}"));
+        return true;
+    }
+
+    private static bool Rename(CommandContext context, MUSHObject? actor)
+    {
+        if (!God(actor))
+        {
+            context.Notify(Feedback.PermissionDenied);
+            return false;
+        }
+
+        string oldName = context.LeftArg.Trim();
+        string newName = context.RightArg.Trim();
+        if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName) || newName.Any(char.IsWhiteSpace))
+        {
+            context.Notify("Usage: @flag/rename <old>=<new>");
+            return false;
+        }
+
+        var flag = FlagTable.FindFlag(oldName);
+        if (flag == null)
+        {
+            context.Notify(Feedback.NoSuchFlag);
+            return false;
+        }
+
+        if (FlagTable.FindFlag(newName) != null || FlagTable.IsAlias(newName))
+        {
+            context.Notify("That flag name is already in use.");
+            return false;
+        }
+
+        string previous = flag.Name;
+        FlagTable.RenameFlag(flag, newName);
+        context.Notify($"Flag '{previous}' renamed to '{flag.Name}'.");
         return true;
     }
 
