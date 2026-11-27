@@ -107,6 +107,7 @@ public class MUSHServer
         {
             SystemObjectId = Config.SystemObject,
             SpeechMogrifierId = Config.SpeechMogrifier,
+            WhoMogrifierId = Config.WhoMogrifier,
             MasterRoomId = Config.MasterRoom,
             DefaultHomeId = Config.DefaultHome,
             BaseRoomId = Config.BaseRoom,

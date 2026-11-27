@@ -174,6 +174,10 @@ public static class MushConfigParser
                 config.SpeechMogrifier = ParseDbref(value, Dbref.Nothing);
                 break;
 
+            case "who_mogrifier":
+                config.WhoMogrifier = ParseDbref(value, Dbref.Nothing);
+                break;
+
             case "player_start":
                 config.PlayerStart = ParseDbref(value, new Dbref(0));
                 break;

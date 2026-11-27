@@ -26,6 +26,7 @@ public class MushConfiguration
     public Dbref MasterRoom { get; set; } = new(2);
     public Dbref SystemObject { get; set; } = new(3);
     public Dbref SpeechMogrifier { get; set; } = Dbref.Nothing;
+    public Dbref WhoMogrifier { get; set; } = Dbref.Nothing;
     public Dbref PlayerStart { get; set; } = new(0);
     public Dbref BaseRoom { get; set; } = new(0);
     public Dbref DefaultHome { get; set; } = new(0);
@@ -398,7 +399,7 @@ public class MushConfiguration
         "include", "command_alias", "function_alias", "flag_rename", "reserve_alias", "restrict_command",
         "restrict_function", "restrict_name", "names_file", "mud_name", "mud_url", "port",
         "ssl_port", "ip_addr", "use_ws", "ws_url", "use_dns", "player_creation", "guests",
-        "max_guests", "max_players", "master_room", "system_object", "speech_mogrifier", "player_start", "base_room", "default_home",
+        "max_guests", "max_players", "master_room", "system_object", "speech_mogrifier", "who_mogrifier", "player_start", "base_room", "default_home",
         "input_database", "output_database", "crash_database", "mail_database", "chat_database",
         "sql_database", "http_handler",
         "connect_file", "motd_file", "wizmotd_file", "newuser_file", "quit_file", "down_file",

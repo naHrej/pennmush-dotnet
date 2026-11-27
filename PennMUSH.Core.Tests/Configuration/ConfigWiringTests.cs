@@ -494,4 +494,30 @@ public class ConfigWiringTests
         var semiRes = dispatcher.Dispatch(god.Id, ";'s eyes narrow.", db);
         Assert.Contains("* One's eyes narrow.", semiRes.Notifications);
     }
+
+    [Fact]
+    public void WhoMogrifier_ConfigSetCopiesTheDbref()
+    {
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var mog = db.CreateObject("WhoMog", ObjectType.Thing, god.Id);
+        var cfg = new MushConfiguration();
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+
+        Assert.Contains("Option set.", dispatcher.Dispatch(god.Id, $"@config/set who_mogrifier=#{mog.Id.Value}", db).Notifications);
+        Assert.Equal(mog.Id, cfg.WhoMogrifier);
+        Assert.Equal(mog.Id, db.WhoMogrifierId);
+
+        string path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(path, $"who_mogrifier #{mog.Id.Value}\n");
+            Assert.Equal(mog.Id, MushConfigParser.ParseFile(path).WhoMogrifier);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

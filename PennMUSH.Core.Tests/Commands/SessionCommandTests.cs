@@ -6,6 +6,8 @@ using System.Linq;
 using PennMUSH.Core.Commands;
 using PennMUSH.Core.Commands.Handlers;
 using PennMUSH.Core.Database;
+using PennMUSH.Core.Entities;
+using PennMUSH.Core.MUSHcode;
 using PennMUSH.Core.Session;
 using PennMUSH.Core.Types;
 using Xunit;
@@ -212,6 +214,84 @@ public class SessionCommandTests
         var reset = _dispatcher.Dispatch(_god, "@poll/clear", _db);
         Assert.Contains("Poll reset.", reset.Notifications);
         Assert.Contains(_dispatcher.Dispatch(_ada, "who", _db).Notifications, line => line.Contains("Doing"));
+    }
+
+    [Fact]
+    public void WhoMogrifier_ReplacesPublicLinesAndLeavesSessionAlone()
+    {
+        var functions = new FunctionRegistry(_db);
+        var evaluator = new ExpressionEvaluator(functions.Dispatch, _db);
+        var dispatcher = new CommandDispatcher(evaluator);
+        dispatcher.Register(new WhoCommandHandler(_sessions, () => _now, evaluator), "who", "session");
+
+        var mog = _db.CreateObject("WhoMog", ObjectType.Thing, _god);
+        mog.SetAttribute("WHOHEADER", "H:%0:%1%rNext", _god);
+        mog.SetAttribute("WHOROW", "R:%0:%1:%4:%5:%6:%7", _god);
+        mog.SetAttribute("WHOFOOTER", "F:%0:%1", _god);
+
+        var untouched = dispatcher.Dispatch(_ada, "who", _db);
+        Assert.Contains(untouched.Notifications, line => line.Contains("Player Name"));
+        Assert.DoesNotContain(untouched.Notifications, line => line.StartsWith("H:"));
+
+        _db.WhoMogrifierId = mog.Id;
+        Assert.Equal(
+            [
+                "H:Doing:3",
+                "Next",
+                $"R:Ada:{_ada}:reading::7200:30",
+                $"R:Rex:{_rex}:::600:120",
+                $"R:Rex:{_rex}:::10800:180",
+                "F:3:There are 3 players connected."
+            ],
+            dispatcher.Dispatch(_ada, "who", _db).Notifications);
+
+        var named = dispatcher.Dispatch(_ada, "who rea*", _db);
+        Assert.Contains($"R:Ada:{_ada}:reading::7200:30", named.Notifications);
+        Assert.DoesNotContain(named.Notifications, line => line.Contains("Rex"));
+        Assert.Contains("F:3:There are 3 players connected.", named.Notifications);
+
+        var session = dispatcher.Dispatch(_rex, "session", _db);
+        Assert.Contains(session.Notifications, line => line.Contains("Recv"));
+        Assert.DoesNotContain(session.Notifications, line => line.StartsWith("R:"));
+    }
+
+    [Fact]
+    public void WhoMogrifier_EmptyRowSuppressesAndMissingAdminKeepsTheTable()
+    {
+        var functions = new FunctionRegistry(_db);
+        var evaluator = new ExpressionEvaluator(functions.Dispatch, _db);
+        var dispatcher = new CommandDispatcher(evaluator);
+        dispatcher.Register(new WhoCommandHandler(_sessions, () => _now, evaluator), "who", "session");
+
+        var mog = _db.CreateObject("WhoMog", ObjectType.Thing, _god);
+        mog.SetAttribute("WHOHEADER", "H:%0", _god);
+        mog.SetAttribute("WHOROW", "", _god);
+        mog.SetAttribute("WHOFOOTER", "F:%0", _god);
+        _db.WhoMogrifierId = mog.Id;
+
+        var mortal = dispatcher.Dispatch(_ada, "who", _db);
+        Assert.Equal(["H:Doing", "F:3"], mortal.Notifications);
+
+        var admin = dispatcher.Dispatch(_god, "who", _db);
+        Assert.Contains(admin.Notifications, line => line.Contains("Host"));
+        Assert.Contains(admin.Notifications, line => line.Contains("Bea") && line.Contains("(Hide)"));
+        Assert.Contains("There are 4 players connected.", admin.Notifications);
+        Assert.DoesNotContain(admin.Notifications, line => line.StartsWith("H:"));
+
+        mog.SetAttribute("WHOAHEADER", "AH:%0:%1:%2", _god);
+        mog.SetAttribute("WHOAROW", "AR:%0:%6:%7:%8", _god);
+        mog.SetAttribute("WHOAFOOTER", "AF:%0", _god);
+        Assert.Equal(
+            [
+                "AH:Doing:4:5",
+                "AR:Ada:2:10.0.0.8:",
+                "AR:Bea:3:10.0.0.3:Hide",
+                "AR:Rex:4:10.0.0.4:",
+                "AR:Rex:7:10.0.0.4:",
+                "AR:Connecting...:9:10.0.0.9:Connecting",
+                "AF:4"
+            ],
+            dispatcher.Dispatch(_god, "who", _db).Notifications);
     }
 
     private sealed class MemorySessions : ISessionDirectory

@@ -65,7 +65,8 @@ Sends `Config.QuitFile` (or `"Goodbye!"`), closes the socket, and logs the disco
 Lists active descriptors sorted by descriptor number, filtered by optional wildcard (`*`/`?`) or prefix `<pattern>` against player names and `ALIAS` attributes (`SessionCommandHandlers.cs`):
 - **Mortals (`who`)**: Shows `Player Name`, `On For`, `Idle`, `D`/`H` dark/hidden mark, and `DOING` under the current `@poll` header (omitting hidden connections).
 - **`Royalty` or `See_All` (`who`)**: Shows `#loc`, `On For`, `Idle`, `Cmds`, `Des`, and `Host` (`(Dark)` / `(Hide)`), including connecting/hidden sessions.
-- **`session`**: With `Royalty`/`See_All`, replaces `Host` with `Sent`, `Recv`, and `Pend` byte counters.
+- **`session`**: With `Royalty`/`See_All`, replaces `Host` with `Sent`, `Recv`, and `Pend` byte counters. `session` is not passed through `who_mogrifier`.
+- **`who_mogrifier`**: When set, `who` evaluates `WHOHEADER`, `WHOROW`, and `WHOFOOTER` on that object (one row evaluation per visible connection). `Royalty` / `See_All` use `WHOAHEADER`, `WHOAROW`, and `WHOAFOOTER`. A missing attribute keeps the hardcoded line for that slot. An empty result omits that line. See `help who_mogrifier`.
 
 ```text
 who

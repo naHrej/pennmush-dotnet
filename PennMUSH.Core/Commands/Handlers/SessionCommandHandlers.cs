@@ -14,13 +14,15 @@ public class WhoCommandHandler : ICommandHandler
 {
     private readonly ISessionDirectory _sessions;
     private readonly Func<DateTimeOffset> _now;
+    private readonly ExpressionEvaluator? _evaluator;
 
     public string Name => "who";
 
-    public WhoCommandHandler(ISessionDirectory sessions, Func<DateTimeOffset>? now = null)
+    public WhoCommandHandler(ISessionDirectory sessions, Func<DateTimeOffset>? now = null, ExpressionEvaluator? evaluator = null)
     {
         _sessions = sessions;
         _now = now ?? (() => DateTimeOffset.UtcNow);
+        _evaluator = evaluator;
     }
 
     public bool Execute(CommandContext context, ObjectDatabase db)
@@ -30,7 +32,7 @@ public class WhoCommandHandler : ICommandHandler
             return false;
 
         bool session = context.CommandName.Equals("session", StringComparison.OrdinalIgnoreCase);
-        foreach (var line in SessionReport.Lines(db, _sessions, actor, session, context.Arguments, _now()))
+        foreach (var line in SessionReport.Lines(db, _sessions, actor, session, context.Arguments, _now(), _evaluator))
             context.Notify(line);
         return true;
     }
@@ -339,21 +341,43 @@ internal static class SessionReport
         MUSHObject actor,
         bool sessionCommand,
         string pattern,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        ExpressionEvaluator? evaluator = null)
     {
         bool privileged = SessionAccess.SeesConnections(actor);
         var all = sessions.List().OrderBy(item => item.Descriptor).ToList();
         int count = all.Count(item => item.LoggedIn && (privileged || !item.Hidden));
         string filter = pattern.Trim();
+        bool mogrify = !sessionCommand;
+        string sentence = count switch
+        {
+            0 => "There are no players connected.",
+            1 => "There is one player connected.",
+            _ => $"There are {count} players connected."
+        };
 
         if (!privileged)
         {
-            yield return Header(sessions.Poll);
+            foreach (var line in Section(db, evaluator, actor, mogrify, "WHOHEADER",
+                [Header(sessions.Poll)],
+                sessions.Poll, count.ToString()))
+                yield return line;
             foreach (var item in all)
             {
                 if (!item.LoggedIn || item.Hidden || !Matches(db, item, filter))
                     continue;
-                yield return MortalRow(db, item, now);
+                var player = db.GetObject(item.PlayerId);
+                foreach (var line in Section(db, evaluator, actor, mogrify, "WHOROW",
+                    [MortalRow(db, item, now)],
+                    player?.Name ?? "Unknown",
+                    PlayerRef(db, item),
+                    Elapsed(now - item.ConnectedAt),
+                    Elapsed(now - item.LastActivity),
+                    Doing(player),
+                    PublicMark(db, item),
+                    Seconds(now - item.ConnectedAt),
+                    Seconds(now - item.LastActivity)))
+                    yield return line;
             }
         }
         else if (sessionCommand)
@@ -369,22 +393,59 @@ internal static class SessionReport
         }
         else
         {
-            yield return sessions.Poll;
-            yield return $"{"Player Name",-16} {"Loc #",6} {"On For",9} {"Idle",5} {"Cmds",5} {"Des",4} Host";
+            foreach (var line in Section(db, evaluator, actor, mogrify, "WHOAHEADER",
+                [sessions.Poll, $"{"Player Name",-16} {"Loc #",6} {"On For",9} {"Idle",5} {"Cmds",5} {"Des",4} Host"],
+                sessions.Poll, count.ToString(), all.Count.ToString()))
+                yield return line;
             foreach (var item in all)
             {
                 if (!Matches(db, item, filter))
                     continue;
-                yield return AdminRow(db, item, now);
+                foreach (var line in Section(db, evaluator, actor, mogrify, "WHOAROW",
+                    [AdminRow(db, item, now)],
+                    RowName(db, item),
+                    PlayerRef(db, item),
+                    Place(db, item),
+                    Elapsed(now - item.ConnectedAt),
+                    Elapsed(now - item.LastActivity),
+                    item.Commands.ToString(),
+                    item.Descriptor.ToString(),
+                    item.Host,
+                    AdminStatus(db, item),
+                    Seconds(now - item.ConnectedAt)))
+                    yield return line;
             }
         }
 
-        yield return count switch
-        {
-            0 => "There are no players connected.",
-            1 => "There is one player connected.",
-            _ => $"There are {count} players connected."
-        };
+        string footer = privileged ? "WHOAFOOTER" : "WHOFOOTER";
+        foreach (var line in Section(db, evaluator, actor, mogrify, footer, [sentence], count.ToString(), sentence))
+            yield return line;
+    }
+
+    private static IEnumerable<string> Section(
+        ObjectDatabase db,
+        ExpressionEvaluator? evaluator,
+        MUSHObject actor,
+        bool mogrify,
+        string attribute,
+        string[] fallback,
+        params string[] args)
+    {
+        if (!mogrify || !db.WhoMogrifierId.IsValid)
+            return fallback;
+
+        var mogrifier = db.GetObject(db.WhoMogrifierId);
+        if (mogrifier == null)
+            return fallback;
+
+        string? custom = FormatAttributes.Evaluate(
+            db, evaluator, mogrifier, actor.Id, actor.Id, attribute, args);
+        if (custom == null)
+            return fallback;
+        if (string.IsNullOrWhiteSpace(custom))
+            return [];
+
+        return custom.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n').Where(line => line.Length > 0);
     }
 
     public static string Clean(string text)
@@ -449,6 +510,42 @@ internal static class SessionReport
     {
         string value = player?.GetAttribute("DOING")?.Value ?? "";
         return Clean(value);
+    }
+
+    private static string PlayerRef(ObjectDatabase db, SessionInfo item)
+    {
+        if (!item.LoggedIn)
+            return MushError.Nothing.Text();
+        return db.GetObject(item.PlayerId)?.Id.ToString() ?? MushError.Nothing.Text();
+    }
+
+    private static string PublicMark(ObjectDatabase db, SessionInfo item)
+    {
+        var player = db.GetObject(item.PlayerId);
+        if (player != null && player.HasFlag("DARK"))
+            return "D";
+        if (item.Hidden)
+            return "H";
+        return string.Empty;
+    }
+
+    private static string AdminStatus(ObjectDatabase db, SessionInfo item)
+    {
+        if (!item.LoggedIn)
+            return "Connecting";
+        var player = db.GetObject(item.PlayerId);
+        if (player != null && player.HasFlag("DARK"))
+            return "Dark";
+        if (item.Hidden)
+            return "Hide";
+        return string.Empty;
+    }
+
+    private static string Seconds(TimeSpan span)
+    {
+        if (span < TimeSpan.Zero)
+            span = TimeSpan.Zero;
+        return ((long)span.TotalSeconds).ToString();
     }
 
     private static string Elapsed(TimeSpan span)
