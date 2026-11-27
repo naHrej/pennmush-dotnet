@@ -22,4 +22,5 @@ public record Notification(
     bool Prompt = false,
     Dbref Speaker = default,
     bool Spoofable = false,
-    bool EscapeHtml = false);
+    bool EscapeHtml = false,
+    bool Block = false);

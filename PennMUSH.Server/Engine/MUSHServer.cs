@@ -790,8 +790,8 @@ public class MUSHServer
         if (cmd == "WHO")
         {
             var lines = await _game.RunAsync(() => BuildWhoLines());
-            foreach (string line in lines)
-                await conn.SendLineAsync(line, ct);
+            if (lines.Count > 0)
+                await conn.SendBlockAsync(string.Join("\n", lines), ct);
             return;
         }
 
@@ -1057,7 +1057,7 @@ public class MUSHServer
             case NotificationScope.Target:
                 if (notification.Target.IsValid)
                 {
-                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload, notification.Prompt, notification.Speaker, notification.Spoofable, notification.EscapeHtml);
+                    SendToPlayer(notification.Target, notification.Message, notification.ProtocolType, notification.ProtocolPayload, notification.Prompt, notification.Speaker, notification.Spoofable, notification.EscapeHtml, notification.Block);
                 }
                 break;
 
@@ -1085,7 +1085,7 @@ public class MUSHServer
         }
     }
 
-    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null, bool prompt = false, Dbref speaker = default, bool spoofable = false, bool escapeHtml = false)
+    public void SendToPlayer(Dbref player, string message, string? protocolType = null, object? protocolPayload = null, bool prompt = false, Dbref speaker = default, bool spoofable = false, bool escapeHtml = false, bool block = false)
     {
         string line = WithNospoof(player, speaker, spoofable, message);
         foreach (var c in _connections.Values)
@@ -1119,14 +1119,23 @@ public class MUSHServer
                 }
                 else if (!string.IsNullOrEmpty(line))
                 {
-                    TrackOutbound(prompt ? c.SendPromptAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml));
+                    TrackOutbound(SendText(c, line, prompt, escapeHtml, block));
                 }
             }
             else
             {
-                TrackOutbound(prompt ? c.SendPromptAsync(line) : c.SendLineAsync(line, escapeHtml: escapeHtml));
+                TrackOutbound(SendText(c, line, prompt, escapeHtml, block));
             }
         }
+    }
+
+    private static Task SendText(MUSHConnection connection, string line, bool prompt, bool escapeHtml, bool block)
+    {
+        if (prompt)
+            return connection.SendPromptAsync(line);
+        if (block)
+            return connection.SendBlockAsync(line, escapeHtml: escapeHtml);
+        return connection.SendLineAsync(line, escapeHtml: escapeHtml);
     }
 
     private ServerHelloPayload ApplyClientHello(MUSHConnection conn, ClientHelloPayload hello)

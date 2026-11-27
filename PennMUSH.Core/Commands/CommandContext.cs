@@ -26,6 +26,16 @@ public class CommandContext
         Notify(message, default, false);
     }
 
+    /// <summary>
+    /// One record for the whole message. HTML clients wrap it once, so tags can
+    /// span the lines inside it. Newlines stay newlines.
+    /// </summary>
+    public void NotifyBlock(string message)
+    {
+        TargetedNotifications.Add(new Notification(NotificationScope.Self, message, Executor, Block: true));
+        Notifications.Add(message);
+    }
+
     public void Notify(Feedback message, params (string Name, string Value)[] tokens)
     {
         Notify(message.Text(tokens));
