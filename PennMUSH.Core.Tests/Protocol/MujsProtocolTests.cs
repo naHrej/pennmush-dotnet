@@ -313,6 +313,28 @@ public class MujsProtocolTests
     }
 
     [Fact]
+    public async Task HtmlMujsBlock_KeepsATableInOneDiv()
+    {
+        var sent = new List<string>();
+        var conn = new MUSHConnection(msg =>
+        {
+            sent.Add(msg);
+            return Task.CompletedTask;
+        });
+        conn.Capabilities.SupportsHtml = true;
+        conn.ProtocolMode = ClientProtocolMode.MujsWebSocket;
+
+        await conn.SendBlockAsync("<table><tr><th>Name</th></tr>\n<tr><td>Ada</td></tr>\n</table>");
+
+        var payload = ProtocolSerializer.DeserializePayload<TerminalOutputPayload>(sent[0]);
+        Assert.NotNull(payload);
+        Assert.Equal(
+            "<div style=\"white-space:pre-wrap\"><table><tr><th>Name</th></tr>\n<tr><td>Ada</td></tr>\n</table></div>",
+            payload.Html);
+        Assert.Single(sent);
+    }
+
+    [Fact]
     public async Task HtmlStreamLine_EndsWithAWireNewline()
     {
         var sent = new List<string>();

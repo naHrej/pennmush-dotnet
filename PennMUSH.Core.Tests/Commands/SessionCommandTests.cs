@@ -99,20 +99,20 @@ public class SessionCommandTests
         Assert.Contains(mortal.Notifications, line => line.Contains("Ada") && line.Contains("2h 00m") && line.Contains("30s") && line.Contains("reading"));
         Assert.DoesNotContain(mortal.Notifications, line => line.Contains("Bea"));
         Assert.DoesNotContain(mortal.Notifications, line => line.Contains("Connecting"));
-        Assert.Contains("There are 3 players connected.", mortal.Notifications);
+        Assert.Contains(mortal.Notifications, line => line.Contains("There are 3 players connected."));
 
         var named = _dispatcher.Dispatch(_ada, "who rea*", _db);
         Assert.Contains(named.Notifications, line => line.Contains("Ada"));
         Assert.DoesNotContain(named.Notifications, line => line.Contains("Rex"));
-        Assert.Contains("There are 3 players connected.", named.Notifications);
+        Assert.Contains(named.Notifications, line => line.Contains("There are 3 players connected."));
 
         var wizard = _dispatcher.Dispatch(_god, "who", _db);
-        Assert.Equal("Doing", wizard.Notifications[0]);
+        Assert.Equal("Doing", wizard.Notifications[0].Split('\n')[0]);
         Assert.Contains(wizard.Notifications, line => line.Contains("Host"));
         Assert.Contains(wizard.Notifications, line => line.Contains("Bea") && line.Contains("(Hide)"));
         Assert.Contains(wizard.Notifications, line => line.Contains("Connecting...") && line.Contains("10.0.0.9"));
         Assert.Contains(wizard.Notifications, line => line.Contains("Ada") && line.Contains("#0"));
-        Assert.Contains("There are 4 players connected.", wizard.Notifications);
+        Assert.Contains(wizard.Notifications, line => line.Contains("There are 4 players connected."));
 
         var filtered = _dispatcher.Dispatch(_god, "who B*", _db);
         Assert.Contains(filtered.Notifications, line => line.Contains("Bea"));
@@ -205,7 +205,7 @@ public class SessionCommandTests
 
         var set = _dispatcher.Dispatch(_god, "@poll Mood", _db);
         Assert.Contains("Poll set to: Mood", set.Notifications);
-        Assert.Equal("Mood", _dispatcher.Dispatch(_god, "who", _db).Notifications[0]);
+        Assert.Equal("Mood", _dispatcher.Dispatch(_god, "who", _db).Notifications[0].Split('\n')[0]);
         Assert.Contains(_dispatcher.Dispatch(_ada, "who", _db).Notifications, line => line.Contains("Mood") && !line.Contains("Doing"));
 
         var lost = _dispatcher.Dispatch(_god, "@poll " + new string('x', 45), _db);
@@ -243,12 +243,12 @@ public class SessionCommandTests
                 $"R:Rex:{_rex}:::10800:180",
                 "F:3:There are 3 players connected."
             ],
-            dispatcher.Dispatch(_ada, "who", _db).Notifications);
+            dispatcher.Dispatch(_ada, "who", _db).Notifications.Single().Split('\n'));
 
         var named = dispatcher.Dispatch(_ada, "who rea*", _db);
-        Assert.Contains($"R:Ada:{_ada}:reading::7200:30", named.Notifications);
+        Assert.Contains(named.Notifications, line => line.Contains($"R:Ada:{_ada}:reading::7200:30"));
         Assert.DoesNotContain(named.Notifications, line => line.Contains("Rex"));
-        Assert.Contains("F:3:There are 3 players connected.", named.Notifications);
+        Assert.Contains(named.Notifications, line => line.Contains("F:3:There are 3 players connected."));
 
         var session = dispatcher.Dispatch(_rex, "session", _db);
         Assert.Contains(session.Notifications, line => line.Contains("Recv"));
@@ -270,12 +270,12 @@ public class SessionCommandTests
         _db.WhoMogrifierId = mog.Id;
 
         var mortal = dispatcher.Dispatch(_ada, "who", _db);
-        Assert.Equal(["H:Doing", "F:3"], mortal.Notifications);
+        Assert.Equal(["H:Doing", "F:3"], mortal.Notifications.Single().Split('\n'));
 
         var admin = dispatcher.Dispatch(_god, "who", _db);
         Assert.Contains(admin.Notifications, line => line.Contains("Host"));
         Assert.Contains(admin.Notifications, line => line.Contains("Bea") && line.Contains("(Hide)"));
-        Assert.Contains("There are 4 players connected.", admin.Notifications);
+        Assert.Contains(admin.Notifications, line => line.Contains("There are 4 players connected."));
         Assert.DoesNotContain(admin.Notifications, line => line.StartsWith("H:"));
 
         mog.SetAttribute("WHOAHEADER", "AH:%0:%1:%2", _god);
@@ -291,7 +291,7 @@ public class SessionCommandTests
                 "AR:Connecting...:9:10.0.0.9:Connecting",
                 "AF:4"
             ],
-            dispatcher.Dispatch(_god, "who", _db).Notifications);
+            dispatcher.Dispatch(_god, "who", _db).Notifications.Single().Split('\n'));
     }
 
     private sealed class MemorySessions : ISessionDirectory

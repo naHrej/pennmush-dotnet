@@ -110,6 +110,13 @@ public class MUSHConnection
     public Task SendLineAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
         => SendAsync(ComposeLine(text, escapeHtml), ct);
 
+    /// <summary>
+    /// One HTML element for the whole text. Newlines are not turned into breaks,
+    /// so a table opened on the first line can be closed on the last.
+    /// </summary>
+    public Task SendBlockAsync(string text, CancellationToken ct = default, bool escapeHtml = false)
+        => SendAsync(ComposeBlock(text, escapeHtml), ct);
+
     public Task SendRawAsync(string text, CancellationToken ct = default)
         => SendAsync(ComposeRaw(text), ct);
 
@@ -144,6 +151,33 @@ public class MUSHConnection
             // websocket that has not finished MUjs negotiation.
             html += "\r\n";
         }
+
+        return new OutboundRecord(
+            html,
+            hadAnsi ? AnsiToHtmlTranslator.StripAnsi(rendered.Text) : null,
+            true,
+            rendered.JsonPayloads);
+    }
+
+    private OutboundRecord ComposeBlock(string text, bool escapeHtml)
+    {
+        if (IsProtocolText(text) && !WebSocketMarkup.ContainsFrames(text))
+            return OutboundRecord.Passthrough(text + "\r\n");
+
+        var rendered = Render(text, Capabilities.SupportsHtml && escapeHtml);
+        if (rendered.HadFrames && rendered.Text.Length == 0)
+            return new OutboundRecord("", null, false, rendered.JsonPayloads);
+
+        if (!Capabilities.SupportsHtml)
+            return new OutboundRecord(rendered.Text + "\r\n", null, rendered.HasHtmlFrames, rendered.JsonPayloads);
+
+        bool hadAnsi = AnsiToHtmlTranslator.ContainsAnsi(rendered.Text);
+        string body = hadAnsi
+            ? AnsiToHtmlTranslator.Translate(rendered.Text, escapeHtml: false, EffectiveHtmlColorDepth())
+            : rendered.Text;
+        string html = "<div style=\"white-space:pre-wrap\">" + body + "</div>";
+        if (ProtocolMode != ClientProtocolMode.MujsWebSocket)
+            html += "\r\n";
 
         return new OutboundRecord(
             html,

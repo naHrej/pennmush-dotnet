@@ -32,8 +32,9 @@ public class WhoCommandHandler : ICommandHandler
             return false;
 
         bool session = context.CommandName.Equals("session", StringComparison.OrdinalIgnoreCase);
-        foreach (var line in SessionReport.Lines(db, _sessions, actor, session, context.Arguments, _now(), _evaluator))
-            context.Notify(line);
+        var lines = SessionReport.Lines(db, _sessions, actor, session, context.Arguments, _now(), _evaluator).ToList();
+        if (lines.Count > 0)
+            context.NotifyBlock(string.Join("\n", lines));
         return true;
     }
 }
