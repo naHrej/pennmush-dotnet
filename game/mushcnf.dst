@@ -1030,3 +1030,7 @@ unsafe_eval_functions no
 # (evaluates MOGRIFYSAY, MOGRIFYPOSE, MOGRIFYSEMIPOSE, or MOGRIFY). #-1 disables.
 speech_mogrifier #-1
 
+# Optional dbref of a global WHO mogrifier object
+# (evaluates WHOHEADER, WHOROW, WHOFOOTER, and the admin WHOA* attributes). #-1 disables.
+who_mogrifier #-1
+

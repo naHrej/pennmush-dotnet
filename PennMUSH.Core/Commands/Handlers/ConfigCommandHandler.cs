@@ -50,6 +50,7 @@ public class ConfigCommandHandler : ICommandHandler
         }
         db.SystemObjectId = _config.SystemObject;
         db.SpeechMogrifierId = _config.SpeechMogrifier;
+        db.WhoMogrifierId = _config.WhoMogrifier;
         db.MasterRoomId = _config.MasterRoom;
         db.DefaultHomeId = _config.DefaultHome;
         db.BaseRoomId = _config.BaseRoom;

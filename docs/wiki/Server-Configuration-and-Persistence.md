@@ -31,7 +31,7 @@ Inspectable via `@config`, `@config/<group>`, `@config <option>`, and `config(<o
 | Group | Visibility | Stored Options |
 |---|---|---|
 | `cosmetic` | All | `money_singular` (`"Penny"`), `money_plural` (`"Pennies"`), `tiny_trim_fun` (`No`) |
-| `db` | All | `ancestor_exit` (`#-1`), `ancestor_player` (`#-1`), `ancestor_room` (`#-1`), `ancestor_thing` (`#-1`), `base_room` (`#0`), `default_home` (`#0`), `empty_attrs` (`Yes`), `event_handler` (`#-1`), `http_handler` (`#-1`), `master_room` (`#2`), `player_start` (`#0`), `speech_mogrifier` (`#-1`), `system_object` (`#3`) |
+| `db` | All | `ancestor_exit` (`#-1`), `ancestor_player` (`#-1`), `ancestor_room` (`#-1`), `ancestor_thing` (`#-1`), `base_room` (`#0`), `default_home` (`#0`), `empty_attrs` (`Yes`), `event_handler` (`#-1`), `http_handler` (`#-1`), `master_room` (`#2`), `player_start` (`#0`), `speech_mogrifier` (`#-1`), `system_object` (`#3`), `who_mogrifier` (`#-1`) |
 | `files` | Royalty+ | `chat_database` (`"data/chatdb"`), `crash_database` (`"data/PANIC.db"`), `dict_file` (`""`), `input_database` (`"data/indb"`), `mail_database` (`"data/maildb"`), `output_database` (`"data/outdb"`), `sql_database` (`""`) |
 | `limits` | All | `max_guests` (`10`), `max_players` (`1000`), `paycheck` (`50`), `starting_money` (`100`), `starting_quota` (`20`), `use_quota` (`Yes`) |
 | `messages` | Royalty+ | `colors_file`, `connect_file`, `down_file`, `full_file`, `guest_file`, `motd_file`, `newuser_file`, `quit_file`, `register_create_file`, `wizmotd_file` |

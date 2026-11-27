@@ -98,6 +98,7 @@ public static class ConfigCatalog
             Db("event_handler", "db", c => c.EventHandler, (c, v) => c.EventHandler = v),
             Db("master_room", "db", c => c.MasterRoom, (c, v) => c.MasterRoom = v),
             Db("speech_mogrifier", "db", c => c.SpeechMogrifier, (c, v) => c.SpeechMogrifier = v),
+            Db("who_mogrifier", "db", c => c.WhoMogrifier, (c, v) => c.WhoMogrifier = v),
             Db("system_object", "db", c => c.SystemObject, (c, v) => c.SystemObject = v),
             Db("player_start", "db", c => c.PlayerStart, (c, v) => c.PlayerStart = v),
             Text("access_file", "files", c => c.AccessFile, (c, v) => c.AccessFile = v),

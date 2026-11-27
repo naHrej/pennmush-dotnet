@@ -176,7 +176,7 @@ public sealed class AdministrationModule : ICommandModule
         dispatcher.Register(new StatsCommandHandler(), "@stats");
         dispatcher.Register(new ScoreCommandHandler(), "score");
         dispatcher.Register(new DoingCommandHandler(), "doing", "@doing");
-        dispatcher.Register(new WhoCommandHandler(services.Sessions), "who", "session");
+        dispatcher.Register(new WhoCommandHandler(services.Sessions, evaluator: services.Evaluator), "who", "session");
         dispatcher.Register(new HideCommandHandler(services.Sessions), "@hide");
         dispatcher.Register(new BootCommandHandler(services.Sessions), "@boot");
         dispatcher.Register(new SocksetCommandHandler(services.Sessions), "@sockset");
