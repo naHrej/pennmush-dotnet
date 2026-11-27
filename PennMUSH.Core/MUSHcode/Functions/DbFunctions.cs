@@ -471,9 +471,9 @@ public static class DbFunctions
             _ => '?'
         });
 
-        foreach (var flagName in obj.Flags.OrderBy(f => f))
+        foreach (var flagName in obj.Flags.Select(FlagTable.DisplayName).OrderBy(f => f))
         {
-            var def = FlagTable.FindFlag(flagName);
+            var def = FlagTable.FindFlag(flagName) ?? FlagTable.FindFlagByInternalName(flagName);
             if (def != null && def.Letter != '\0')
                 sb.Append(def.Letter);
         }
@@ -488,7 +488,7 @@ public static class DbFunctions
         if (obj == null) return MushError.NoMatch.Text();
         var looker = reg.Database.GetObject(ctx.Executor);
 
-        return string.Join(" ", obj.Flags.OrderBy(f => f));
+        return string.Join(" ", obj.Flags.Select(FlagTable.DisplayName).OrderBy(f => f));
     }
 
     public static string PowersFunc(FunctionRegistry reg, EvaluationContext ctx, string[] args)

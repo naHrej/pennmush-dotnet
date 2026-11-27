@@ -317,7 +317,7 @@ public class ExamineCommandHandler : ICommandHandler
         }
 
         sb.AppendLine(FormatObj(target));
-        var flagList = target.Flags.ToList();
+        var flagList = target.Flags.Select(PennMUSH.Core.Flags.FlagTable.DisplayName).ToList();
         if (target.Type == ObjectType.Player && db.IsConnected(target.Id) && !flagList.Contains("CONNECTED", StringComparer.OrdinalIgnoreCase))
             flagList.Add("CONNECTED");
         sb.AppendLine($"Type: {target.Type.ToString().ToUpperInvariant()} Flags: {string.Join(" ", flagList)}");

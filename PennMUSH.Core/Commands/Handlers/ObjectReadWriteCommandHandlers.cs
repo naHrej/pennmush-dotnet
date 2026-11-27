@@ -821,7 +821,8 @@ public class FindCommandHandler : ICommandHandler
         var sb = new System.Text.StringBuilder();
         foreach (string flagName in obj.Flags)
         {
-            var def = PennMUSH.Core.Flags.FlagTable.FindFlag(flagName);
+            var def = PennMUSH.Core.Flags.FlagTable.FindFlagByInternalName(flagName)
+                ?? PennMUSH.Core.Flags.FlagTable.FindFlag(flagName);
             if (def != null && def.Letter != ' ')
                 sb.Append(def.Letter);
         }
