@@ -12,8 +12,8 @@ Object naming, ownership, permissions, type validators, world-graph walkers, mul
 
 | Function | Signature | Notes |
 |---|---|---|
-| `name` | `name(<obj>)` | Object's `Name` (`me`/`here`/`#dbref`; `#-1 NO MATCH` if absent) |
-| `fullname` | `fullname(<obj>)` | Returns object's full `Name` (`DbFunctions.FullNameFunc`) |
+| `name` | `name(<obj>)` | Object's `Name`. For an exit, only the text before the first `;` (`me`/`here`/`#dbref`; `#-1 NO MATCH` if absent) |
+| `fullname` | `fullname(<obj>)` | The stored name, including every exit alias after `;` |
 | `nameformat` | `nameformat(<obj>)` | Evaluates `<obj>`'s `NAMEFORMAT` attr if present, else `name(<obj>)` |
 | `namelist` | `namelist(<players>[, <[obj/]errAttr>])` | Maps space-separated player tokens (`*name`, `me`) to `#dbref`s or `#-1` / callback |
 | `namegrab` | `namegrab(<dbrefList>, <target>[, <delim>])` | Finds first matching object (by `#dbref`, exact name, or word prefix / exit `;` alias) |

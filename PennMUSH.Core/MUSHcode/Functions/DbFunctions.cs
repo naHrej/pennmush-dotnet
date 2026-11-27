@@ -226,7 +226,15 @@ public static class DbFunctions
     {
         if (args.Length == 0 || reg.Database == null) return MushError.NoMatch.Text();
         var obj = ResolveObj(reg, ctx, args[0]);
-        return obj != null ? obj.Name : MushError.NoMatch.Text();
+        return obj != null ? ShortName(obj) : MushError.NoMatch.Text();
+    }
+
+    private static string ShortName(MUSHObject obj)
+    {
+        if (obj.Type != ObjectType.Exit)
+            return obj.Name;
+        int semi = obj.Name.IndexOf(';');
+        return semi >= 0 ? obj.Name.Substring(0, semi) : obj.Name;
     }
 
     public static string NameFormat(FunctionRegistry reg, EvaluationContext ctx, string[] args)

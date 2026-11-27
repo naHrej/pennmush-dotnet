@@ -94,6 +94,14 @@ public class FunctionRegistryTests
         string thingRef = _testThing.Id.ToString();
 
         Assert.Equal("Magic Wand", _evaluator.Evaluate($"[name({thingRef})]", _context));
+        Assert.Equal("Magic Wand", _evaluator.Evaluate($"[fullname({thingRef})]", _context));
+
+        var exit = _database.CreateObject("Out;o;leave", ObjectType.Exit, _context.Executor);
+        Assert.Equal("Out", _evaluator.Evaluate($"[name({exit.Id})]", _context));
+        Assert.Equal("Out;o;leave", _evaluator.Evaluate($"[fullname({exit.Id})]", _context));
+        var plainExit = _database.CreateObject("North", ObjectType.Exit, _context.Executor);
+        Assert.Equal("North", _evaluator.Evaluate($"[name({plainExit.Id})]", _context));
+        Assert.Equal("North", _evaluator.Evaluate($"[fullname({plainExit.Id})]", _context));
         Assert.Equal("A glowing wand.", _evaluator.Evaluate($"[get({thingRef}/DESCRIBE)]", _context));
         Assert.Equal("1", _evaluator.Evaluate($"[hasattr({thingRef}, DESCRIBE)]", _context));
         Assert.Equal("0", _evaluator.Evaluate($"[hasattr({thingRef}, NONEXISTENT)]", _context));
