@@ -30,11 +30,13 @@ public sealed class ConfigGroup
 
 /// <summary>
 /// The configuration options this server already stores, in the original group names.
+/// Ancestor dbrefs are their own group, so @config ancestors lists them apart from the other database options.
 /// </summary>
 public static class ConfigCatalog
 {
     public static readonly IReadOnlyList<ConfigGroup> Groups =
     [
+        new() { Name = "ancestors", Description = "Default ancestor objects" },
         new() { Name = "cosmetic", Description = "Cosmetic options" },
         new() { Name = "db", Description = "Database options" },
         new() { Name = "files", Description = "Files used by the MUSH", Royalty = true },
@@ -89,10 +91,10 @@ public static class ConfigCatalog
             YesNo("tiny_trim_fun", "cosmetic", c => c.TinyTrimFun, (c, v) => c.TinyTrimFun = v),
             YesNo("empty_attrs", "db", c => c.EmptyAttrs, (c, v) => c.EmptyAttrs = v),
             YesNo("null_eq_zero", "cosmetic", c => c.NullEqZero, (c, v) => c.NullEqZero = v),
-            Db("ancestor_exit", "db", c => c.AncestorExit, (c, v) => c.AncestorExit = v),
-            Db("ancestor_player", "db", c => c.AncestorPlayer, (c, v) => c.AncestorPlayer = v),
-            Db("ancestor_room", "db", c => c.AncestorRoom, (c, v) => c.AncestorRoom = v),
-            Db("ancestor_thing", "db", c => c.AncestorThing, (c, v) => c.AncestorThing = v),
+            Db("ancestor_exit", "ancestors", c => c.AncestorExit, (c, v) => c.AncestorExit = v),
+            Db("ancestor_player", "ancestors", c => c.AncestorPlayer, (c, v) => c.AncestorPlayer = v),
+            Db("ancestor_room", "ancestors", c => c.AncestorRoom, (c, v) => c.AncestorRoom = v),
+            Db("ancestor_thing", "ancestors", c => c.AncestorThing, (c, v) => c.AncestorThing = v),
             Db("base_room", "db", c => c.BaseRoom, (c, v) => c.BaseRoom = v),
             Db("default_home", "db", c => c.DefaultHome, (c, v) => c.DefaultHome = v),
             Db("event_handler", "db", c => c.EventHandler, (c, v) => c.EventHandler = v),
