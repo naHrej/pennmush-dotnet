@@ -429,6 +429,43 @@ public class ConfigWiringTests
     }
 
     [Fact]
+    public void AncestorOptionsListInTheirOwnGroupAndApplyImmediately()
+    {
+        foreach (var name in new[] { "ancestor_room", "ancestor_thing", "ancestor_exit", "ancestor_player" })
+            Assert.Equal("ancestors", ConfigCatalog.Find(name)!.Group);
+
+        var cfg = new MushConfiguration();
+        var db = new ObjectDatabase();
+        var god = WorldBootstrapper.GenerateBaseWorld(db);
+        var roomAncestor = db.CreateObject("RoomAncestor", ObjectType.Room, god.Id);
+        roomAncestor.SetAttribute("GREETING", "from room ancestor", god.Id);
+        var room = db.CreateObject("PlainRoom", ObjectType.Room, god.Id);
+        Assert.Null(room.GetAttribute("GREETING", db));
+
+        var dispatcher = new CommandDispatcher();
+        dispatcher.Register(new ConfigCommandHandler(cfg), "@config");
+
+        var listed = dispatcher.Dispatch(god.Id, "@config ancestors", db);
+        Assert.Contains("Default ancestor objects", listed.Notifications);
+        Assert.Contains(listed.Notifications, line => line.Contains("ancestor_room"));
+        Assert.Contains(listed.Notifications, line => line.Contains("ancestor_thing"));
+        Assert.Contains(listed.Notifications, line => line.Contains("ancestor_exit"));
+        Assert.Contains(listed.Notifications, line => line.Contains("ancestor_player"));
+
+        var database = dispatcher.Dispatch(god.Id, "@config db", db);
+        Assert.DoesNotContain(database.Notifications, line => line.Contains("ancestor_"));
+
+        dispatcher.Dispatch(god.Id, $"@config/set ancestor_room=#{roomAncestor.Id.Value}", db);
+        Assert.Equal(roomAncestor.Id, cfg.AncestorRoom);
+        Assert.Equal(roomAncestor.Id, db.AncestorRoom);
+        Assert.Equal("from room ancestor", room.GetAttribute("GREETING", db)?.Value);
+
+        dispatcher.Dispatch(god.Id, "@config/set ancestor_room=#-1", db);
+        Assert.Equal(Dbref.Nothing, db.AncestorRoom);
+        Assert.Null(room.GetAttribute("GREETING", db));
+    }
+
+    [Fact]
     public void Phase4_Intervals_Mssp_HtmlScreens_And_Connlog_ParseAndResolve()
     {
         var tmpDir = Path.Combine(Path.GetTempPath(), "penn-p4-" + System.Guid.NewGuid().ToString("N"));
